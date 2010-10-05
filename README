@@ -1,0 +1,28 @@
+Eon3D - A simplicistc 3D software renderer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+(C) 2010 Francesco Romani < fromani | gmail : com >
+
+Overview
+--------
+
+Eon3D is a simplicistic 3D software rendered inspired by (now abandoned?)
+`Plush 3D' by Nullsoft.
+
+
+License Notice
+--------------
+
+The core renderer is licensed under a ZLIB-like license,
+as for plush3D (see COPYING).
+The AVI output module uses (and embeds) AVILIB, which is released under
+the GPL2 license. If you enable the AVI output module, the license of
+Eon3D will become GPL2.
+
+
+Requirements
+------------
+
+A C99 compiler (tested against gcc 4+).
+
+
