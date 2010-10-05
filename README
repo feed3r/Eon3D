@@ -20,9 +20,11 @@ the GPL2 license. If you enable the AVI output module, the license of
 Eon3D will become GPL2.
 
 
-Requirements
-------------
+Requirements/Dependencies
+-------------------------
 
-A C99 compiler (tested against gcc 4+).
-
+* POSIX platform (libC std + stdint/inttypes is enough, actually).
+* C99 compiler (tested against gcc 4+).
+* SDL for graphical console.
+* libPNG for PNG output.
 
