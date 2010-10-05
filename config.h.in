@@ -1,0 +1,32 @@
+#ifndef EON3D_CONFIG_H
+#define EON3D_CONFIG_H
+
+/* static definitions */
+#ifndef PACKAGE
+#define PACKAGE "Eon3D"
+#endif
+
+#ifndef VERSION
+#define VERSION "0.0.1"
+#endif
+
+/* the following are detected by cmake */
+
+/* IBP check skipped, we never need it here */
+
+#cmakedefine HAVE_MALLOC_H
+
+#cmakedefine HAVE_STRING_H
+
+#cmakedefine HAVE_LIBINTL_H
+
+#cmakedefine HAVE_GCC_ATTRIBUTES
+
+#cmakedefine HAVE_STRTOF
+
+#cmakedefine HAVE_GETPAGESIZE
+
+#cmakedefine HAVE_VSSCANF
+
+
+#endif /* EON3D_CONFIG_H */
