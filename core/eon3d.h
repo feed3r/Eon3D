@@ -1,6 +1,6 @@
 /**************************************************************************
  * eon3d.h -- Eon3D is a simplicistic 3D software renderer.               *
- * (C) 2009 Francesco Romani <fromani at gmail dot com>                   *
+ * (C) 2010 Francesco Romani <fromani at gmail dot com>                   *
  *                                                                        *
  * inspired by and/or derived from                                        *
  *                                                                        *
@@ -78,6 +78,8 @@ typedef unsigned char EON_Byte;        /* generic 8 bit byte type          */
 /* Utility min() and max() functions */
 #define EON_Min(x,y) (( ( x ) > ( y ) ? ( y ) : ( x )))
 #define EON_Max(x,y) (( ( x ) < ( y ) ? ( y ) : ( x )))
+#define EON_Clamp(a, x, y) EON_Min(EON_Max(( a ), ( x )), ( y ))
+
 
 typedef enum {
     EON_OK    =  0,
@@ -155,7 +157,7 @@ typedef struct eon_material_ {
     EON_UInt        Shininess;          /* Shininess of material. 1 is dullest */
     EON_Float       FadeDist;           /* For distance fading, distance at 
                                            which intensity is 0 */
-    EON_ShadeType   Shade;
+    EON_ShadeMode   Shade;
     EON_UInt        Transparent;        /* Transparency index (0 = none), 4 = alot 
                                            Note: transparencies disable textures */
     EON_UInt        PerspectiveCorrect; /* Correct textures every n pixels */
@@ -168,14 +170,18 @@ typedef struct eon_material_ {
     EON_UInt        NumGradients;       /* Desired number of gradients to be used */
   
     /* The following are used mostly internally */
-    EON_ShadeMode   _sm;
-    EON_FillMode    _fm;      
+    EON_ShadeMode   _shadeMode;
+    EON_FillMode    _fillMode;      
     EON_UInt        _tsfact;            /* Translucent shading factor */
     EON_UInt16      *_addTable;         /* Shading/Translucent/etc table */
     EON_UChar       *_reMapTable;       /* Table to remap colors to palette */
-    EON_UChar       *_requestedColors;  /* _ColorsUsed colors, desired colors */
-    void            (*_putFace)();      /* Function that renders the triangle with this
-                                           material */
+    EON_UInt        _colorsUsed;
+    EON_RGB         _solidColor;
+    EON_RGB         *_requestedColors;  /* _colorsUsed colors, desired colors */
+
+    void            (*_putFace)(void *_cam, void *_face);
+                                        /* Function that renders the triangle 
+                                           with this material */
 } EON_Material;
 
 typedef struct eon_point_ {
@@ -246,14 +252,14 @@ typedef struct eon_object_ {
 ** Light type. See EON_Light*().
 */
 typedef struct eon_light_ {
-    EON_LightMode   Type        
-    EON_Point   coords;         /* If Type=EON_LIGHT_POINT*,
-                                  this is Position (EON_LIGHT_POINT_*),
-                                  otherwise if EON_LIGHT_VECTOR,
-                                  Unit vector */
-  EON_Float Intensity;           /* Intensity. 0.0 is off, 1.0 is full */
-  EON_Float HalfDistSquared;     /* Distance squared at which 
-                                   EON_LIGHT_POINT_DISTANCE is 50% */
+    EON_LightMode Type        
+    EON_Point     coords;          /* If Type=EON_LIGHT_POINT*,
+                                      this is Position (EON_LIGHT_POINT_*),
+                                      otherwise if EON_LIGHT_VECTOR,
+                                      Unit vector */
+    EON_Float     Intensity;       /* Intensity. 0.0 is off, 1.0 is full */
+    EON_Float     HalfDistSquared; /* Distance squared at which 
+                                      EON_LIGHT_POINT_DISTANCE is 50% */
 } EON_Light;
 
 /*
@@ -289,7 +295,7 @@ typedef struct eon_renderer_ {
 /*************************************************************************/
 
 EON_Material    *EON_newMaterial(void);
-void            *EON_delMaterial(EON_Material *material);
+void            EON_delMaterial(EON_Material *material);
 EON_Status      EON_materialInit(EON_Material *material);
 
 /*************************************************************************/
@@ -297,6 +303,7 @@ EON_Status      EON_materialInit(EON_Material *material);
 /*************************************************************************/
 
 void            EON_delObject(EON_Object *object);
+EON_Object      *EON_newObject(EON_UInt32 vertices, EON_UInt32 faces);
 EON_Object      *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
                             EON_Material *m);
 
