@@ -1,5 +1,5 @@
 /**************************************************************************
- * eon3dx.h -- Eon3D eXtension and companion tools                        *
+ * eon3dx.c -- Eon3D eXtension and companion tools                        *
  * (C) 2010 Francesco Romani <fromani at gmail dot com>                   *
  *                                                                        *
  * This software is provided 'as-is', without any express or implied      *
@@ -21,47 +21,57 @@
  *                                                                        *
  **************************************************************************/
 
-#ifndef EON3DX_H
-#define EON3DX_H
+#include "eon3dx.h"
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-
-#include <eon3d.h>
+/* just stubs, yet. */
 
 
 /*************************************************************************
  * Console                                                               *
  *************************************************************************/
 
-/* opaque. Can use SDL or anything else. */
-typedef struct eonx_console_ EONx_Console;
+struct eonx_console_ {
+};
 
-EONx_Console    *EONx_newConsole(EON_Camera *camera);
-void            EONX_delConsole(EONx_Console *console);
+EONx_Console *EONx_newConsole(EON_Camera *camera)
+{
+    return NULL;
+}
 
-EON_Status      EONx_consoleNextEvent(EONx_Console *console);
+void EONX_delConsole(EONx_Console *console)
+{
+    return;
+}
 
-EON_Status      EONx_consoleShow(EONx_Console *console, EON_Frame *frame);
+EON_Status EONx_consoleNextEvent(EONx_Console *console)
+{
+    return EON_ERROR;
+}
+
+EON_Status EONx_consoleShow(EONx_Console *console, EON_Frame *frame)
+{
+    return EON_ERROR;
+}
 
 
 /*************************************************************************
  * Error Handling                                                        *
  *************************************************************************/
 
-EON_Status EONx_logError(); // XXX?!?!
+EON_Status EONx_logError()
+{
+    return EON_ERROR;
+}
 
 
 /*************************************************************************
  * General Purpose functions                                             *
  *************************************************************************/
 
-void EONx_exit(); // XXX
-
-#endif /* EON3DX_H */
+void EONx_exit()
+{
+    return;
+}
 
 /* vim: set ts=4 sw=4 et */
 /* EOF */

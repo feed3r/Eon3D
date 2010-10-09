@@ -67,7 +67,6 @@ typedef int8_t        EON_Int8;        /* signed 8 bit integer             */
 typedef uint8_t       EON_UInt8;       /* unsigned 8 bit integer           */
 typedef int           EON_Int;         /* signed optimal integer           */
 typedef unsigned int  EON_UInt;        /* unsigned optimal integer         */
-typedef int           EON_Bool;        /* boolean                          */
 typedef unsigned char EON_UChar;       /* unsigned 8 bit integer           */
 typedef signed char   EON_Char;        /* signed 8 bit integer             */
 typedef unsigned char EON_Byte;        /* generic 8 bit byte type          */
@@ -80,6 +79,10 @@ typedef unsigned char EON_Byte;        /* generic 8 bit byte type          */
 #define EON_Max(x,y) (( ( x ) < ( y ) ? ( y ) : ( x )))
 #define EON_Clamp(a, x, y) EON_Min(EON_Max(( a ), ( x )), ( y ))
 
+typedef enum {
+    EON_False = 0,
+    EON_True  = 1
+} EON_Boolean;
 
 typedef enum {
     EON_OK    =  0,
@@ -129,22 +132,36 @@ typedef enum {
     EON_TEXENV_MAX          = 6
 } EON_TexEnvOp;
 
+
+typedef struct eon_rectangle_ {
+    EON_Int Width;
+    EON_Int Height;
+} EON_Rectangle;
+
+typedef struct eon_area_ {
+    EON_Int Top;
+    EON_Int Left;
+    EON_Int Bottom;
+    EON_Int Right; 
+} EON_Area;
+
 /* 
 ** Texture type. Read textures with EON_TextureReadPCX(), and assign them to
 ** Material.Environment or Material.Texture. 
 */
 typedef struct eon_texture_ {
-    EON_Byte  *Data;              /* Texture data */
-    EON_Int16 Width, Height;      /* Log2 of dimensions */
-    EON_Int   IWidth, IHeight;    /* Integer dimensions */
-    EON_Float UScale, UScale;     /* Scaling (usually 2**Width, 2**Height) */
+    EON_Byte        *Data;  /* Texture data */
+    EON_Rectangle   L2Dim;  /* Log2 of dimensions */
+    EON_Rectangle   Dim;    /* Integer dimensions */
+    EON_Float       UScale; /* Scaling (usually 2**Width, 2**Height) */
+    EON_Float       VScale; /* ditto */
 } EON_Texture;
 
 typedef struct eon_rgb_ {
-    EON_UInt8 R;              /* Red      */
-    EON_UInt8 G;              /* Green    */
-    EON_UInt8 B;              /* Blue     */
-    EON_UInt8 Pad;            /* for future usage */
+    EON_UInt8 R;    /* Red      */
+    EON_UInt8 G;    /* Green    */
+    EON_UInt8 B;    /* Blue     */
+    EON_UInt8 Pad;  /* for future usage */
 } EON_RGB;
 
 
@@ -168,7 +185,7 @@ typedef struct eon_material_ {
     EON_Float        TexScaling;         /* Texture map scaling */
     EON_Float        EnvScaling;         /* Environment map scaling */
     EON_TexEnvOp     TexEnvMode;         /* TexEnv combining mode (EON_TEXENV_*) */
-    EON_Bool         ZBufferable;        /* Can this material be zbuffered? */
+    EON_Boolean      ZBufferable;        /* Can this material be zbuffered? */
     EON_UInt         NumGradients;       /* Desired number of gradients to be used */
   
     /* The following are used mostly internally */
@@ -176,7 +193,7 @@ typedef struct eon_material_ {
     EON_FillMode     _fillMode;      
     EON_UInt         _tsfact;            /* Translucent shading factor */
     EON_UInt16       *_addTable;         /* Shading/Translucent/etc table */
-    EON_UChar        *_reMapTable;       /* Table to remap colors to palette */
+    EON_Byte         *_reMapTable;       /* Table to remap colors to palette */
     EON_UInt         _colorsUsed;
     EON_RGB          _solidColor;
     EON_RGB          *_requestedColors;  /* _colorsUsed colors, desired colors */
@@ -186,42 +203,39 @@ typedef struct eon_material_ {
 } EON_Material;
 
 typedef struct eon_point_ {
-    EON_Float x;
-    EON_Float y;
-    EON_Float z;
-} EON_Point
+    EON_Float X;
+    EON_Float Y;
+    EON_Float Z;
+} EON_Point;
 
 /*
 ** Vertex, used within EON_Object
 */
 typedef struct eon_vertex_ {
-    EON_Point coords;      /* Vertex coordinate (objectspace) */
-    EON_Point formed;   
-                           /* Transformed vertex 
-                              coordinate (cameraspace) */
-    EON_Point norm;        /* Unit vertex normal (objectspace) */
-    EON_Point normformed;  /* Transformed unit vertex normal 
-                              (cameraspace) */
+    EON_Point Coords;      /* Vertex coordinate (objectspace) */
+    EON_Point Formed;      /* Transformed vertex coordinate (cameraspace) */
+    EON_Point Norm;        /* Unit vertex normal (objectspace) */
+    EON_Point NormFormed;  /* Transformed unit vertex normal (cameraspace) */
 } EON_Vertex;
 
 /*
 ** Face
 */
 typedef struct eon_face_ {
-    EON_Vertex *Vertices[3];      /* Vertices of triangle */
-    EON_Point   trnorm;           /* Normal of triangle (object space) */
-    EON_Material *Material;       /* Material of triangle */
-    EON_SInt32 Scrx[3], Scry[3];  /* Projected screen coordinates
-                                     (12.20 fixed point) */
-    EON_Float Scrz[3];            /* Projected 1/Z coordinates */
-    EON_SInt32 MappingU[3], MappingV[3]; 
-                                  /* 16.16 Texture mapping coordinates */ 
-    EON_SInt32 eMappingU[3], eMappingV[3]; 
-                                  /* 16.16 Environment map coordinates */
-    EON_Float fShade;             /* Flat intensity */
-    EON_Float sLighting;          /* Face static lighting. Should usually be 0.0 */
-    EON_Float Shades[3];          /* Vertex intensity */
-    EON_Float vsLighting[3];      /* Vertex static lighting. Should be 0.0 */
+    EON_Vertex      *Vertices[3];   /* Vertices of triangle */
+    EON_Point       Norm;           /* Normal of triangle (object space) */
+    EON_Material    *Material;      /* Material of triangle */
+    EON_Int32       ScrX[3];        /* FXP12.20 Projected screen coords */
+    EON_Int32       ScrY[3];        /* Ditto */
+    EON_Float       ScrZ[3];        /* Projected 1/Z coordinates */
+    EON_Int32       MappingU[3];    /* FXP16.16 Texture mapping coords */ 
+    EON_Int32       MappingV[3];    /* Ditto */
+    EON_Int32       EnvMappingU[3]; /* FXP16.16 Environment map coords */
+    EON_Int32       EnvMappingV[3]; /* Ditto */
+    EON_Float       FlatShade;      /* Flat intensity */
+    EON_Float       StaticLighting; /* Face static lighting. Should usually be 0.0 */
+    EON_Float       Shades[3];      /* Vertex intensity */
+    EON_Float       VSLighting[3];  /* Vertex static lighting. Should be 0.0 */
 } EON_Face;
 
 
@@ -229,22 +243,22 @@ typedef struct eon_face_ {
 ** Object 
 */
 typedef struct eon_object_ {
-    EON_UInt32 NumVertices;              /* Number of vertices */
-    EON_UInt32 NumFaces;                 /* Number of faces */
-    EON_Vertex *Vertices;                /* Array of vertices */
-    EON_Face *Faces;                     /* Array of faces */
-    struct eon_object_ *Children[EON_MAX_CHILDREN];  /* Children */
-    EON_Bool BackfaceCull;               /* Are backfacing polys drawn? */
-    EON_Bool BackfaceIllumination;       /* Illuminated by lights behind them? */ 
-    EON_Bool GenMatrix;                  /* Generate Matrix from the following
-                                            if set */
-    EON_Point   Pos;
-    EON_Point   Rot;
-                                         /* Position and rotation of object:
-                                            Note: rotations are around 
-                                            X then Y then Z. Measured in degrees */
-  EON_Float Matrix[16];                  /* Transformation matrix */
-  EON_Float RotMatrix[16];               /* Rotation only matrix (for normals) */
+    EON_UInt32  NumVertices;            /* Number of vertices */
+    EON_UInt32  NumFaces;               /* Number of faces */
+    EON_Vertex  *Vertices;              /* Array of vertices */
+    EON_Face    *Faces;                 /* Array of faces */
+    struct eon_object_ *Children[EON_MAX_CHILDREN];
+    EON_Boolean BackfaceCull;           /* Are backfacing polys drawn? */
+    EON_Boolean BackfaceIllumination;   /* Illuminated by lights behind them? */ 
+    EON_Boolean GenMatrix;              /* Generate Matrix from the following
+                                           if set */
+    EON_Point   Position;
+    EON_Point   Rotation;
+                                        /* Position and rotation of object:
+                                           Note: rotations are around 
+                                           X then Y then Z. Measured in degrees */
+    EON_Float   TMatrix[16];            /* Transformation matrix */
+    EON_Float   RMatrix[16];            /* Rotation only matrix (for normals) */
 } EON_Object;
 
 
@@ -252,8 +266,8 @@ typedef struct eon_object_ {
 ** Light type. See EON_Light*().
 */
 typedef struct eon_light_ {
-    EON_LightMode Type        
-    EON_Point     coords;          /* If Type=EON_LIGHT_POINT*,
+    EON_LightMode Type; 
+    EON_Point     Coords;          /* If Type=EON_LIGHT_POINT*,
                                       this is Position (EON_LIGHT_POINT_*),
                                       otherwise if EON_LIGHT_VECTOR,
                                       Unit vector */
@@ -266,27 +280,26 @@ typedef struct eon_light_ {
 ** Camera Type.
 */
 typedef struct eon_camera_ {
-    EON_Float Fov;                  /* FOV in degrees valid range is 1-179 */
-    EON_Float AspectRatio;          /* Aspect ratio (usually 1.0) */
-    EON_Char Sort;                  /* Sort polygons, -1 f-t-b, 1 b-t-f, 0 no */
-    EON_Float ClipBack;             /* Far clipping ( < 0.0 is none) */
-    EON_Int ClipTop, ClipLeft;      /* Screen Clipping */
-    EON_Int ClipBottom, ClipRight; 
-    EON_UInt ScreenWidth, ScreenHeight; /* Screen dimensions */
-    EON_Int CenterX, CenterY;       /* Center of screen */
-    EON_Point   position;           /* Camera position in worldspace */
-    EON_Float Pitch, Pan, Roll;     /* Camera angle in degrees in worldspace */
+    EON_Float       Fov;                /* FOV in degrees valid range is 1-179 */
+    EON_Float       AspectRatio;        /* Aspect ratio (usually 1.0) */
+    EON_Byte        Sort;               /* Sort polygons, -1 f-t-b, 1 b-t-f, 0 no */
+    EON_Float       ClipBack;           /* Far clipping ( < 0.0 is none) */
+    EON_Area        Clip;               /* Screen Clipping */
+    EON_Rectangle   Screen;             /* Screen dimensions */
+    EON_Point       Center;             /* Center of screen */
+    EON_Point       Position;           /* Camera position in worldspace */
+    EON_Float       Pitch, Pan, Roll;   /* Camera angle in degrees in worldspace */
 } EON_Camera;
 
 typedef struct eon_frame_ {
-    EON_Int  Width, Height;
-    EON_Byte *Pixels; /* RGB */
+    EON_Rectangle   F;
+    EON_Byte        *Pixels; /* RGB24, not EON_RGB */
 } EON_Frame;
 
 
 typedef struct eon_renderer_ {
-    EON_Camera  *camera;
-    EON_ZBuffer *zBuffer;
+    EON_Camera  *Camera;
+    EON_ZBuffer *ZBuffer;
 } EON_Renderer;
 
 

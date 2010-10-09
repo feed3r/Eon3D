@@ -35,15 +35,15 @@ int main(int argc, char *argv[])
 
     cubeMat = EON_newMaterial();    
     cubeMat->NumGradients = 100; /* Have it use 100 colors */
-    cubeMat->ShadeType = EON_SHADE_FLAT; 
+    cubeMat->Shade = EON_SHADE_FLAT; 
     EON_materialInit(cubeMat);   /* Don't forget this! */
 
     cube = EON_newBox(100.0, 100.0, 100.0, cubeMat); // Create the cube
 
-    camera = EON_newCamera(WIDTH, HEIGHT
+    camera = EON_newCamera(WIDTH, HEIGHT,
                            WIDTH*3.0/(HEIGHT*4.0), /* Aspect ratio */
                            90.0);                  /* Field of view */
-    camera->Z = -300; /* Back the camera up from the origin */
+    camera->Position.Z = -300; /* Back the camera up from the origin */
 
     light = EON_newLight(EON_LIGHT_VECTOR,
                          0.0,0.0,0.0,      /* rotation angles */
@@ -63,9 +63,9 @@ int main(int argc, char *argv[])
     }
 
     while (!EONx_consoleNextEvent(console)) {
-        cube->Xa += 1.0; // Rotate by 1 degree on each axis
-        cube->Ya += 1.0;
-        cube->Za += 1.0;
+        cube->Rotation.X += 1.0; // Rotate by 1 degree on each axis
+        cube->Rotation.Y += 1.0;
+        cube->Rotation.Z += 1.0;
 
         EON_rendererSetup(rend, camera);     // Start rendering with the camera
         EON_rendererAddLight(rend, light);   // Render our light
