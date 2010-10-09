@@ -38,7 +38,7 @@ EONx_Console *EONx_newConsole(EON_Camera *camera)
     return NULL;
 }
 
-void EONX_delConsole(EONx_Console *console)
+void EONx_delConsole(EONx_Console *console)
 {
     return;
 }

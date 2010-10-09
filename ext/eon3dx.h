@@ -41,7 +41,7 @@
 typedef struct eonx_console_ EONx_Console;
 
 EONx_Console    *EONx_newConsole(EON_Camera *camera);
-void            EONX_delConsole(EONx_Console *console);
+void            EONx_delConsole(EONx_Console *console);
 
 EON_Status      EONx_consoleNextEvent(EONx_Console *console);
 
