@@ -208,6 +208,16 @@ typedef struct eon_point_ {
     EON_Float Z;
 } EON_Point;
 
+
+/* we store just one endpoint since the other one is always the origin 
+ * we don't include the EON_Point because we want to play dirty later.
+ */
+typedef struct eon_vector_ {
+    EON_Float X;
+    EON_Float Y;
+    EON_Float Z;
+} EON_Vector;
+
 /*
 ** Vertex, used within EON_Object
 */

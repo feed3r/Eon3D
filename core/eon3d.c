@@ -134,24 +134,23 @@ static void eon_matrix4x4Apply(EON_Float *m,
     *outz = x*m[8] + y*m[9] + z*m[10] + m[11];
 }
 
-static EON_Double eon_dotProduct(EON_Float x1, EON_Float y1, EON_Float z1,
-                                 EON_Float x2, EON_Float y2, EON_Float z2)
+static EON_Double eon_dotProduct(EON_Vector *V1, EON_Vector *V2)
 {
-    return ((x1 * x2) + (y1 * y2) + (z1 * z2));
+    return ((V1->X * V2->X) + (V1->Y * V2->Y) + (V1->Z * V2->Z));
 }
 
-static void eon_normalizeVector(EON_Float *x, EON_Float *y, EON_Float *z)
+static void eon_normalizeVector(EON_Vector *V)
 {
-    EON_Double len = eon_dotProduct(*x, *y, *z, *x, *y, *z);
+    EON_Double len = eon_dotProduct(V, V);
     if (len > 0.0000000001) { /* FIXME magic numbers */
         EON_Float t = (EON_Float)sqrt(len);
-        *x /= t;
-        *y /= t;
-        *z /= t;
+        V->X /= t;
+        V->Y /= t;
+        V->Z /= t;
     } else {
-        *x = 0.0;
-        *y = 0.0;
-        *z = 0.0;
+        V->X = 0.0;
+        V->Y = 0.0;
+        V->Z = 0.0;
     }
 }
 
@@ -319,10 +318,10 @@ EON_Object *EON_newObject(EON_UInt32 vertices, EON_UInt32 faces)
 {
     EON_Object *object = eon_zalloc(sizeof(EON_Object));
     if (object) {
-        object->GenMatrix = EON_True;
+        object->GenMatrix    = EON_True;
         object->BackfaceCull = EON_True;
-        object->NumVertices = vertices;
-        object->NumFaces = faces;
+        object->NumVertices  = vertices;
+        object->NumFaces     = faces;
         object = eon_allocItems(object, (void**)&(object->Vertices),
                                 sizeof(EON_Vertex), vertices);
         object = eon_allocItems(object, (void**)&(object->Faces),
@@ -343,10 +342,38 @@ static void eon_resetVerticesNormals(EON_Object *obj)
     return;
 }
 
+typedef struct eon_pointx_ {
+    EON_Double X;
+    EON_Double Y;
+    EON_Double Z;
+} EON_PointX;
+
+static void eon_PointSet(EON_Point *P, EON_Float X, EON_Float Y, EON_Float Z)
+{
+    P->X = X;
+    P->Y = Y;
+    P->Z = Z;
+}
+
+static void eon_PointRAdd(EON_Point *P, const EON_Point *OP)
+{
+    P->X += OP->X;
+    P->Y += OP->Y;
+    P->Z += OP->Z;
+}
+
+static void eon_PointDiff(const EON_Point *P1, const EON_Point *P2,
+                          EON_PointX *D)
+{
+    D->X = P1->X - P2->X;
+    D->Y = P1->Y - P2->Y;
+    D->Z = P1->Z - P2->Z;
+}
+
+
 static int eon_objectCalcNormals(EON_Object *obj)
 {
     EON_UInt32 i;
-    double x1, x2, y1, y2, z1, z2;
 
     if (!obj) {
         return EON_ERROR;
@@ -354,52 +381,33 @@ static int eon_objectCalcNormals(EON_Object *obj)
 
     for (i = 0; i < obj->NumFaces; i++) {
         EON_Face *f = &(obj->Faces[i]);
+        EON_PointX d1, d2;
 
-        x1 = f->Vertices[0]->Coords.X - f->Vertices[1]->Coords.X;
-        x2 = f->Vertices[0]->Coords.X - f->Vertices[2]->Coords.X;
+        eon_PointDiff(&(f->Vertices[0]->Coords),
+                      &(f->Vertices[1]->Coords), &d1);
+        eon_PointDiff(&(f->Vertices[0]->Coords),
+                      &(f->Vertices[2]->Coords), &d2);
         
-        y1 = f->Vertices[0]->Coords.Y - f->Vertices[1]->Coords.Y;
-        y2 = f->Vertices[0]->Coords.Y - f->Vertices[2]->Coords.Y;
-        
-        z1 = f->Vertices[0]->Coords.Z - f->Vertices[1]->Coords.Z;
-        z2 = f->Vertices[0]->Coords.Z - f->Vertices[2]->Coords.Z;
-        
-        f->Norm.X = (EON_Float) (y1 * z2 - z1 * y2);
-        f->Norm.Y = (EON_Float) (z1 * x2 - x1 * z2);
-        f->Norm.Z = (EON_Float) (x1 * y2 - y1 * x2);
+        f->Norm.X = (EON_Float) (d1.Y * d2.Z - d1.Z * d2.Y);
+        f->Norm.Y = (EON_Float) (d1.Z * d2.X - d1.X * d2.Z);
+        f->Norm.Z = (EON_Float) (d1.X * d2.Y - d1.Y * d2.X);
     
-        eon_normalizeVector(&f->Norm.X, &f->Norm.Y, &f->Norm.Z);
+        eon_normalizeVector((EON_Vector *)&(f->Norm));
         
-        f->Vertices[0]->Norm.X += f->Norm.X;
-        f->Vertices[0]->Norm.Y += f->Norm.Y;
-        f->Vertices[0]->Norm.Z += f->Norm.Z;
-
-        f->Vertices[1]->Norm.X += f->Norm.X;
-        f->Vertices[1]->Norm.Y += f->Norm.Y;
-        f->Vertices[1]->Norm.Z += f->Norm.Z;
-
-        f->Vertices[2]->Norm.X += f->Norm.X;
-        f->Vertices[2]->Norm.Y += f->Norm.Y;
-        f->Vertices[2]->Norm.Z += f->Norm.Z;
+        eon_PointRAdd(&(f->Vertices[0]->Norm), &(f->Norm));
+        eon_PointRAdd(&(f->Vertices[1]->Norm), &(f->Norm));
+        eon_PointRAdd(&(f->Vertices[2]->Norm), &(f->Norm));
     }
 
     for (i = 0; i < obj->NumVertices; i++) {
         EON_Vertex *v = &(obj->Vertices[i]);
-        eon_normalizeVector(&v->Norm.X, &v->Norm.Y, &v->Norm.Z);
+        eon_normalizeVector((EON_Vector *)&(v->Norm));
     }
 
     for (i = 0; i < EON_MAX_CHILDREN; i++) {
         eon_objectCalcNormals(obj->Children[i]);
     }
     return EON_OK;
-}
-
-
-static void eon_PointSet(EON_Point *P, EON_Float X, EON_Float Y, EON_Float Z)
-{
-    P->X = X;
-    P->Y = Y;
-    P->Z = Z;
 }
 
 
@@ -504,6 +512,112 @@ void EON_delLight(EON_Light *light)
     }
     return;
 }
+
+/*************************************************************************/
+/* Frames                                                                */
+/*************************************************************************/
+
+enum {
+    EON_RGB_BPP   = 3,    /* Bytes Per Pixel */
+    EON_RGB_BLACK = 0xFF  /* per component (XXX) */
+};
+
+static size_t eon_FrameRGBSize(EON_Int width, EON_Int height)
+{
+    return (EON_RGB_BPP * width * height);
+}
+
+EON_Frame *EON_newFrame(EON_Int width, EON_Int height)
+{
+    size_t size = eon_FrameRGBSize(width, height);
+    EON_Byte *data = eon_malloc(sizeof(EON_Frame) + size);
+    EON_Frame *frame = NULL;
+    if (data) {
+        /* FIXME: Pixels alignment */
+        frame = (EON_Frame *)data;
+        frame->Pixels   = data + sizeof(EON_Frame);
+        frame->F.Width  = width;
+        frame->F.Height = height;
+    }
+    return frame;
+}
+
+void EON_delFrame(EON_Frame *frame)
+{
+    eon_free(frame);
+}
+
+
+void EON_frameClean(EON_Frame *frame)
+{
+    if (frame && frame->Pixels) {
+        size_t size = eon_FrameRGBSize(frame->F.Width, frame->F.Height);
+        memset(frame->Pixels, EON_RGB_BLACK, size);
+    }
+    return;
+}
+
+/*************************************************************************/
+/* Camera                                                                */
+/*************************************************************************/
+
+EON_Camera *EON_newCamera(EON_Int width, EON_Int height,
+                          EON_Float aspectRatio,
+                          EON_Float fieldOfView)
+{
+    return NULL;
+}
+
+void EON_delCamera(EON_Camera *camera)
+{
+    if (camera) {
+        eon_free(camera);
+    }
+    return;
+}
+
+/*************************************************************************/
+/* Rendering                                                             */
+/*************************************************************************/
+
+EON_Renderer *EON_newRenderer(void)
+{
+    return NULL;
+}
+
+void EON_delRenderer(EON_Renderer *rend)
+{
+    if (rend) {
+        eon_free(rend);
+    }
+    return;
+}
+
+EON_Status EON_rendererSetup(EON_Renderer *rend,
+                             EON_Camera *camera)
+{
+    return EON_ERROR;
+}
+
+EON_Status EON_rendererAddLight(EON_Renderer *rend,
+                                EON_Light *light)
+{
+    return EON_ERROR;
+}
+
+EON_Status EON_rendererAddObject(EON_Renderer *rend,
+                                 EON_Object *object)
+{
+    return EON_ERROR;
+}
+
+EON_Status EON_rendererProcess(EON_Renderer *rend,
+                               EON_Frame *frame)
+{
+    return EON_ERROR;
+}
+
+/*************************************************************************/
 
 /* vim: set ts=4 sw=4 et */
 /* EOF */
