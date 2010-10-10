@@ -565,7 +565,20 @@ EON_Camera *EON_newCamera(EON_Int width, EON_Int height,
                           EON_Float aspectRatio,
                           EON_Float fieldOfView)
 {
-    return NULL;
+    EON_Camera *cam = eon_zalloc(sizeof(EON_Camera));
+    if (cam) {
+        cam->Fov            = fieldOfView;
+        cam->AspectRatio    = aspectRatio;
+        cam->Sort           = 1; /* FIXME: if ZBuffer Sort=0 */
+        cam->ClipBack       = 8.0e30f;
+        cam->Screen.Width   = width;
+        cam->Screen.Height  = height;
+        cam->Clip.Right     = width;
+        cam->Clip.Bottom    = height;
+        cam->Center.Width   = width / 2;
+        cam->Center.Height  = height / 2;
+    }
+    return cam;
 }
 
 void EON_delCamera(EON_Camera *camera)

@@ -290,15 +290,17 @@ typedef struct eon_light_ {
 ** Camera Type.
 */
 typedef struct eon_camera_ {
-    EON_Float       Fov;                /* FOV in degrees valid range is 1-179 */
-    EON_Float       AspectRatio;        /* Aspect ratio (usually 1.0) */
-    EON_Byte        Sort;               /* Sort polygons, -1 f-t-b, 1 b-t-f, 0 no */
-    EON_Float       ClipBack;           /* Far clipping ( < 0.0 is none) */
-    EON_Area        Clip;               /* Screen Clipping */
-    EON_Rectangle   Screen;             /* Screen dimensions */
-    EON_Point       Center;             /* Center of screen */
-    EON_Point       Position;           /* Camera position in worldspace */
-    EON_Float       Pitch, Pan, Roll;   /* Camera angle in degrees in worldspace */
+    EON_Float       Fov;            /* FOV in degrees valid range is 1-179 */
+    EON_Float       AspectRatio;    /* Aspect ratio (usually 1.0) */
+    EON_Byte        Sort;           /* Sort polygons, -1 f-t-b, 1 b-t-f, 0 no */
+    EON_Float       ClipBack;       /* Far clipping ( < 0.0 is none) */
+    EON_Area        Clip;           /* Screen Clipping */
+    EON_Rectangle   Screen;         /* Screen dimensions */
+    EON_Rectangle   Center;         /* Center of screen */
+    EON_Point       Position;       /* Camera position in worldspace */
+    EON_Float       Pitch;          /* Camera angle in degrees in worldspace */
+    EON_Float       Pan;            /* ditto */
+    EON_Float       Roll;           /* ditto */
 } EON_Camera;
 
 typedef struct eon_frame_ {
