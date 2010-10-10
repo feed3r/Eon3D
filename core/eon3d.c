@@ -289,10 +289,10 @@ static void *eon_delObjectData(EON_Object *obj)
     return NULL;
 }
 
-EON_Object *eon_allocItems(EON_Object *obj, void **p,
+EON_Object *eon_objectAllocItems(EON_Object *obj, void **p,
                            size_t size, EON_UInt32 num)
 {
-    if (size && num) {
+    if (obj && size && num) {
         *p = eon_zalloc(size * num);
         if (!(*p)) {
             obj = eon_delObjectData(obj);
@@ -322,10 +322,10 @@ EON_Object *EON_newObject(EON_UInt32 vertices, EON_UInt32 faces)
         object->BackfaceCull = EON_True;
         object->NumVertices  = vertices;
         object->NumFaces     = faces;
-        object = eon_allocItems(object, (void**)&(object->Vertices),
-                                sizeof(EON_Vertex), vertices);
-        object = eon_allocItems(object, (void**)&(object->Faces),
-                                sizeof(EON_Face), faces);
+        object = eon_objectAllocItems(object, (void**)&(object->Vertices),
+                                      sizeof(EON_Vertex), vertices);
+        object = eon_objectAllocItems(object, (void**)&(object->Faces),
+                                      sizeof(EON_Face), faces);
   }
   return object;
 }
@@ -593,14 +593,113 @@ void EON_delCamera(EON_Camera *camera)
 /* Rendering                                                             */
 /*************************************************************************/
 
+enum {
+    EON_TRIANGLES_START = 1024,
+    EON_LIGHTS_START    = 32
+}
+
+typedef struct {
+    EON_Face    *Face;
+    EON_Float   ZD;
+} eon_faceInfo;
+
+typedef struct {
+  EON_Light *Light;
+  EON_Point Pos;
+} eon_lightInfo;
+
+typedef struct {
+    void        *D;
+
+    EON_Uint32  itemSize;
+
+    EON_Uint32  size;
+    EON_Uint32  used;
+} eon_array;
+
+static EON_Status eon_arrayAlloc(eon_array *array,
+                                 EON_Uint32 size, EON_Uint32 itemSize)
+{
+    return EON_Error;
+}
+
+static EON_Status eon_arrayFree(eon_array *array)
+{
+    return EON_Error;
+}
+
+static EON_Status eon_arrayResize(eon_array *array, EON_Uint32 size)
+{
+    return EON_Error;
+}
+
+static EON_Status eon_arrayAppend(eon_array *array, const void *item)
+{
+    return EON_Error;
+}
+
+static EON_Status eon_arrayReset(eon_array *array)
+{
+    EON_Status err = EON_ERROR;
+    if (array) {
+        array->used = 0;
+        err = EON_OK;
+    }
+    return array;
+}
+
+
+struct eon_renderer_ {
+    EON_Camera  *Camera;
+    EON_ZBuffer *ZBuffer;
+
+    eon_array   Faces;
+    eon_array   Lights;
+
+    EON_Float   CMatrix[16];
+    EON_Uint32  TriStats;
+};
+
+static void *eon_rendererDestroy(EON_Renderer *rend)
+{
+    EON_delRenderer(rend);
+    return NULL;
+}
+
+EON_Object *eon_rendererAllocArray(EON_Renderer *rend,
+                                   EON_Array *array,
+                                   EON_Uint32 size, EON_Uint32 itemSize)
+{
+    if (rend && size && itemSize) {
+        EON_Status err = eon_arrayAlloc(array, size, itemSize);
+        if (err) {
+            rend = eon_rendererDestroy(rend);
+        }
+    }
+    return rend;
+}
+
+
+
 EON_Renderer *EON_newRenderer(void)
 {
-    return NULL;
+    EON_Renderer *rend = eon_zalloc(sizeof(EON_Renderer));
+    if (rend) {
+        rend = eon_rendederAllocArray(rend, &(rend->Faces),
+                                      EON_TRIANGLES_START,
+                                      sizeof(eon_FaceInfo));
+        rend = eon_rendederAllocArray(rend, &(rend->Lights),
+                                      EON_LIGHTS_START,
+                                      sizeof(eon_LightInfo));
+    }
+    return rend;
 }
 
 void EON_delRenderer(EON_Renderer *rend)
 {
     if (rend) {
+        eon_arrayFree(&(rend->Faces));
+        eon_arrayFree(&(rend->Lights));
         eon_free(rend);
     }
     return;
@@ -609,24 +708,58 @@ void EON_delRenderer(EON_Renderer *rend)
 EON_Status EON_rendererSetup(EON_Renderer *rend,
                              EON_Camera *camera)
 {
-    return EON_ERROR;
+    EON_Float tempMatrix[16];
+    EON_Status ret = EON_OK;
+
+    if (!rend && !camera) {
+        return EON_ERROR;
+    }
+
+    memset(rend->TriStats, 0, sizeof(rend->TriStats));
+
+    rend->Camera = 0;
+
+    eon_arrayReset(&(rend->Faces));
+    eon_arrayReset(&(rend->Lights));
+
+    eon_matrix4x4Rotate(rend->CMatrix,   2, -Camera->Pan);
+    eon_matrix4x4Rotate(tempMatrix,      1, -Camera->Pitch);
+    eon_matrix4x4Multiply(rend->CMatrix,    tempMatrix);
+    eon_matrix4x4Rotate(tempMatrix,      3, -Camera->Roll);
+    eon_matrix4x4Multiply(rend->CMatrix,    tempMatrix);
+  
+    /* TODO: frustum */
+
+    return ret;
 }
 
 EON_Status EON_rendererAddLight(EON_Renderer *rend,
                                 EON_Light *light)
 {
+    EON_Status ret = EON_OK;
+    if (!rend && !light) {
+        return EON_ERROR;
+    }
     return EON_ERROR;
 }
 
 EON_Status EON_rendererAddObject(EON_Renderer *rend,
                                  EON_Object *object)
 {
+    EON_Status ret = EON_OK;
+    if (!rend && !object) {
+        return EON_ERROR;
+    }
     return EON_ERROR;
 }
 
 EON_Status EON_rendererProcess(EON_Renderer *rend,
                                EON_Frame *frame)
 {
+    EON_Status ret = EON_OK;
+    if (!rend && !frame) {
+        return EON_ERROR;
+    }
     return EON_ERROR;
 }
 

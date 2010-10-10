@@ -309,10 +309,8 @@ typedef struct eon_frame_ {
 } EON_Frame;
 
 
-typedef struct eon_renderer_ {
-    EON_Camera  *Camera;
-    EON_ZBuffer *ZBuffer;
-} EON_Renderer;
+/* Implementation will be in flux for a while */
+typedef struct eon_renderer_ EON_Renderer;
 
 
 /*************************************************************************/
