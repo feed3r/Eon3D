@@ -596,7 +596,7 @@ void EON_delCamera(EON_Camera *camera)
 enum {
     EON_TRIANGLES_START = 1024,
     EON_LIGHTS_START    = 32
-}
+};
 
 typedef struct {
     EON_Face    *Face;
@@ -611,31 +611,31 @@ typedef struct {
 typedef struct {
     void        *D;
 
-    EON_Uint32  itemSize;
+    EON_UInt32  itemSize;
 
-    EON_Uint32  size;
-    EON_Uint32  used;
+    EON_UInt32  size;
+    EON_UInt32  used;
 } eon_array;
 
 static EON_Status eon_arrayAlloc(eon_array *array,
-                                 EON_Uint32 size, EON_Uint32 itemSize)
+                                 EON_UInt32 size, EON_UInt32 itemSize)
 {
-    return EON_Error;
+    return EON_ERROR;
 }
 
 static EON_Status eon_arrayFree(eon_array *array)
 {
-    return EON_Error;
+    return EON_ERROR;
 }
 
-static EON_Status eon_arrayResize(eon_array *array, EON_Uint32 size)
+static EON_Status eon_arrayResize(eon_array *array, EON_UInt32 size)
 {
-    return EON_Error;
+    return EON_ERROR;
 }
 
 static EON_Status eon_arrayAppend(eon_array *array, const void *item)
 {
-    return EON_Error;
+    return EON_ERROR;
 }
 
 static EON_Status eon_arrayReset(eon_array *array)
@@ -645,7 +645,7 @@ static EON_Status eon_arrayReset(eon_array *array)
         array->used = 0;
         err = EON_OK;
     }
-    return array;
+    return err;
 }
 
 
@@ -657,7 +657,7 @@ struct eon_renderer_ {
     eon_array   Lights;
 
     EON_Float   CMatrix[16];
-    EON_Uint32  TriStats;
+    EON_UInt32  TriStats[4]; /* FIXME: magic number */
 };
 
 static void *eon_rendererDestroy(EON_Renderer *rend)
@@ -666,9 +666,9 @@ static void *eon_rendererDestroy(EON_Renderer *rend)
     return NULL;
 }
 
-EON_Object *eon_rendererAllocArray(EON_Renderer *rend,
-                                   EON_Array *array,
-                                   EON_Uint32 size, EON_Uint32 itemSize)
+EON_Renderer *eon_rendererAllocArray(EON_Renderer *rend,
+                                     eon_array *array,
+                                     EON_UInt32 size, EON_UInt32 itemSize)
 {
     if (rend && size && itemSize) {
         EON_Status err = eon_arrayAlloc(array, size, itemSize);
@@ -685,12 +685,12 @@ EON_Renderer *EON_newRenderer(void)
 {
     EON_Renderer *rend = eon_zalloc(sizeof(EON_Renderer));
     if (rend) {
-        rend = eon_rendederAllocArray(rend, &(rend->Faces),
+        rend = eon_rendererAllocArray(rend, &(rend->Faces),
                                       EON_TRIANGLES_START,
-                                      sizeof(eon_FaceInfo));
-        rend = eon_rendederAllocArray(rend, &(rend->Lights),
+                                      sizeof(eon_faceInfo));
+        rend = eon_rendererAllocArray(rend, &(rend->Lights),
                                       EON_LIGHTS_START,
-                                      sizeof(eon_LightInfo));
+                                      sizeof(eon_lightInfo));
     }
     return rend;
 }
@@ -722,10 +722,10 @@ EON_Status EON_rendererSetup(EON_Renderer *rend,
     eon_arrayReset(&(rend->Faces));
     eon_arrayReset(&(rend->Lights));
 
-    eon_matrix4x4Rotate(rend->CMatrix,   2, -Camera->Pan);
-    eon_matrix4x4Rotate(tempMatrix,      1, -Camera->Pitch);
+    eon_matrix4x4Rotate(rend->CMatrix,   2, -camera->Pan);
+    eon_matrix4x4Rotate(tempMatrix,      1, -camera->Pitch);
     eon_matrix4x4Multiply(rend->CMatrix,    tempMatrix);
-    eon_matrix4x4Rotate(tempMatrix,      3, -Camera->Roll);
+    eon_matrix4x4Rotate(tempMatrix,      3, -camera->Roll);
     eon_matrix4x4Multiply(rend->CMatrix,    tempMatrix);
   
     /* TODO: frustum */
