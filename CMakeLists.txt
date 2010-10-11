@@ -5,7 +5,7 @@ include(CheckIncludeFile)
 include(CheckCSourceCompiles)
 include(CheckFunctionExists)
 
-CHECK_INCLUDE_FILE(string.h  HAVE_STRING_H)
+include(FindSDL)
 
 set(CMAKE_REQUIRED_INCLUDES 	stdlib.h)
 set(CMAKE_REQUIRED_INCLUDES 	stdint.h)
