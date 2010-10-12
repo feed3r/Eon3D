@@ -35,17 +35,20 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <math.h>
 
 /**************************************************************************
  * Configuration section                                                  *
  **************************************************************************/
 
+/* implementation limits */
 enum {
-    EON_MAX_CHILDREN  = 64,   /* Maximum children per object */
-    EON_MAX_LIGHTS    = 32,   /* Maximum lights per scene --
+    EON_MAX_LOG_LINE_LEN = 1024, /* Maximum user message length */
+    EON_MAX_CHILDREN     = 64,   /* Maximum children per object */
+    EON_MAX_LIGHTS       = 32,   /* Maximum lights per scene --
                                 if you exceed this, they will be ignored */
-    EON_MAX_TRIANGLES = 1073741824
+    EON_MAX_TRIANGLES    = 1073741824
     /* Maximum number of triangles per scene -- if you exceed this, entire 
        objects will be ignored. You can increase this if you need it. It takes
        approximately 8*EON_MAX_TRIANGLES bytes of memory.
@@ -88,6 +91,21 @@ typedef enum {
     EON_OK    =  0,
     EON_ERROR = -1
 } EON_Status; 
+
+typedef enum {
+    EON_LOG_CRITICAL = 0,   /* this MUST be the first */
+    EON_LOG_ERROR,
+    EON_LOG_WARNING,
+    EON_LOG_INFO,
+    EON_LOG_DEBUG,
+    EON_LOG_LAST            /* this MUST be the last 
+                               and should'nt be used */ 
+} EON_LogLevel;
+
+
+typedef void (*EON_logHandler)(void *userData,
+                                int level, const char *fmt, va_list ap);
+
 
 /* 
 ** Note that (EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE) and
@@ -313,31 +331,29 @@ typedef struct eon_frame_ {
 typedef struct eon_renderer_ EON_Renderer;
 
 
+
+/*************************************************************************
+ * Initialization and Finalization                                       *
+ *************************************************************************/
+
+void EON_startup();
+void EON_shutdown();
+
+
 /*************************************************************************
  * Error Handling                                                        *
  *************************************************************************/
 
-typedef enum {
-    EON_LOG_CRITICAL = 0,
-    EON_LOG_ERROR,
-    EON_LOG_WARNING,
-    EON_LOG_INFO,
-    EON_LOG_DEBUG
-} EON_LogLevel;
-
 void EON_log(int level, const char *fmt, ...);
 void EON_vlog(int level, const char *fmt, va_list ap);
 
-typedef void (*EON_logHandler)(void *userData,
-                                int level, const char *fmt, va_list ap)
+void EON_logSetHandler(EON_logHandler logHandler, void *userData);
 
-void EON_logSetHandler(EON_logHandler logHandler, void *userdata);
 EON_logHandler EON_logGetHandler(void);
 void *EON_logGetUserData(void);
 
 void EON_logDefaultHandler(void *userData,
                            int level, const char* fmt, va_list ap);
-
 
 
 /*************************************************************************/

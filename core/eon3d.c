@@ -29,7 +29,12 @@
  **************************************************************************/
 
 
+
 #include "eon3d.h"
+
+enum {
+    EON_MAX_LOG_PREFIX_LEN = 32
+};
 
 
 /**************************************************************************
@@ -57,6 +62,96 @@ static void *eon_free(void *ptr)
     free(ptr);
 }
 
+/*************************************************************************
+ * Error Handling                                                        *
+ *************************************************************************/
+
+typedef struct {
+    void            *UserData;
+    int             MinLevel;
+    EON_logHandler  Log;
+} EON_LogContext;
+
+/* BIG FAT FIXME */
+static EON_LogContext EON_LogCtx = {
+    .UserData = NULL, /* watch out below on EON_startup() */
+    .MinLevel = EON_LOG_DEBUG,
+    .Log      = EON_logDefaultHandler
+};
+
+/* ``it's just a %#@ decoy'' */
+void EON_log(int level, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+
+    EON_vlog(level, fmt, ap);
+
+    va_end(ap);
+    return;
+}
+
+/* here's the real workhorse */
+void EON_vlog(int level, const char *fmt, va_list ap)
+{
+    if (EON_LogCtx.Log) {
+        EON_LogCtx.Log(EON_LogCtx.UserData, level, fmt, ap);
+    }
+    return;
+}
+
+void EON_logSetHandler(EON_logHandler logHandler, void *userData)
+{
+    if (logHandler) {
+        /* we always must have a valid log handler */
+        EON_LogCtx.Log = logHandler;
+    }
+    if (EON_LogCtx.Log != EON_logDefaultHandler) {
+        /* can't overwrite just the default userdata to avoid
+           strange things to happen */
+        EON_LogCtx.UserData = userData;
+    }
+    return;
+}
+
+EON_logHandler EON_logGetHandler(void)
+{
+    return EON_LogCtx.Log;
+}
+
+void *EON_logGetUserData(void)
+{
+    return EON_LogCtx.UserData;
+}
+
+static const char *eon_logPrefix(int level)
+{
+    /* FIXME: to be kept in sync with EON_LogLevel */
+    static const char *prefixNames[] = {
+        "CRI",
+        "ERR",
+        "WRN",
+        "INF",
+        "DBG",
+        "UNK"  /* EON_LOG_LAST - you should'nt see this */
+    };
+   
+    level = EON_Clamp(level, EON_LOG_CRITICAL, EON_LOG_LAST);
+    return prefixNames[level];
+}
+
+/* FIXME: too much stack? */
+void EON_logDefaultHandler(void *userData,
+                           int level, const char* fmt, va_list ap)
+{
+    char buf[EON_MAX_LOG_LINE_LEN] = { '\0' };
+    const char *prefix = eon_logPrefix(level);
+    FILE *sink = userData;
+    
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+
+    fprintf(sink, "[%s] %s\n", prefix, buf);
+}
 
 /*************************************************************************/
 /* RGB utilities                                                         */
@@ -762,6 +857,25 @@ EON_Status EON_rendererProcess(EON_Renderer *rend,
     }
     return EON_ERROR;
 }
+
+
+/*************************************************************************
+ * Initialization and Finalization                                       *
+ *************************************************************************/
+
+void EON_startup()
+{
+    EON_LogCtx.UserData = stderr;
+    return;
+}
+
+
+void EON_shutdown()
+{
+    /* nothing interesting in here */
+    return;
+}
+
 
 /*************************************************************************/
 
