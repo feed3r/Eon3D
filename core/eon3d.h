@@ -313,6 +313,33 @@ typedef struct eon_frame_ {
 typedef struct eon_renderer_ EON_Renderer;
 
 
+/*************************************************************************
+ * Error Handling                                                        *
+ *************************************************************************/
+
+typedef enum {
+    EON_LOG_CRITICAL = 0,
+    EON_LOG_ERROR,
+    EON_LOG_WARNING,
+    EON_LOG_INFO,
+    EON_LOG_DEBUG
+} EON_LogLevel;
+
+void EON_log(int level, const char *fmt, ...);
+void EON_vlog(int level, const char *fmt, va_list ap);
+
+typedef void (*EON_logHandler)(void *userData,
+                                int level, const char *fmt, va_list ap)
+
+void EON_logSetHandler(EON_logHandler logHandler, void *userdata);
+EON_logHandler EON_logGetHandler(void);
+void *EON_logGetUserData(void);
+
+void EON_logDefaultHandler(void *userData,
+                           int level, const char* fmt, va_list ap);
+
+
+
 /*************************************************************************/
 /* Materials                                                             */
 /*************************************************************************/
