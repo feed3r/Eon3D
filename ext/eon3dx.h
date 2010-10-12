@@ -49,16 +49,10 @@ EON_Status      EONx_consoleShow(EONx_Console *console, EON_Frame *frame);
 
 
 /*************************************************************************
- * Error Handling                                                        *
- *************************************************************************/
-
-EON_Status EONx_logError(); // XXX?!?!
-
-
-/*************************************************************************
  * General Purpose functions                                             *
  *************************************************************************/
 
+void EONx_setup(); // XXX
 void EONx_exit(); // XXX
 
 #endif /* EON3DX_H */

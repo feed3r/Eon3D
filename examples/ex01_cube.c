@@ -31,6 +31,8 @@ int main(int argc, char *argv[])
 
     EONx_Console *console;  /* for our viewing pleasure */
 
+    EONx_setup();
+
     frame = EON_newFrame(WIDTH, HEIGHT);
 
     cubeMat = EON_newMaterial();    
