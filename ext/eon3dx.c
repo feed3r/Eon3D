@@ -65,12 +65,17 @@ EON_Status EONx_logError()
 
 
 /*************************************************************************
- * General Purpose functions                                             *
+ * Initialization and Finalization                                       *
  *************************************************************************/
+
+void EONx_setup()
+{
+    EON_startup();
+}
 
 void EONx_exit()
 {
-    return;
+    EON_shutdown();
 }
 
 /* vim: set ts=4 sw=4 et */

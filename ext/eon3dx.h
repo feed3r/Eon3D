@@ -49,11 +49,12 @@ EON_Status      EONx_consoleShow(EONx_Console *console, EON_Frame *frame);
 
 
 /*************************************************************************
- * General Purpose functions                                             *
+ * Initialization and Finalization                                       *
  *************************************************************************/
 
-void EONx_setup(); // XXX
-void EONx_exit(); // XXX
+void EONx_setup();
+void EONx_exit();
+
 
 #endif /* EON3DX_H */
 
