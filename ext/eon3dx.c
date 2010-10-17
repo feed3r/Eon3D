@@ -76,7 +76,7 @@ static eonx_SDLConsole *eonx_initSDLConsole(eonx_SDLConsole *console,
     SDL_WM_SetCaption("EON3D SDL console", NULL);
     
     console->Surface = SDL_SetVideoMode(console->Width, console->Height,
-                                        0, SDL_HWSURFACE);
+                                        32, SDL_SWSURFACE);
     if (!console->Surface) {
         EON_log(EONX_SDL_TAG, EON_LOG_ERROR,
                 "cannot setup SDL Video Mode: %s", SDL_GetError());
@@ -157,11 +157,25 @@ static void eonx_delSDLConsole(void *console)
 
 static EON_Status eonx_SDLConsoleNextEvent(void *console)
 {
-    return EON_ERROR;
+    EON_Status ret = EON_OK; 
+    SDL_Event event;
+
+    if (SDL_WaitEvent(&event)) {
+        if (event.type == SDL_QUIT) {
+            EON_log(EONX_SDL_TAG, EON_LOG_INFO, "got quit event. Bye!");
+            ret = EON_ERROR;
+        }
+    } else {
+        EON_log(EONX_SDL_TAG, EON_LOG_ERROR,
+                "error fetching event: %s", SDL_GetError());
+        ret = EON_ERROR;
+    }
+    return ret;
 }
 
 static EON_Status eonx_SDLConsoleShow(void *console, EON_Frame *frame)
 {
+    /* TODO */
     return EON_ERROR;
 }
 
@@ -199,7 +213,7 @@ static void eonx_delNullConsole(void *console)
 
 static EON_Status eonx_NullConsoleNextEvent(void *console)
 {
-    return EON_OK;
+    return EON_OK; /* never exits */
 }
 
 static EON_Status eonx_NullConsoleShow(void *console, EON_Frame *frame)
