@@ -44,20 +44,20 @@ enum {
 
 
 /**************************************************************************
- * Internal functions: Memory manipulation                                *
+ * Memory manipulation                                                    *
  **************************************************************************/
 
-static void *eon_malloc(size_t size)
+void *EON_malloc(size_t size)
 {
     return malloc(size);
 }
 
-static void *eon_zalloc(size_t size)
+void *EON_zalloc(size_t size)
 {
     return calloc(1, size);
 }
 
-static void *eon_free(void *ptr)
+void *EON_free(void *ptr)
 {
     free(ptr);
 }
@@ -65,6 +65,8 @@ static void *eon_free(void *ptr)
 /*************************************************************************
  * Error Handling                                                        *
  *************************************************************************/
+
+#define EON_TAG "EON3D"
 
 typedef struct {
     void            *UserData;
@@ -80,22 +82,25 @@ static EON_LogContext EON_LogCtx = {
 };
 
 /* ``it's just a %#@ decoy'' */
-void EON_log(int level, const char *fmt, ...)
+void EON_log(const char *where, int level, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
 
-    EON_vlog(level, fmt, ap);
+    EON_vlog(where, level, fmt, ap);
 
     va_end(ap);
     return;
 }
 
 /* here's the real workhorse */
-void EON_vlog(int level, const char *fmt, va_list ap)
+void EON_vlog(const char *where, int level, const char *fmt, va_list ap)
 {
+    if (!where) {
+        where = EON_TAG;
+    }
     if (EON_LogCtx.Log) {
-        EON_LogCtx.Log(EON_LogCtx.UserData, level, fmt, ap);
+        EON_LogCtx.Log(EON_LogCtx.UserData, where, level, fmt, ap);
     }
     return;
 }
@@ -142,7 +147,8 @@ static const char *eon_logPrefix(int level)
 
 /* FIXME: too much stack? */
 void EON_logDefaultHandler(void *userData,
-                           int level, const char* fmt, va_list ap)
+                           const char *where, int level,
+                           const char* fmt, va_list ap)
 {
     char buf[EON_MAX_LOG_LINE_LEN] = { '\0' };
     const char *prefix = eon_logPrefix(level);
@@ -150,7 +156,7 @@ void EON_logDefaultHandler(void *userData,
     
     vsnprintf(buf, sizeof(buf), fmt, ap);
 
-    fprintf(sink, "[%s] %s\n", prefix, buf);
+    fprintf(sink, "[%s] %s %s\n", prefix, where, buf);
 }
 
 /*************************************************************************/
@@ -256,7 +262,7 @@ static void eon_normalizeVector(EON_Vector *V)
 /* FIXME: magic numbers */
 EON_Material *EON_newMaterial(void)
 {
-    EON_Material *m = eon_zalloc(sizeof(EON_Material));
+    EON_Material *m = EON_zalloc(sizeof(EON_Material));
     if (m) { /* FIXME magic numbers */
         m->EnvScaling = 1.0f;
         m->TexScaling = 1.0f;
@@ -275,30 +281,30 @@ void EON_delMaterial(EON_Material *m)
 {
     if (m) {
         if (m->_reMapTable) {
-            eon_free(m->_reMapTable);
+            EON_free(m->_reMapTable);
         }
         if (m->_requestedColors) {
-            eon_free(m->_requestedColors);
+            EON_free(m->_requestedColors);
         }
         if (m->_addTable) {
-            eon_free(m->_addTable);
+            EON_free(m->_addTable);
         }
         free(m);
     }
 }
 
-static void eon_freePalette(EON_Material *m)
+static void EON_freePalette(EON_Material *m)
 {
     /* single solid color special case */
     if (m && m->_requestedColors != &m->_solidColor) {
-        eon_free(m->_requestedColors);
+        EON_free(m->_requestedColors);
     }
     return;
 }
 
 static void eon_makeSinglePalette(EON_Material *m)
 {
-    eon_freePalette(m);
+    EON_freePalette(m);
     m->NumGradients = 1; /* enforce */
     m->_colorsUsed = m->NumGradients;
 
@@ -311,9 +317,9 @@ static void eon_makePhongPalette(EON_Material *m)
     EON_Double a = EON_PI/2.0, da = 0.0;
     EON_UInt i;
 
-    eon_freePalette(m);
+    EON_freePalette(m);
     m->_colorsUsed = m->NumGradients;
-    m->_requestedColors = eon_malloc(m->_colorsUsed * sizeof(EON_RGB));
+    m->_requestedColors = EON_malloc(m->_colorsUsed * sizeof(EON_RGB));
 
     if (m->NumGradients > 1)
         da = -EON_PI/((m->NumGradients-1)<<1);
@@ -375,12 +381,12 @@ EON_Status EON_materialInit(EON_Material *m)
 static void *eon_delObjectData(EON_Object *obj)
 {
     if (obj->Vertices) {
-        eon_free(obj->Vertices);
+        EON_free(obj->Vertices);
     }
     if (obj->Faces) {
-        eon_free(obj->Faces);
+        EON_free(obj->Faces);
     }
-    eon_free(obj);
+    EON_free(obj);
     return NULL;
 }
 
@@ -388,7 +394,7 @@ EON_Object *eon_objectAllocItems(EON_Object *obj, void **p,
                            size_t size, EON_UInt32 num)
 {
     if (obj && size && num) {
-        *p = eon_zalloc(size * num);
+        *p = EON_zalloc(size * num);
         if (!(*p)) {
             obj = eon_delObjectData(obj);
         }
@@ -411,7 +417,7 @@ void EON_delObject(EON_Object *obj)
 
 EON_Object *EON_newObject(EON_UInt32 vertices, EON_UInt32 faces)
 {
-    EON_Object *object = eon_zalloc(sizeof(EON_Object));
+    EON_Object *object = EON_zalloc(sizeof(EON_Object));
     if (object) {
         object->GenMatrix    = EON_True;
         object->BackfaceCull = EON_True;
@@ -575,7 +581,7 @@ EON_Light *EON_newLight(EON_LightMode mode,
                         EON_Float intensity,
                         EON_Float halfDist)
 {
-    EON_Light *light = eon_zalloc(sizeof(EON_Light));
+    EON_Light *light = EON_zalloc(sizeof(EON_Light));
     if (light) {
         EON_Float m[16], m2[16];
         
@@ -603,7 +609,7 @@ EON_Light *EON_newLight(EON_LightMode mode,
 void EON_delLight(EON_Light *light)
 {
     if (light) {
-        eon_free(light);
+        EON_free(light);
     }
     return;
 }
@@ -625,7 +631,7 @@ static size_t eon_FrameRGBSize(EON_Int width, EON_Int height)
 EON_Frame *EON_newFrame(EON_Int width, EON_Int height)
 {
     size_t size = eon_FrameRGBSize(width, height);
-    EON_Byte *data = eon_malloc(sizeof(EON_Frame) + size);
+    EON_Byte *data = EON_malloc(sizeof(EON_Frame) + size);
     EON_Frame *frame = NULL;
     if (data) {
         /* FIXME: Pixels alignment */
@@ -639,7 +645,7 @@ EON_Frame *EON_newFrame(EON_Int width, EON_Int height)
 
 void EON_delFrame(EON_Frame *frame)
 {
-    eon_free(frame);
+    EON_free(frame);
 }
 
 
@@ -660,7 +666,7 @@ EON_Camera *EON_newCamera(EON_Int width, EON_Int height,
                           EON_Float aspectRatio,
                           EON_Float fieldOfView)
 {
-    EON_Camera *cam = eon_zalloc(sizeof(EON_Camera));
+    EON_Camera *cam = EON_zalloc(sizeof(EON_Camera));
     if (cam) {
         cam->Fov            = fieldOfView;
         cam->AspectRatio    = aspectRatio;
@@ -679,7 +685,7 @@ EON_Camera *EON_newCamera(EON_Int width, EON_Int height,
 void EON_delCamera(EON_Camera *camera)
 {
     if (camera) {
-        eon_free(camera);
+        EON_free(camera);
     }
     return;
 }
@@ -778,7 +784,7 @@ EON_Renderer *eon_rendererAllocArray(EON_Renderer *rend,
 
 EON_Renderer *EON_newRenderer(void)
 {
-    EON_Renderer *rend = eon_zalloc(sizeof(EON_Renderer));
+    EON_Renderer *rend = EON_zalloc(sizeof(EON_Renderer));
     if (rend) {
         rend = eon_rendererAllocArray(rend, &(rend->Faces),
                                       EON_TRIANGLES_START,
@@ -795,7 +801,7 @@ void EON_delRenderer(EON_Renderer *rend)
     if (rend) {
         eon_arrayFree(&(rend->Faces));
         eon_arrayFree(&(rend->Lights));
-        eon_free(rend);
+        EON_free(rend);
     }
     return;
 }

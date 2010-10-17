@@ -82,17 +82,17 @@ typedef unsigned char EON_Byte;        /* generic 8 bit byte type          */
 #define EON_Max(x,y) (( ( x ) < ( y ) ? ( y ) : ( x )))
 #define EON_Clamp(a, x, y) EON_Min(EON_Max(( a ), ( x )), ( y ))
 
-typedef enum {
+typedef enum eon_boolean_ {
     EON_False = 0,
     EON_True  = 1
 } EON_Boolean;
 
-typedef enum {
+typedef enum eon_status_ {
     EON_OK    =  0,
     EON_ERROR = -1
 } EON_Status; 
 
-typedef enum {
+typedef enum eon_loglevel_ {
     EON_LOG_CRITICAL = 0,   /* this MUST be the first */
     EON_LOG_ERROR,
     EON_LOG_WARNING,
@@ -104,14 +104,15 @@ typedef enum {
 
 
 typedef void (*EON_logHandler)(void *userData,
-                                int level, const char *fmt, va_list ap);
+                               const char *where, int level,
+                               const char *fmt, va_list ap);
 
 
 /* 
 ** Note that (EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE) and
 ** (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE) are valid shading modes.
 */
-typedef enum {
+typedef enum eon_shademode_ {
     EON_SHADE_NONE             = 1,
     EON_SHADE_FLAT             = 2,
     EON_SHADE_FLAT_DISTANCE    = 4,
@@ -124,7 +125,7 @@ typedef enum {
 ** the light and the point, EON_LIGHT_POINT_DISTANCE has falloff with proportion
 ** to distance**2 (see EON_LightSet() for setting it), EON_LIGHT_POINT does both.
 */
-typedef enum {
+typedef enum eon_lightmode_ {
     EON_LIGHT_NONE           = 0x0,
     EON_LIGHT_VECTOR         = 0x1,
     EON_LIGHT_POINT          = 0x2|0x4,
@@ -133,14 +134,14 @@ typedef enum {
 } EON_LightMode;
 
 /* Used internally. */
-typedef enum {
+typedef enum eon_fillmode_ {
     EON_FILL_SOLID       = 0x0,
     EON_FILL_TEXTURE     = 0x1,
     EON_FILL_ENVIRONMENT = 0x2,
     EON_FILL_TRANSPARENT = 0x4
 } EON_FillMode;
 
-typedef enum {
+typedef enum eon_texenvop_ {
     EON_TEXENV_ADD          = 0,
     EON_TEXENV_MUL          = 1,
     EON_TEXENV_AVG          = 2,
@@ -339,13 +340,21 @@ typedef struct eon_renderer_ EON_Renderer;
 void EON_startup();
 void EON_shutdown();
 
+/**************************************************************************
+ * Memory manipulation                                                    *
+ **************************************************************************/
+
+void *EON_malloc(size_t size);
+void *EON_zalloc(size_t size);
+void *EON_free(void *ptr);
+
 
 /*************************************************************************
  * Error Handling                                                        *
  *************************************************************************/
 
-void EON_log(int level, const char *fmt, ...);
-void EON_vlog(int level, const char *fmt, va_list ap);
+void EON_log(const char *where, int level, const char *fmt, ...);
+void EON_vlog(const char *where, int level, const char *fmt, va_list ap);
 
 void EON_logSetHandler(EON_logHandler logHandler, void *userData);
 
@@ -353,7 +362,8 @@ EON_logHandler EON_logGetHandler(void);
 void *EON_logGetUserData(void);
 
 void EON_logDefaultHandler(void *userData,
-                           int level, const char* fmt, va_list ap);
+                           const char *where, int level,
+                           const char* fmt, va_list ap);
 
 
 /*************************************************************************/
