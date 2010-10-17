@@ -54,13 +54,11 @@ int main(int argc, char *argv[])
 
     console = EONx_newConsole(camera);
     if (!console) {
-        EONx_logError();
         EONx_exit();
     }
 
     rend = EON_newRenderer();
     if (!rend) {
-        EONx_logError();
         EONx_exit();
     }
 
