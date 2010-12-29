@@ -26,6 +26,9 @@
  * 3. This notice may not be removed or altered from any source           *
  *    distribution.                                                       *
  *                                                                        *
+ * Meaning: all good stuff is credited to the plush authors.              *
+ * All the bugs, misdesigns and pessimizations are credited to me. ;)     *
+ *                                                                        *
  **************************************************************************/
 
 #ifndef EON3D_H
