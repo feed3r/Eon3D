@@ -154,6 +154,10 @@ typedef enum eon_texenvop_ {
     EON_TEXENV_MAX          = 6
 } EON_TexEnvOp;
 
+typedef enum eon_frameflags_ {
+    EON_FRAME_FLAG_NONE     = 0x0,
+    EON_FRAME_FLAG_DR       = 0x1, /* direct rendering */
+} EON_FrameFlags;
 
 typedef struct eon_rectangle_ {
     EON_Int Width;
@@ -166,6 +170,7 @@ typedef struct eon_area_ {
     EON_Int Bottom;
     EON_Int Right; 
 } EON_Area;
+
 
 /* 
 ** Texture type. Read textures with EON_TextureReadPCX(), and assign them to
@@ -186,6 +191,10 @@ typedef struct eon_rgb_ {
     EON_UInt8 Pad;  /* for future usage */
 } EON_RGB;
 
+enum {
+    EON_RGB_BPP   = 4,    /* Bytes Per Pixel */
+    EON_RGB_BLACK = 0xFF  /* per component (XXX) */
+};
 
 typedef int (*EON_RenderFaceFn)(void *_renderer, void *_face);
 /* 
@@ -325,10 +334,18 @@ typedef struct eon_camera_ {
     EON_Float       Roll;           /* ditto */
 } EON_Camera;
 
-typedef struct eon_frame_ {
+
+typedef struct eon_frame_ EON_Frame;
+struct eon_frame_ {
     EON_Rectangle   F;
     EON_Byte        *Pixels; /* RGB24, not EON_RGB */
-} EON_Frame;
+    EON_UInt32      Flags;
+
+    /* direct rendering */
+    EON_Status      (*PutPixel)(EON_Frame *frame,
+                                EON_Int x, EON_Int y, EON_UInt32 color);
+    void            *_private;
+};
 
 
 /* Implementation will be in flux for a while */
@@ -403,6 +420,9 @@ EON_Light *EON_newLight(EON_LightMode mode,
 EON_Frame       *EON_newFrame(EON_Int width, EON_Int height);
 void            EON_delFrame(EON_Frame *frame);
 void            EON_frameClean(EON_Frame *frame);
+EON_Status	EON_framePutPixel(EON_Frame *frame
+                                  EON_Int x, EON_Int y, EON_UInt32 color);
+
 
 /*************************************************************************/
 /* Camera                                                                */
