@@ -12,8 +12,8 @@
 
 
 enum {
-    WIDTH  = 320,
-    HEIGHT = 200
+    WIDTH  = 640,
+    HEIGHT = 480
 };
 
 
@@ -26,14 +26,12 @@ int main(int argc, char *argv[])
     EON_Object *cube;       /* Our cube object */
     EON_Material *cubeMat;  /* The material for the cube */
     EON_Camera *camera;     /* Our camera */
-    EON_Frame *frame;
     EON_Renderer *rend;
+    EON_Frame *frame;
 
     EONx_Console *console;  /* for our viewing pleasure */
 
     EONx_setup();
-
-    frame = EON_newFrame(WIDTH, HEIGHT);
 
     cubeMat = EON_newMaterial();    
     cubeMat->NumGradients = 100; /* Have it use 100 colors */
@@ -56,6 +54,8 @@ int main(int argc, char *argv[])
     if (!console) {
         EONx_exit();
     }
+
+    frame = EONx_consoleGetFrame(console, NULL);
 
     rend = EON_newRenderer();
     if (!rend) {
