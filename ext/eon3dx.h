@@ -43,9 +43,15 @@ typedef struct eonx_console_ EONx_Console;
 EONx_Console    *EONx_newConsole(EON_Camera *camera);
 void            EONx_delConsole(EONx_Console *console);
 
-EON_Status      EONx_consoleNextEvent(EONx_Console *console);
+EON_Status      EONx_consoleNextEvent(EONx_Console *console,
+                                      void *event); /* TODO */
 
 EON_Status      EONx_consoleShow(EONx_Console *console, EON_Frame *frame);
+
+EON_Status      EONx_consoleClear(EONx_Console *console);
+
+EON_Frame      *EONx_consoleGetFrame(EONx_Console *console,
+                                     EON_Frame *frame);
 
 
 /*************************************************************************
