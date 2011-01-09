@@ -420,7 +420,7 @@ EON_Light *EON_newLight(EON_LightMode mode,
 EON_Frame       *EON_newFrame(EON_Int width, EON_Int height);
 void            EON_delFrame(EON_Frame *frame);
 void            EON_frameClean(EON_Frame *frame);
-EON_Status	EON_framePutPixel(EON_Frame *frame
+EON_Status	EON_framePutPixel(EON_Frame *frame,
                                   EON_Int x, EON_Int y, EON_UInt32 color);
 
 

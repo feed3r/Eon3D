@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
         EONx_exit();
     }
 
-    while (!EONx_consoleNextEvent(console)) {
+    while (!EONx_consoleNextEvent(console, NULL)) {
         cube->Rotation.X += 1.0; // Rotate by 1 degree on each axis
         cube->Rotation.Y += 1.0;
         cube->Rotation.Z += 1.0;
