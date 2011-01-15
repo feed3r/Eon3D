@@ -86,8 +86,8 @@ typedef unsigned char EON_Byte;        /* generic 8 bit byte type          */
 #define EON_Clamp(a, x, y) EON_Min(EON_Max(( a ), ( x )), ( y ))
 
 typedef enum eon_boolean_ {
-    EON_False = 0,
-    EON_True  = 1
+    EON_FALSE = 0,
+    EON_TRUE  = 1
 } EON_Boolean;
 
 typedef enum eon_status_ {
@@ -298,8 +298,8 @@ typedef struct eon_object_ {
                                         /* Position and rotation of object:
                                            Note: rotations are around 
                                            X then Y then Z. Measured in degrees */
-    EON_Float   TMatrix[16];            /* Transformation matrix */
-    EON_Float   RMatrix[16];            /* Rotation only matrix (for normals) */
+    EON_Float   TMatrix[4 * 4];         /* Transformation matrix */
+    EON_Float   RMatrix[4 * 4];         /* Rotation only matrix (for normals) */
 } EON_Object;
 
 
@@ -398,10 +398,12 @@ EON_Status      EON_materialInit(EON_Material *material);
 /* Objects and primitives                                                */
 /*************************************************************************/
 
-void            EON_delObject(EON_Object *object);
+EON_Object      *EON_delObject(EON_Object *object);
 EON_Object      *EON_newObject(EON_UInt32 vertices, EON_UInt32 faces);
 EON_Object      *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
                             EON_Material *m);
+EON_Status      EON_objectCalcNormals(EON_Object *object)
+EON_Status      EON_objectCenter(EON_Object *object);
 
 /*************************************************************************/
 /* Lights                                                                */
