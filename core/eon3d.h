@@ -402,7 +402,7 @@ EON_Object      *EON_delObject(EON_Object *object);
 EON_Object      *EON_newObject(EON_UInt32 vertices, EON_UInt32 faces);
 EON_Object      *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
                             EON_Material *m);
-EON_Status      EON_objectCalcNormals(EON_Object *object)
+EON_Status      EON_objectCalcNormals(EON_Object *object);
 EON_Status      EON_objectCenter(EON_Object *object);
 
 /*************************************************************************/

@@ -39,11 +39,95 @@ enum {
     EON_MAX_LOG_PREFIX_LEN = 32
 };
 
+/*************************************************************************/
+/* Rendering utilities: generic resizable array object                   */
+/*************************************************************************/
+
+typedef struct {
+    void        *D;
+
+    EON_UInt32  ItemSize;
+
+    EON_UInt32  Size;
+    EON_UInt32  Used;
+} eon_array;
+
+static EON_Status eon_arrayAlloc(eon_array *array,
+                                 EON_UInt32 size, EON_UInt32 itemSize)
+{
+    return EON_ERROR;
+}
+
+static EON_Status eon_arrayFree(eon_array *array)
+{
+    return EON_ERROR;
+}
+
+static EON_Status eon_arrayResize(eon_array *array, EON_UInt32 size)
+{
+    return EON_ERROR;
+}
+
+static EON_Status eon_arrayAppend(eon_array *array, const void *item)
+{
+    return EON_ERROR;
+}
+
+static EON_Status eon_arrayReset(eon_array *array)
+{
+    EON_Status err = EON_ERROR;
+    if (array) {
+        array->Used = 0;
+        err = EON_OK;
+    }
+    return err;
+}
+
+
 
 /**************************************************************************
  * The unavoidable forward declarations.                                  *
  **************************************************************************/
 
+/* FIXME 8 vs 4x2 */
+enum {
+    EON_NUM_CLIP_PLANES = 5, /* see clipDirection above */
+};
+
+typedef struct eon_clipinfo_ {
+    EON_Vertex  newVertices[8];
+
+    EON_Double  Shades[8];
+    EON_Double  MappingU[8];
+    EON_Double  MappingV[8];
+    EON_Double  EnvMappingU[8];
+    EON_Double  EnvMappingV[8];
+} eon_clipInfo;
+
+
+typedef struct eon_clipcontext_ {
+    eon_clipInfo    ClipInfo[2];
+    EON_Double      ClipPlanes[EON_NUM_CLIP_PLANES][4];
+    EON_Camera      *Cam;
+    EON_Int32       CX; /* XXX */
+    EON_Int32       CY; /* XXX */
+    EON_Double      Fov;
+    EON_Double      AdjAsp;
+} eon_clipContext;
+
+
+struct eon_renderer_ {
+    EON_Camera      *Camera;
+    EON_ZBuffer     *ZBuffer;
+
+    eon_array       Faces;
+    eon_array       Lights;
+
+    EON_Float       CMatrix[4 * 4];
+    EON_UInt32      TriStats[4]; /* FIXME: magic number */
+
+    eon_clipContext Clip;
+};
 
 
 /**************************************************************************
@@ -476,7 +560,7 @@ static void eon_PointDiff(const EON_Point *P1, const EON_Point *P2,
 }
 
 
-static int EON_objectCalcNormals(EON_Object *object)
+int EON_objectCalcNormals(EON_Object *object)
 {
     EON_UInt32 i;
 
@@ -737,50 +821,6 @@ typedef struct {
 } eon_lightInfo;
 
 /*************************************************************************/
-/* Rendering utilities: generic resizable array object                   */
-/*************************************************************************/
-
-typedef struct {
-    void        *D;
-
-    EON_UInt32  ItemSize;
-
-    EON_UInt32  Size;
-    EON_UInt32  Used;
-} eon_array;
-
-static EON_Status eon_arrayAlloc(eon_array *array,
-                                 EON_UInt32 size, EON_UInt32 itemSize)
-{
-    return EON_ERROR;
-}
-
-static EON_Status eon_arrayFree(eon_array *array)
-{
-    return EON_ERROR;
-}
-
-static EON_Status eon_arrayResize(eon_array *array, EON_UInt32 size)
-{
-    return EON_ERROR;
-}
-
-static EON_Status eon_arrayAppend(eon_array *array, const void *item)
-{
-    return EON_ERROR;
-}
-
-static EON_Status eon_arrayReset(eon_array *array)
-{
-    EON_Status err = EON_ERROR;
-    if (array) {
-        array->Used = 0;
-        err = EON_OK;
-    }
-    return err;
-}
-
-/*************************************************************************/
 /* Rendering utilities: clipping support                                 */
 /*************************************************************************/
 
@@ -791,32 +831,6 @@ typedef enum eon_clipdirection_ {
     EON_CLIP_TOP    = 3,
     EON_CLIP_BOTTOM = 4
 } eon_clipDirection;
-
-/* FIXME 8 vs 4x2 */
-enum {
-    EON_NUM_CLIP_PLANES = 5, /* see clipDirection above */
-};
-
-typedef struct eon_clipinfo_ {
-    EON_Vertex  newVertices[8];
-
-    EON_Double  Shades[8];
-    EON_Double  MappingU[8];
-    EON_Double  MappingV[8];
-    EON_Double  EMappingU[8];
-    EON_Double  EMappingV[8];
-} eon_clipInfo;
-
-
-typedef struct eon_clipcontext_ {
-    eon_clipInfo    ClipInfo[2];
-    EON_Double      ClipPlanes[EON_NUM_CLIP_PLANES][4];
-    EON_Camera      *Cam;
-    EON_Int32       CX; /* XXX */
-    EON_Int32       CY; /* XXX */
-    EON_Double      Fov;
-    EON_Double      AdjAsp;
-} eon_clipContext;
 
 static void eon_findNormal(EON_Double x2, EON_Double x3,EON_Double y2, EON_Double y3,
                            EON_Double zv, EON_Double *res)
@@ -856,8 +870,8 @@ static void eon_clipCopyInfo(eon_clipInfo *CI, EON_UInt inV, EON_UInt outV)
     CI[1].Shades[outV]      = CI[0].Shades[inV];
     CI[1].MappingU[outV]    = CI[0].MappingU[inV];
     CI[1].MappingV[outV]    = CI[0].MappingV[inV];
-    CI[1].EMappingU[outV]   = CI[0].EMappingU[inV];
-    CI[1].EMappingV[outV]   = CI[0].EMappingV[inV];
+    CI[1].EnvMappingU[outV] = CI[0].EnvMappingU[inV];
+    CI[1].EnvMappingV[outV] = CI[0].EnvMappingV[inV];
     CI[1].newVertices[outV] = CI[0].newVertices[inV];
     return;
 }
@@ -909,18 +923,19 @@ static EON_UInt eon_clipToPlane(eon_clipContext *clip,
             oP->Y = eon_clipCalcScaled(iP->Y, nP->Y, scale);
             oP->Z = eon_clipCalcScaled(iP->Z, nP->Z, scale);
 
-            CI[1].Shades[oV]    = eon_clipCalcScaled(CI[0].Shades[iV],    CI[0].Shades[nV],    scale);
-            CI[1].MappingU[oV]  = eon_clipCalcScaled(CI[0].MappingU[iV],  CI[0].MappingU[nV],  scale);
-            CI[1].MappingV[oV]  = eon_clipCalcScaled(CI[0].MappingV[iV],  CI[0].MappingV[nV],  scale);
-            CI[1].EMappingU[oV] = eon_clipCalcScaled(CI[0].EMappingU[iV], CI[0].EMappingU[nV], scale);
-            CI[1].EMappingV[oV] = eon_clipCalcScaled(CI[0].EMappingV[iV], CI[0].EMappingV[nV], scale);
+            /* XXX */
+            CI[1].Shades[oV]      = eon_clipCalcScaled(CI[0].Shades[iV],      CI[0].Shades[nV],      scale);
+            CI[1].MappingU[oV]    = eon_clipCalcScaled(CI[0].MappingU[iV],    CI[0].MappingU[nV],    scale);
+            CI[1].MappingV[oV]    = eon_clipCalcScaled(CI[0].MappingV[iV],    CI[0].MappingV[nV],    scale);
+            CI[1].EnvMappingU[oV] = eon_clipCalcScaled(CI[0].EnvMappingU[iV], CI[0].EnvMappingU[nV], scale);
+            CI[1].EnvMappingV[oV] = eon_clipCalcScaled(CI[0].EnvMappingV[iV], CI[0].EnvMappingV[nV], scale);
 
-            outV++;
+            oV++;
         }
-        cur = next;
-        inV++;
+        cur = next; /* XXX */
+        iV++;
     }
-    return outV;
+    return oV;
 }
 
 
@@ -1011,20 +1026,20 @@ static void eon_clipCopyFaceInfo(eon_clipContext *clip,
         clip->ClipInfo[0].Shades[a]      =   face->Shades[a];
         clip->ClipInfo[0].MappingU[a]    =   face->MappingU[a];
         clip->ClipInfo[0].MappingV[a]    =   face->MappingV[a];
-        clip->ClipInfo[0].EMappingU[a]   =   face->EnvMappingU[a];
-        clip->ClipInfo[0].EMappingV[a]   =   face->EnvMappingV[a];
+        clip->ClipInfo[0].EnvMappingU[a] =   face->EnvMappingU[a];
+        clip->ClipInfo[0].EnvMappingV[a] =   face->EnvMappingV[a];
     }
 
     return;
 }
 
-// XXX: maybe misleading name?
+/* XXX: maybe misleading name? */
 static EON_UInt eon_clipCountVertices(eon_clipContext *clip,
-                                      EON_Uint numVerts)
+                                      EON_UInt numVerts)
 {
     EON_UInt a = (clip->ClipPlanes[0][3] < 0.0 ? 0 : 1);
 
-    while (a < NUM_CLIP_PLANES && numVerts > 2) {
+    while (a < EON_NUM_CLIP_PLANES && numVerts > 2) {
         numVerts = eon_clipToPlane(clip, numVerts, clip->ClipPlanes[a]);
         memcpy(&clip->ClipInfo[0], &clip->ClipInfo[1],
                sizeof(clip->ClipInfo[0]));
@@ -1034,8 +1049,8 @@ static EON_UInt eon_clipCountVertices(eon_clipContext *clip,
     return numVerts;
 }
 
-// FIXME: explain the `2'
-static void eon_clipDoRenderFace(eon_clipContext *clip,
+/* FIXME: explain the `2' */
+static void eon_clipDoRenderFace(eon_clipContext *clip, EON_UInt numVerts,
                                  EON_Renderer *rend, EON_Face *face)
 {
     EON_Face newface;
@@ -1043,25 +1058,25 @@ static void eon_clipDoRenderFace(eon_clipContext *clip,
 
     memcpy(&newface, face, sizeof(EON_Face));
     for (k = 2; k < numVerts; k ++) {
-        newface.FlatShade = EON_CLAMP(face->FlatShade, 0, 1);
+        newface.FlatShade = EON_Clamp(face->FlatShade, 0, 1);
         for (a = 0; a < 3; a ++) {
             eon_clipInfo *CI = &(clip->ClipInfo[0]);
             EON_UInt w = (a == 0) ?0 :(a + (k - 2));
             EON_Double XFov, YFov, ZFov;
 
-            newface.Vertices[a]  =            CI->newVertices[w];
-            newface.Shades[a]    = (EON_Float)CI->Shades[w];
-            newface.MappingU[a]  = (EON_Int32)CI->MappingU[w];
-            newface.MappingV[a]  = (EON_Int32)CI->MappingV[w];
-            newface.EMappingU[a] = (EON_Int32)CI->EMappingU[w];
-            newface.EMappingV[a] = (EON_Int32)CI->EMappingV[w];
-            newface.ScrZ[a]      = 1.0f / (newface.Vertices[a]->Formed.Z);
+            newface.Vertices[a]    =            CI->newVertices + w;
+            newface.Shades[a]      = (EON_Float)CI->Shades[w];
+            newface.MappingU[a]    = (EON_Int32)CI->MappingU[w];
+            newface.MappingV[a]    = (EON_Int32)CI->MappingV[w];
+            newface.EnvMappingU[a] = (EON_Int32)CI->EnvMappingU[w];
+            newface.EnvMappingV[a] = (EON_Int32)CI->EnvMappingV[w];
+            newface.ScrZ[a]        = 1.0f / (newface.Vertices[a]->Formed.Z);
 
             ZFov = clip->Fov * newface.ScrZ[a];
             XFov = ZFov * newface.Vertices[a]->Formed.X;
             YFov = ZFov * newface.Vertices[a]->Formed.Y;
 
-            // XXX
+            /* XXX */
             newface.ScrX[a] = clip->CX + ((EON_Int32)((XFov *                (float) (1<<20))));
             newface.ScrX[a] = clip->CY - ((EON_Int32)((YFov * clip->AdjAsp * (float) (1<<20))));
         }
@@ -1084,7 +1099,7 @@ void eon_clipRenderFace(eon_clipContext *clip,
     numVerts = eon_clipCountVertices(clip, 3);
 
     if (numVerts > 2) {
-        eon_clipDoRenderFace(clip, rend, face);
+        eon_clipDoRenderFace(clip, numVerts, rend, face);
     }
     return;
 }
@@ -1092,15 +1107,15 @@ void eon_clipRenderFace(eon_clipContext *clip,
 EON_Int eon_clipIsNeeded(eon_clipContext *clip, EON_Face *face)
 {
     EON_Rectangle *center = &(clip->Cam->Center);
-    EON_Area *clip = &(clip->Cam->Clip);
+    EON_Area *clipArea = &(clip->Cam->Clip);
     EON_Float clipBack = clip->Cam->ClipBack;
     EON_Double f  = clip->Fov * clip->AdjAsp;
     EON_Int needed = 0;
     
-    EON_Double dr = (Clip->Right  - Center->Width);
-    EON_Double dl = (Clip->Left   - Center->Width);
-    EON_Double db = (Clip->Bottom - Center->Height);
-    EON_Double dt = (Clip->Top    - Center->Height);
+    EON_Double dr = (clipArea->Right  - center->Width);
+    EON_Double dl = (clipArea->Left   - center->Width);
+    EON_Double db = (clipArea->Bottom - center->Height);
+    EON_Double dt = (clipArea->Top    - center->Height);
     
     EON_Float XFov[3] = { 0.0, 0.0, 0.0 };
     EON_Float YFov[3] = { 0.0, 0.0, 0.0 };
@@ -1133,19 +1148,6 @@ EON_Int eon_clipIsNeeded(eon_clipContext *clip, EON_Face *face)
 /*************************************************************************/
 /* Rendering core                                                        */
 /*************************************************************************/
-
-struct eon_renderer_ {
-    EON_Camera      *Camera;
-    EON_ZBuffer     *ZBuffer;
-
-    eon_array       Faces;
-    eon_array       Lights;
-
-    EON_Float       CMatrix[4 * 4];
-    EON_UInt32      TriStats[4]; /* FIXME: magic number */
-
-    eon_clipContext Clip;
-};
 
 static void *eon_rendererDestroy(EON_Renderer *rend)
 {
