@@ -63,14 +63,15 @@ int main(int argc, char *argv[])
     }
 
     while (!EONx_consoleNextEvent(console, NULL)) {
-        cube->Rotation.X += 1.0; // Rotate by 1 degree on each axis
+        cube->Rotation.X += 1.0; /* Rotate by 1 degree on each axis */
         cube->Rotation.Y += 1.0;
         cube->Rotation.Z += 1.0;
 
-        EON_rendererSetup(rend, camera);     // Start rendering with the camera
-        EON_rendererAddLight(rend, light);   // Render our light
-        EON_rendererAddObject(rend, cube);   // Render our object
-        EON_rendererProcess(rend, frame);    // Finish rendering
+        EON_rendererSetup(rend, camera);  /* Start rendering with the camera */
+        EON_rendererLight(rend, light);   /* Render our light                */
+        EON_rendererObject(rend, cube);   /* Render our object               */
+        EON_rendererProcess(rend, frame); /* Output the rendering            */
+        EON_rendererTeardown(rend);       /* Cleanup                         */
 
         EONx_consoleShow(console, frame);
     }
