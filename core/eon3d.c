@@ -83,19 +83,43 @@ static EON_Status eon_arrayReset(eon_array *array)
     return err;
 }
 
+EON_UInt32 eon_arrayLength(eon_array *array)
+{
+    return array->Used; /* FIXME */
+}
+
+static void *eon_arrayGet(eon_array *array, EON_UInt32 index)
+{
+    return NULL;
+}
+
+static void *eon_arrayLast(eon_array *array)
+{
+    return NULL;
+}
+
 
 
 /**************************************************************************
  * The unavoidable forward declarations.                                  *
  **************************************************************************/
 
-/* FIXME 8 vs 4x2 */
 enum {
     EON_NUM_CLIP_PLANES = 5, /* see clipDirection above */
 };
 
+/* can't find a better nome */
+typedef enum eon_tri_stat_ {
+    EON_TRI_STAT_INITIAL = 0, /* initial triangles                  */
+    EON_TRI_STAT_CULLED,      /* triangles after culling            */
+    EON_TRI_STAT_CLIPPED,     /* final polygons after real clipping */
+    EON_TRI_STAT_TESSELLED,   /* final triangles after tessellation */
+    EON_TRI_STAT_NUM          /* this MUST be the last              */
+} EON_TriStat;
+
+/* FIXME 8 vs 4x2 et al */
 typedef struct eon_clipinfo_ {
-    EON_Vertex  newVertices[8];
+    EON_Vertex  newVertexes[8];
 
     EON_Double  Shades[8];
     EON_Double  MappingU[8];
@@ -124,11 +148,36 @@ struct eon_renderer_ {
     eon_array       Lights;
 
     EON_Float       CMatrix[4 * 4];
-    EON_UInt32      TriStats[4]; /* FIXME: magic number */
-
+    EON_UInt32      TriStats[EON_TRI_STAT_NUM];
     eon_clipContext Clip;
 };
 
+/**************************************************************************
+ * The unavoidable forward declarations (/2: functions).                  *
+ **************************************************************************/
+
+static EON_Status eon_rendererProcessObject(EON_Renderer *rend,
+                                            EON_Object *object,
+                                            EON_Float *bmatrix,
+                                            EON_Float *bnmatrix);
+
+static int eon_renderFaceNull(EON_Renderer *renderer,
+                              EON_Face *face, EON_Frame *frame);
+
+static int eon_renderFaceVertexes(EON_Renderer *renderer,
+                                  EON_Face *face, EON_Frame *frame);
+
+
+static int eon_processFaceNull(EON_Face *face, EON_Renderer *rend);
+
+static int eon_processFaceFlatLightining(EON_Face *face,
+                                         EON_Renderer *rend);
+
+static int eon_processFaceFillEnvironment(EON_Face *face,
+                                          EON_Renderer *rend);
+
+static int eon_processFaceGouradShading(EON_Face *face,
+                                        EON_Renderer *rend);
 
 /**************************************************************************
  * Memory manipulation                                                    *
@@ -343,6 +392,35 @@ static void eon_normalizeVector(EON_Vector *V)
 }
 
 /*************************************************************************/
+/* Faces (internal use only)                                             */
+/*************************************************************************/
+
+static void eon_faceInit(EON_Face *f)
+{
+    f->_processFlatLightining  = eon_processFaceNull;
+    f->_processFillEnvironment = eon_processFaceNull;
+    f->_processGouradShading   = eon_processFaceNull;
+    return;
+}
+
+static void eon_faceSetMaterial(EON_Face *f, EON_Material *m)
+{
+    if (m->_shadeMode & (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE)) {
+        f->_processFlatLightining = eon_processFaceFlatLightining;
+    }
+
+    if (m->_fillMode & EON_FILL_ENVIRONMENT) {
+        f->_processFillEnvironment = eon_processFaceFillEnvironment;
+    }
+
+    if (m->_shadeMode & (EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE)) {
+        f->_processGouradShading = eon_processFaceGouradShading;
+    }
+
+    return;
+}
+
+/*************************************************************************/
 /* Materials                                                             */
 /*************************************************************************/
 
@@ -444,7 +522,10 @@ EON_Status EON_materialInit(EON_Material *m)
         m->Shininess = 1;
 
     m->_shadeMode = m->Shade;
-    m->_fillMode = EON_FILL_SOLID;
+    m->_fillMode = m->Fill;
+    if (m->_fillMode == EON_FILL_DEFAULT) {
+        m->_fillMode = EON_FILL_SOLID;
+    }
 
     if (m->Shade != EON_SHADE_NONE
      || m->Shade != EON_SHADE_FLAT) {
@@ -456,7 +537,7 @@ EON_Status EON_materialInit(EON_Material *m)
         } else {
             eon_makePhongPalette(m);
         }
-        m->_renderFace = NULL; /* not yet */
+        m->_renderFace = eon_renderFaceNull;
     }
     return ret;
 }
@@ -465,10 +546,21 @@ EON_Status EON_materialInit(EON_Material *m)
 /* Objects and primitives                                                */
 /*************************************************************************/
 
+static void eon_objectInitFaces(EON_Object *obj)
+{
+    EON_UInt32 x = 0;
+
+    for (x = 0; x < obj->NumFaces; x++) {
+        eon_faceInit(&(obj->Faces[x]));
+    }
+
+    return;
+}
+
 static void *eon_delObjectData(EON_Object *obj)
 {
-    if (obj->Vertices) {
-        EON_free(obj->Vertices);
+    if (obj->Vertexes) {
+        EON_free(obj->Vertexes);
     }
     if (obj->Faces) {
         EON_free(obj->Faces);
@@ -503,27 +595,30 @@ EON_Object *EON_delObject(EON_Object *obj)
 }
 
 
-EON_Object *EON_newObject(EON_UInt32 vertices, EON_UInt32 faces)
+EON_Object *EON_newObject(EON_UInt32 vertices, EON_UInt32 faces,
+                          EON_Material *material)
 {
     EON_Object *object = EON_zalloc(sizeof(EON_Object));
     if (object) {
         object->GenMatrix    = EON_TRUE;
         object->BackfaceCull = EON_TRUE;
-        object->NumVertices  = vertices;
+        object->NumVertexes  = vertices;
         object->NumFaces     = faces;
-        object = eon_objectAllocItems(object, (void**)&(object->Vertices),
+        object = eon_objectAllocItems(object, (void**)&(object->Vertexes),
                                       sizeof(EON_Vertex), vertices);
         object = eon_objectAllocItems(object, (void**)&(object->Faces),
                                       sizeof(EON_Face), faces);
+        
+        EON_objectSetMaterial(object, material);
   }
   return object;
 }
 
-static void eon_resetVerticesNormals(EON_Object *obj)
+static void eon_resetVertexesNormals(EON_Object *obj)
 {
     EON_UInt32 i;
-    for (i = 0; i < obj->NumVertices; i++) {
-        EON_Vertex *v = &(obj->Vertices[i]);
+    for (i = 0; i < obj->NumVertexes; i++) {
+        EON_Vertex *v = &(obj->Vertexes[i]);
         v->Norm.X = 0.0;
         v->Norm.Y = 0.0;
         v->Norm.Z = 0.0;
@@ -572,10 +667,10 @@ int EON_objectCalcNormals(EON_Object *object)
         EON_Face *f = &(object->Faces[i]);
         EON_PointX d1, d2;
 
-        eon_PointDiff(&(f->Vertices[0]->Coords),
-                      &(f->Vertices[1]->Coords), &d1);
-        eon_PointDiff(&(f->Vertices[0]->Coords),
-                      &(f->Vertices[2]->Coords), &d2);
+        eon_PointDiff(&(f->Vertexes[0]->Coords),
+                      &(f->Vertexes[1]->Coords), &d1);
+        eon_PointDiff(&(f->Vertexes[0]->Coords),
+                      &(f->Vertexes[2]->Coords), &d2);
 
         f->Norm.X = (EON_Float) (d1.Y * d2.Z - d1.Z * d2.Y);
         f->Norm.Y = (EON_Float) (d1.Z * d2.X - d1.X * d2.Z);
@@ -583,13 +678,13 @@ int EON_objectCalcNormals(EON_Object *object)
 
         eon_normalizeVector((EON_Vector *)&(f->Norm));
 
-        eon_PointRAdd(&(f->Vertices[0]->Norm), &(f->Norm));
-        eon_PointRAdd(&(f->Vertices[1]->Norm), &(f->Norm));
-        eon_PointRAdd(&(f->Vertices[2]->Norm), &(f->Norm));
+        eon_PointRAdd(&(f->Vertexes[0]->Norm), &(f->Norm));
+        eon_PointRAdd(&(f->Vertexes[1]->Norm), &(f->Norm));
+        eon_PointRAdd(&(f->Vertexes[2]->Norm), &(f->Norm));
     }
 
-    for (i = 0; i < object->NumVertices; i++) {
-        EON_Vertex *v = &(object->Vertices[i]);
+    for (i = 0; i < object->NumVertexes; i++) {
+        EON_Vertex *v = &(object->Vertexes[i]);
         eon_normalizeVector((EON_Vector *)&(v->Norm));
     }
 
@@ -599,9 +694,20 @@ int EON_objectCalcNormals(EON_Object *object)
     return EON_OK;
 }
 
+EON_Status EON_objectSetMaterial(EON_Object *object,
+                                 EON_Material *material)
+{
+    EON_UInt32 x = 0;
+
+    for (x = 0; x < object->NumFaces; x++) {
+        eon_faceSetMaterial(&(object->Faces[x]), material);
+    }
+
+    return EON_OK;
+}
 
 EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
-                       EON_Material *m)
+                       EON_Material *material)
 {
     static const EON_Byte verts[6*6] = {
         0,4,1, 1,4,5, 0,1,2, 3,2,1, 2,3,6, 3,7,6,
@@ -619,11 +725,11 @@ EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
     const EON_Byte *mm = map;
     const EON_Byte *vv = verts;
 
-    EON_Object *o = EON_newObject(8, 12);
+    EON_Object *o = EON_newObject(8, 12, material);
     if (o) {
-        EON_Vertex *v = o->Vertices;
+        EON_Vertex *v = o->Vertexes;
         EON_Face *f = o->Faces;
-        EON_UInt x;
+        EON_UInt32 x;
 
         w /= 2;
         h /= 2;
@@ -639,9 +745,9 @@ EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
         eon_PointSet(&(v[7].Coords),  w, -h, -d);
 
         for (x = 0; x < 12; x ++) {
-            f->Vertices[0] = o->Vertices + *vv++;
-            f->Vertices[1] = o->Vertices + *vv++;
-            f->Vertices[2] = o->Vertices + *vv++;
+            f->Vertexes[0] = o->Vertexes + *vv++;
+            f->Vertexes[1] = o->Vertexes + *vv++;
+            f->Vertexes[2] = o->Vertexes + *vv++;
 
             f->MappingU[0] = (EON_Int32) ((EON_Double)*mm++ * 65535.0);
             f->MappingV[0] = (EON_Int32) ((EON_Double)*mm++ * 65535.0);
@@ -649,8 +755,6 @@ EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
             f->MappingV[1] = (EON_Int32) ((EON_Double)*mm++ * 65535.0);
             f->MappingU[2] = (EON_Int32) ((EON_Double)*mm++ * 65535.0);
             f->MappingV[2] = (EON_Int32) ((EON_Double)*mm++ * 65535.0);
-
-            f->Material = m;
 
             f++;
         }
@@ -781,7 +885,8 @@ EON_Camera *EON_newCamera(EON_Int width, EON_Int height,
     if (cam) {
         cam->Fov            = fieldOfView;
         cam->AspectRatio    = aspectRatio;
-        cam->Sort           = 1; /* FIXME: if ZBuffer Sort=0 */
+        cam->Sort           = EON_SORT_BACK_TO_FRONT;
+        /* FIXME: if ZBuffer Sort=0 */
         cam->ClipBack       = 8.0e30f;
         cam->Screen.Width   = width;
         cam->Screen.Height  = height;
@@ -816,8 +921,8 @@ typedef struct {
 } eon_faceInfo;
 
 typedef struct {
-  EON_Light *Light;
-  EON_Point Pos;
+  EON_Light     *Light;
+  EON_Point     Pos;
 } eon_lightInfo;
 
 /*************************************************************************/
@@ -845,9 +950,9 @@ static EON_Double eon_clipCalcDot(eon_clipInfo *CI,
                                   EON_UInt vIdx, EON_Double *plane)
 {
     EON_Double dot = 0.0;
-    dot = CI[0].newVertices[vIdx].Formed.X * plane[0] +
-          CI[0].newVertices[vIdx].Formed.Y * plane[1] +
-          CI[0].newVertices[vIdx].Formed.Z * plane[2];
+    dot = CI[0].newVertexes[vIdx].Formed.X * plane[0] +
+          CI[0].newVertexes[vIdx].Formed.Y * plane[1] +
+          CI[0].newVertexes[vIdx].Formed.Z * plane[2];
     return dot;
 }
 
@@ -872,7 +977,7 @@ static void eon_clipCopyInfo(eon_clipInfo *CI, EON_UInt inV, EON_UInt outV)
     CI[1].MappingV[outV]    = CI[0].MappingV[inV];
     CI[1].EnvMappingU[outV] = CI[0].EnvMappingU[inV];
     CI[1].EnvMappingV[outV] = CI[0].EnvMappingV[inV];
-    CI[1].newVertices[outV] = CI[0].newVertices[inV];
+    CI[1].newVertexes[outV] = CI[0].newVertexes[inV];
     return;
 }
 
@@ -884,7 +989,7 @@ static EON_Float eon_clipCalcScaled(EON_Float aX, EON_Float bX, EON_Double scale
 
 static EON_Point *eon_clipGetVertexFormed(eon_clipInfo *CI, int j, int vi)
 {
-    return &(CI[j].newVertices[vi].Formed);
+    return &(CI[j].newVertexes[vi].Formed);
 }
 
 /* FIXME: massive rephrasing, and I'm not that good.
@@ -914,7 +1019,7 @@ static EON_UInt eon_clipToPlane(eon_clipContext *clip,
         if (cur.In != next.In) {
             EON_Double scale = (plane[3] - cur.Dot) / (next.Dot - cur.Dot);
 
-            /* Points corresponding to Vertices */
+            /* Points corresponding to Vertexes */
             EON_Point *iP = eon_clipGetVertexFormed(CI, 0, iV);
             EON_Point *nP = eon_clipGetVertexFormed(CI, 0, nV);
             EON_Point *oP = eon_clipGetVertexFormed(CI, 1, oV); /* careful! */
@@ -1022,7 +1127,7 @@ static void eon_clipCopyFaceInfo(eon_clipContext *clip,
     EON_UInt a;
 
     for (a = 0; a < 3; a++) {
-        clip->ClipInfo[0].newVertices[a] = *(face->Vertices[a]);
+        clip->ClipInfo[0].newVertexes[a] = *(face->Vertexes[a]);
         clip->ClipInfo[0].Shades[a]      =   face->Shades[a];
         clip->ClipInfo[0].MappingU[a]    =   face->MappingU[a];
         clip->ClipInfo[0].MappingV[a]    =   face->MappingV[a];
@@ -1034,7 +1139,7 @@ static void eon_clipCopyFaceInfo(eon_clipContext *clip,
 }
 
 /* XXX: maybe misleading name? */
-static EON_UInt eon_clipCountVertices(eon_clipContext *clip,
+static EON_UInt eon_clipCountVertexes(eon_clipContext *clip,
                                       EON_UInt numVerts)
 {
     EON_UInt a = (clip->ClipPlanes[0][3] < 0.0 ? 0 : 1);
@@ -1051,7 +1156,8 @@ static EON_UInt eon_clipCountVertices(eon_clipContext *clip,
 
 /* FIXME: explain the `2' */
 static void eon_clipDoRenderFace(eon_clipContext *clip, EON_UInt numVerts,
-                                 EON_Renderer *rend, EON_Face *face)
+                                 EON_Renderer *rend, EON_Face *face,
+                                 EON_Frame *frame)
 {
     EON_Face newface;
     EON_UInt a, k;
@@ -1064,42 +1170,42 @@ static void eon_clipDoRenderFace(eon_clipContext *clip, EON_UInt numVerts,
             EON_UInt w = (a == 0) ?0 :(a + (k - 2));
             EON_Double XFov, YFov, ZFov;
 
-            newface.Vertices[a]    =            CI->newVertices + w;
+            newface.Vertexes[a]    =            CI->newVertexes + w;
             newface.Shades[a]      = (EON_Float)CI->Shades[w];
             newface.MappingU[a]    = (EON_Int32)CI->MappingU[w];
             newface.MappingV[a]    = (EON_Int32)CI->MappingV[w];
             newface.EnvMappingU[a] = (EON_Int32)CI->EnvMappingU[w];
             newface.EnvMappingV[a] = (EON_Int32)CI->EnvMappingV[w];
-            newface.ScrZ[a]        = 1.0f / (newface.Vertices[a]->Formed.Z);
+            newface.ScrZ[a]        = 1.0f / (newface.Vertexes[a]->Formed.Z);
 
             ZFov = clip->Fov * newface.ScrZ[a];
-            XFov = ZFov * newface.Vertices[a]->Formed.X;
-            YFov = ZFov * newface.Vertices[a]->Formed.Y;
+            XFov = ZFov * newface.Vertexes[a]->Formed.X;
+            YFov = ZFov * newface.Vertexes[a]->Formed.Y;
 
             /* XXX */
             newface.ScrX[a] = clip->CX + ((EON_Int32)((XFov *                (float) (1<<20))));
             newface.ScrX[a] = clip->CY - ((EON_Int32)((YFov * clip->AdjAsp * (float) (1<<20))));
         }
-        newface.Material->_renderFace(rend, &newface);
-        rend->TriStats[3]++; /* WTF?! */
+        newface.Material->_renderFace(rend, &newface, frame);
+        rend->TriStats[EON_TRI_STAT_TESSELLED]++;
     }
-    rend->TriStats[2]++; /* WTF?! */
+    rend->TriStats[EON_TRI_STAT_CLIPPED]++;
 
     return;
 }
 
-// FIXME: explain the `2'
 void eon_clipRenderFace(eon_clipContext *clip,
-                        EON_Renderer *rend, EON_Face *face)
+                        EON_Renderer *rend, EON_Face *face, EON_Frame *frame)
 {
     EON_UInt numVerts = 3;
 
     eon_clipCopyFaceInfo(clip, face);
 
-    numVerts = eon_clipCountVertices(clip, 3);
+    numVerts = eon_clipCountVertexes(clip, 3);
 
+    // FIXME: explain the `2'
     if (numVerts > 2) {
-        eon_clipDoRenderFace(clip, numVerts, rend, face);
+        eon_clipDoRenderFace(clip, numVerts, rend, face, frame);
     }
     return;
 }
@@ -1111,30 +1217,30 @@ EON_Int eon_clipIsNeeded(eon_clipContext *clip, EON_Face *face)
     EON_Float clipBack = clip->Cam->ClipBack;
     EON_Double f  = clip->Fov * clip->AdjAsp;
     EON_Int needed = 0;
-    
+
     EON_Double dr = (clipArea->Right  - center->Width);
     EON_Double dl = (clipArea->Left   - center->Width);
     EON_Double db = (clipArea->Bottom - center->Height);
     EON_Double dt = (clipArea->Top    - center->Height);
-    
+
     EON_Float XFov[3] = { 0.0, 0.0, 0.0 };
     EON_Float YFov[3] = { 0.0, 0.0, 0.0 };
     EON_Float VZ[3]   = { 0.0, 0.0, 0.0 };
-    
-    XFov[0] = face->Vertices[0]->Formed.X * clip->Fov;
-    XFov[1] = face->Vertices[1]->Formed.X * clip->Fov;
-    XFov[2] = face->Vertices[2]->Formed.X * clip->Fov;
 
-    YFov[0] = face->Vertices[0]->Formed.Y * f;
-    YFov[1] = face->Vertices[1]->Formed.Y * f;
-    YFov[2] = face->Vertices[2]->Formed.Y * f;
+    XFov[0] = face->Vertexes[0]->Formed.X * clip->Fov;
+    XFov[1] = face->Vertexes[1]->Formed.X * clip->Fov;
+    XFov[2] = face->Vertexes[2]->Formed.X * clip->Fov;
 
-    VZ[0]   = face->Vertices[0]->Formed.Z;
-    VZ[1]   = face->Vertices[1]->Formed.Z;
-    VZ[2]   = face->Vertices[2]->Formed.Z;
+    YFov[0] = face->Vertexes[0]->Formed.Y * f;
+    YFov[1] = face->Vertexes[1]->Formed.Y * f;
+    YFov[2] = face->Vertexes[2]->Formed.Y * f;
+
+    VZ[0]   = face->Vertexes[0]->Formed.Z;
+    VZ[1]   = face->Vertexes[1]->Formed.Z;
+    VZ[2]   = face->Vertexes[2]->Formed.Z;
 
     needed = ((clipBack <= 0.0 || VZ[0] <= clipBack || VZ[1] <= clipBack || VZ[2] <= clipBack)
-           && (VZ[0]   >= 0          || VZ[1]   >= 0          || VZ[2]   >= 0         ) 
+           && (VZ[0]   >= 0          || VZ[1]   >= 0          || VZ[2]   >= 0         )
            && (XFov[0] <= dr * VZ[0] || XFov[1] <= dr * VZ[1] || XFov[2] <= dr * VZ[2])
            && (XFov[0] <= dl * VZ[0] || XFov[1] <= dl * VZ[1] || XFov[2] <= dl * VZ[2])
            && (YFov[0] <= db * VZ[0] || YFov[1] <= db * VZ[2] || YFov[2] <= db * VZ[2])
@@ -1206,7 +1312,7 @@ EON_Status EON_rendererSetup(EON_Renderer *rend,
 
     memset(rend->TriStats, 0, sizeof(rend->TriStats));
 
-    rend->Camera = 0;
+    rend->Camera = camera;
 
     eon_arrayReset(&(rend->Faces));
     eon_arrayReset(&(rend->Lights));
@@ -1223,36 +1329,350 @@ EON_Status EON_rendererSetup(EON_Renderer *rend,
     return ret;
 }
 
-EON_Status EON_rendererAddLight(EON_Renderer *rend,
-                                EON_Light *light)
+EON_Status EON_rendererTeardown(EON_Renderer *rend)
 {
-    EON_Status ret = EON_OK;
+    eon_arrayReset(&(rend->Faces));
+    eon_arrayReset(&(rend->Lights));
+
+    return EON_OK;
+}
+
+
+
+EON_Status EON_rendererLight(EON_Renderer *rend,
+                             EON_Light *light)
+{
+    EON_Float Xp = 0.0, Yp = 0.0, Zp = 0.0;
+
     if (!rend && !light) {
         return EON_ERROR;
     }
-    return EON_ERROR;
+
+    if (light->Type == EON_LIGHT_NONE
+     || eon_arrayLength(&(rend->Lights)) > EON_MAX_LIGHTS) {
+        return EON_OK;
+    }
+
+    if (light->Type == EON_LIGHT_VECTOR) {
+        Xp = light->Coords.X;
+        Yp = light->Coords.Y;
+        Zp = light->Coords.Z;
+    } else if (light->Type & EON_LIGHT_POINT) {
+        Xp = light->Coords.X - rend->Camera->Position.X;
+        Yp = light->Coords.Y - rend->Camera->Position.Y;
+        Zp = light->Coords.Z - rend->Camera->Position.Z;
+    }
+
+    eon_lightInfo li;
+    li.Light = light;
+    eon_matrix4x4Apply(rend->CMatrix,
+                       Xp, Yp, Zp,
+                       &(li.Pos.X), &(li.Pos.Y), &(li.Pos.Z));
+
+    eon_arrayAppend(&(rend->Lights), &li);
+    return EON_OK;
 }
 
-EON_Status EON_rendererAddObject(EON_Renderer *rend,
-                                 EON_Object *object)
+
+typedef struct eon_polysortcontext_ {
+    eon_faceInfo *Base;
+} eon_polySortContext;
+
+static int eon_siftCmp(eon_faceInfo *fx, eon_faceInfo *fy)
 {
-    EON_Status ret = EON_OK;
-    if (!rend && !object) {
-        return EON_ERROR;
-    }
-    return EON_ERROR;
+    return (fx->ZD < fy->ZD) ?1 :0;
 }
+
+static void eon_faceSwap(eon_faceInfo *fx, eon_faceInfo *fy)
+{
+    eon_faceInfo tmp = *fx;
+    *fx              = *fy;
+    *fy              = tmp;
+    return;
+}
+
+static void eon_siftDown(eon_polySortContext *SC,
+                         int L, int U, int dir)
+{	
+    int c = 0;
+    while (1) {
+        c = L + L;
+        if (c > U) {
+            break;
+        }
+        if ((c < U) && dir ^ eon_siftCmp(&SC->Base[c + 1], &SC->Base[c])) {
+            c++;
+        }
+        if (dir ^ eon_siftCmp(&SC->Base[L], &SC->Base[c])) {
+            return;
+        }
+        eon_faceSwap(&(SC->Base[L]), &(SC->Base[c]));
+        L = c;
+    }
+}
+
+static void eon_polySort(eon_polySortContext *SC,
+                         eon_faceInfo *base, int nel, EON_SortMode dir)
+{
+    int i = 0;
+
+    if (dir == 0) {
+        return;
+    }
+
+    SC->Base = base-1;
+    for (i = nel/2; i > 0; i--)
+        eon_siftDown(SC, i, nel, dir);
+    for (i = nel; i > 1; i--) {
+        eon_faceSwap(&(base[0]), &(SC->Base[i]));
+        eon_siftDown(SC, 1, i - 1, dir);
+    }
+    return;
+}
+
+
 
 EON_Status EON_rendererProcess(EON_Renderer *rend,
                                EON_Frame *frame)
 {
-    EON_Status ret = EON_OK;
+    EON_UInt32 j = 0, numFaces = 0;
+    eon_polySortContext SC = { NULL };
+
     if (!rend && !frame) {
         return EON_ERROR;
     }
-    return EON_ERROR;
+ 
+    numFaces = eon_arrayLength(&(rend->Faces));
+
+    eon_polySort(&SC, rend->Faces.D, numFaces, rend->Camera->Sort); /* FIXME */
+
+    for (j = 0; j < numFaces; j++) {
+        eon_faceInfo *fi = eon_arrayGet(&(rend->Faces), j);
+        eon_clipRenderFace(&(rend->Clip), rend, fi->Face, frame);
+    }
+
+    return EON_OK;
 }
 
+static void eon_rendererSetupObjectMatrixes(EON_Renderer *rend,
+                                            EON_Object *obj,
+                                            EON_Float *oMatrix,
+                                            EON_Float *nMatrix,
+                                            EON_Float *bmatrix,
+                                            EON_Float *bnmatrix)
+{
+    EON_Float tempMatrix[4 * 4];
+
+    if (obj->GenMatrix) {
+        eon_matrix4x4Rotation(nMatrix,    1, obj->Rotation.X);
+        eon_matrix4x4Rotation(tempMatrix, 2, obj->Rotation.Y);
+        eon_matrix4x4Multiply(nMatrix,       tempMatrix);
+        eon_matrix4x4Rotation(tempMatrix, 3, obj->Rotation.Z);
+        eon_matrix4x4Multiply(nMatrix,       tempMatrix);
+        memcpy(oMatrix, nMatrix, sizeof(EON_Float) * 4 * 4);
+    } else {
+        memcpy(nMatrix, obj->RMatrix, sizeof(EON_Float) * 4 * 4);
+    }
+
+    if (bnmatrix) {
+        eon_matrix4x4Multiply(nMatrix, bnmatrix);
+    }
+
+    if (obj->GenMatrix) {
+        eon_matrix4x4Translate(tempMatrix,
+                          obj->Position.X, obj->Position.Y, obj->Position.Z);
+        eon_matrix4x4Multiply(oMatrix, tempMatrix);
+    } else {
+        memcpy(oMatrix, obj->TMatrix, sizeof(EON_Float) * 4 * 4);
+    }
+
+    if (bmatrix) {
+        eon_matrix4x4Multiply(oMatrix, bmatrix);
+    }
+    return;
+}
+
+static EON_Status eon_rendererProcessObjectChildrens(EON_Renderer *rend,
+                                                     EON_Object *object,
+                                                     EON_Float *oMatrix,
+                                                     EON_Float *nMatrix)
+{
+    int i = 0;
+    if (!object) {
+        return;
+    }
+
+    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
+        if (object->Children[i]) {
+            eon_rendererProcessObject(rend, object->Children[i],
+                                      oMatrix, nMatrix);
+        }
+    }
+
+    return;
+}
+
+static int eon_processFaceNull(EON_Face *face, EON_Renderer *rend)
+{
+    return 0; /* NOP! */
+}
+
+static int eon_processFaceFlatLightining(EON_Face *face,
+                                         EON_Renderer *rend)
+{
+    /* TODO */
+    return 0;
+}
+
+static int eon_processFaceGouradShading(EON_Face *face,
+                                        EON_Renderer *rend)
+{
+    /* TODO */
+    return 0;
+}
+
+static int eon_processFaceFillEnvironment(EON_Face *face,
+                                          EON_Renderer *rend)
+{
+    face->EnvMappingU[0] = 32768 + (EON_Int32)(face->Vertexes[0]->NormFormed.X * 32768.0);
+    face->EnvMappingV[0] = 32768 - (EON_Int32)(face->Vertexes[0]->NormFormed.Y * 32768.0);
+    face->EnvMappingU[1] = 32768 + (EON_Int32)(face->Vertexes[1]->NormFormed.X * 32768.0);
+    face->EnvMappingV[1] = 32768 - (EON_Int32)(face->Vertexes[1]->NormFormed.Y * 32768.0);
+    face->EnvMappingU[2] = 32768 + (EON_Int32)(face->Vertexes[2]->NormFormed.X * 32768.0);
+    face->EnvMappingV[2] = 32768 - (EON_Int32)(face->Vertexes[2]->NormFormed.Y * 32768.0);
+    return 0;
+}
+
+static void eon_rendererAdjustVertexMatrix(EON_Renderer *rend,
+                                           EON_Object *obj,
+                                           EON_Float *oMatrix,
+                                           EON_Float *nMatrix)
+{
+    EON_UInt32 x = obj->NumVertexes;
+    EON_Vertex *V = obj->Vertexes;
+
+    do {
+        eon_matrix4x4Apply(oMatrix,
+                            V->Coords.X,  V->Coords.Y,  V->Coords.Z,
+                           &V->Formed.X, &V->Formed.Y, &V->Formed.Z);
+        eon_matrix4x4Apply(nMatrix,
+                            V->Norm.X,    V->Norm.Y,    V->Norm.Z,
+                           &V->Formed.X, &V->Formed.Y, &V->Formed.Z);
+        V++;
+    } while (--x);
+
+    return;
+}
+
+static EON_Status eon_rendererAppendFace(EON_Renderer *rend,
+                                         EON_Face *face)
+{
+    eon_faceInfo fi = {
+        .ZD = face->Vertexes[0]->Formed.Z + 
+              face->Vertexes[1]->Formed.Z +
+              face->Vertexes[2]->Formed.Z,
+        .Face = face,
+    };
+    return eon_arrayAppend(&(rend->Faces), &fi);
+}
+
+static int eon_rendererIsFaceVisible(EON_Face *face, EON_Vector *N)
+{
+    EON_Vector *V = (EON_Vector *)&(face->Vertexes[0]->Formed);
+    EON_Double p = eon_dotProduct(N, V);
+    /* XXX NormFormed !?! */
+    return p < 0.0000001; /* FIXME magic number */
+}
+
+/* XXX ugliest name ever */
+static eon_rendererSetupCMatrix(EON_Renderer *rend,
+                                EON_Float *oMatrix, EON_Float *nMatrix)
+{
+    EON_Float tempMatrix[4 * 4];
+    EON_Point *P = &(rend->Camera->Position);
+
+    eon_matrix4x4Translate(tempMatrix, P->X, P->Y, P->Z);
+    eon_matrix4x4Multiply(oMatrix, tempMatrix);
+    eon_matrix4x4Multiply(oMatrix, rend->CMatrix);
+    eon_matrix4x4Multiply(nMatrix, rend->CMatrix);
+}
+
+static int eon_faceIsFlatShaded(EON_Face *face)
+{
+    return (face && face->Material
+         && (face->Material->_shadeMode & EON_SHADE_FLAT));
+}
+
+static EON_Status eon_rendererProcessObject(EON_Renderer *rend,
+                                            EON_Object *object,
+                                            EON_Float *bmatrix,
+                                            EON_Float *bnmatrix)
+{
+    EON_UInt32 j = 0, nFaces = 0;
+    EON_Float oMatrix[4 * 4], nMatrix[4 * 4], tempMatrix[4 * 4];
+    EON_Vector N;
+
+    if (!rend || !object || !object->NumFaces || !object->NumVertexes) {
+        return EON_ERROR; /* log */
+    }
+    nFaces = eon_arrayLength(&(rend->Faces)) + object->NumFaces;
+    if (nFaces >= EON_MAX_TRIANGLES) {
+        return EON_ERROR; /* log */
+    }
+
+    rend->TriStats[EON_TRI_STAT_INITIAL] += object->NumFaces;
+
+    eon_rendererSetupObjectMatrixes(rend, object,
+                                    oMatrix, nMatrix,
+                                    bmatrix, bnmatrix);
+    
+    eon_rendererProcessObjectChildrens(rend, object, oMatrix, nMatrix);
+
+    eon_rendererSetupCMatrix(rend, oMatrix, nMatrix);
+    eon_rendererAdjustVertexMatrix(rend, object, oMatrix, nMatrix);
+
+    for (j = 0; j < object->NumFaces; j++) {
+        EON_Face *face = &(object->Faces[j]);
+        if (object->BackfaceCull || eon_faceIsFlatShaded(face)) {
+            eon_matrix4x4Apply(nMatrix,
+                               face->Norm.X, face->Norm.Y, face->Norm.Z,
+                               &N.X, &N.Y, &N.Z);
+        }
+        if ((!object->BackfaceCull || eon_rendererIsFaceVisible(face, &N))
+         && eon_clipIsNeeded(&(rend->Clip), face)) {
+            face->FlatShade = 0.0;
+
+            face->_processFlatLightining(face, rend);
+            face->_processFillEnvironment(face, rend);
+            face->_processGouradShading(face, rend);
+
+            eon_rendererAppendFace(rend, face);
+
+            rend->TriStats[EON_TRI_STAT_CULLED]++;
+        }
+    }
+
+    return EON_OK;
+}
+
+EON_Status EON_rendererObject(EON_Renderer *rend, EON_Object *object)
+{
+    return eon_rendererProcessObject(rend, object, 0, 0);
+}
+
+static int eon_renderFaceNull(EON_Renderer *renderer,
+                              EON_Face *face, EON_Frame *frame)
+{
+    return 0; /* NOP! */
+}
+
+
+static int eon_renderFaceVertexes(EON_Renderer *renderer,
+                                  EON_Face *face, EON_Frame *frame)
+{
+    /* TODO */
+    return 0;
+}
 
 /*************************************************************************
  * Initialization and Finalization                                       *
