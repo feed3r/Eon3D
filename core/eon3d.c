@@ -44,59 +44,181 @@ enum {
 /*************************************************************************/
 
 typedef struct {
-    void        *D;
+    void       *Data;
 
     EON_UInt32  ItemSize;
 
     EON_UInt32  Size;
-    EON_UInt32  Used;
+    EON_UInt32  Length;
 } eon_array;
+
+enum {
+    EON_ARRAY_ITEM_SIZE_MIN = 1,
+};
+
+#define EON_ARRAY_CHECK_REF(VA) do { \
+    if (!(VA)) { \
+        return EON_ERROR; \
+    } \
+} while (0)
+
+static int eon_arrayAdjustPosition(eon_array *array, EON_Int32 position)
+{
+    if (position < 0) {
+        position = array->Length - position;
+    }
+    if (position < 0) {
+        position = 0;
+    }
+    if (position > array->Length) {
+        position = array->Length;
+    }
+    return position;
+}
+
+static EON_Status eon_arrayGrow(eon_array *array)
+{
+    EON_Status ret = EON_OK;
+    void *ndata = realloc(array->Data, array->Size * 2);
+    if (ndata) {
+        memset(array->Data + array->Size, 0, array->Size);
+    } else {
+        ndata = calloc(array->Size * 2, array->ItemSize);
+        if (ndata) {
+            memcpy(ndata, array->Data, array->Size);
+            free(array->Data);
+        }
+    }
+    
+    if (ndata) {
+        array->Data = ndata;
+        array->Size *= 2;
+    } else {
+        ret = EON_ERROR;
+    }
+    return ret;
+}
+
+static int eon_arrayPreparePut(eon_array *array, EON_Int32 position)
+{
+    EON_Status ret = EON_OK;
+    position = eon_arrayAdjustPosition(array, position);
+    if (position >= array->Size) {
+        ret = eon_arrayGrow(array);
+    }
+    return ret;
+}
+
+static EON_Int32 eon_arrayAdjustItemSize(EON_Int32 itemSize)
+{
+    if (itemSize <= 0) {
+        itemSize = sizeof(void*);
+    }
+    if (itemSize <= EON_ARRAY_ITEM_SIZE_MIN) {
+        itemSize  = EON_ARRAY_ITEM_SIZE_MIN;
+    }
+
+    return itemSize;
+}
+
 
 static EON_Status eon_arrayAlloc(eon_array *array,
                                  EON_UInt32 size, EON_UInt32 itemSize)
 {
-    return EON_ERROR;
+    EON_Status ret = EON_OK;
+    itemSize = eon_arrayAdjustItemSize(itemSize);
+
+    EON_ARRAY_CHECK_REF(array);
+
+    if (array) {
+        array->Data = calloc(size, itemSize);
+        if (!array->Data) {
+            ret = EON_ERROR;
+        } else {
+            array->Size = size;
+            array->ItemSize = itemSize;
+        }
+    }
+
+    return ret;
 }
 
 static EON_Status eon_arrayFree(eon_array *array)
 {
+    EON_ARRAY_CHECK_REF(array);
+
+    if (array->Data) {
+        free(array->Data);
+        array->Data = NULL;
+    }
+ 
     return EON_ERROR;
 }
 
-static EON_Status eon_arrayResize(eon_array *array, EON_UInt32 size)
+static void *eon_arrayItemPtr(eon_array *array, EON_Int32 position)
 {
-    return EON_ERROR;
+    void *p = (EON_Byte *)array->Data + (position * array->ItemSize);
+    return p;
 }
 
-static EON_Status eon_arrayAppend(eon_array *array, const void *item)
+static EON_Status eon_arrayInsert(eon_array *array, EON_Int32 position, const void *element)
 {
-    return EON_ERROR;
+    EON_Status ret = EON_ERROR;
+
+    EON_ARRAY_CHECK_REF(array);
+
+    ret = eon_arrayPreparePut(array, position);
+    if (ret == EON_OK) {
+        void *ptr = eon_arrayItemPtr(array, position);
+        memcpy(ptr, element, array->ItemSize);
+        array->Length++;
+    }
+    return ret;
+}
+
+static EON_Status eon_arrayAppend(eon_array *array, const void *element)
+{
+    EON_ARRAY_CHECK_REF(array);
+    return eon_arrayInsert(array, array->Length, element);
 }
 
 static EON_Status eon_arrayReset(eon_array *array)
 {
-    EON_Status err = EON_ERROR;
-    if (array) {
-        array->Used = 0;
-        err = EON_OK;
-    }
-    return err;
+    EON_ARRAY_CHECK_REF(array);
+
+    array->Length = 0;
+    return EON_OK;
 }
 
-EON_UInt32 eon_arrayLength(eon_array *array)
+static EON_Status eon_arrayLength(eon_array *array, EON_UInt32 *len)
 {
-    return array->Used; /* FIXME */
+    EON_ARRAY_CHECK_REF(array);
+    if (len) {
+        *len = array->Length;
+    }
+    return EON_OK;
 }
 
 static void *eon_arrayGet(eon_array *array, EON_UInt32 index)
 {
-    return NULL;
+    void *ptr = NULL;
+    if (array) {
+        index = eon_arrayAdjustPosition(array, index);
+        ptr = eon_arrayItemPtr(array, index);
+    }
+    return ptr;
 }
 
 static void *eon_arrayLast(eon_array *array)
 {
-    return NULL;
+    void *ptr = NULL;
+    if (array && array->Length > 0) {
+        ptr = eon_arrayItemPtr(array, array->Length - 1);
+    }
+    return ptr;
 }
+
+#undef EON_ARRAY_CHECK_REF
 
 
 
@@ -1343,13 +1465,13 @@ EON_Status EON_rendererLight(EON_Renderer *rend,
                              EON_Light *light)
 {
     EON_Float Xp = 0.0, Yp = 0.0, Zp = 0.0;
+    EON_UInt32 nLights = 0;
 
     if (!rend && !light) {
         return EON_ERROR;
     }
-
-    if (light->Type == EON_LIGHT_NONE
-     || eon_arrayLength(&(rend->Lights)) > EON_MAX_LIGHTS) {
+    eon_arrayLength(&(rend->Lights), &nLights);
+    if (light->Type == EON_LIGHT_NONE || nLights > EON_MAX_LIGHTS) {
         return EON_OK;
     }
 
@@ -1435,18 +1557,18 @@ static void eon_polySort(eon_polySortContext *SC,
 EON_Status EON_rendererProcess(EON_Renderer *rend,
                                EON_Frame *frame)
 {
-    EON_UInt32 j = 0, numFaces = 0;
+    EON_UInt32 j = 0, nFaces = 0;
     eon_polySortContext SC = { NULL };
 
     if (!rend && !frame) {
         return EON_ERROR;
     }
  
-    numFaces = eon_arrayLength(&(rend->Faces));
+    eon_arrayLength(&(rend->Faces), &nFaces);
 
-    eon_polySort(&SC, rend->Faces.D, numFaces, rend->Camera->Sort); /* FIXME */
+    eon_polySort(&SC, rend->Faces.Data, nFaces, rend->Camera->Sort); /* FIXME */
 
-    for (j = 0; j < numFaces; j++) {
+    for (j = 0; j < nFaces; j++) {
         eon_faceInfo *fi = eon_arrayGet(&(rend->Faces), j);
         eon_clipRenderFace(&(rend->Clip), rend, fi->Face, frame);
     }
@@ -1615,7 +1737,8 @@ static EON_Status eon_rendererProcessObject(EON_Renderer *rend,
     if (!rend || !object || !object->NumFaces || !object->NumVertexes) {
         return EON_ERROR; /* log */
     }
-    nFaces = eon_arrayLength(&(rend->Faces)) + object->NumFaces;
+    eon_arrayLength(&(rend->Faces), &nFaces);
+    nFaces += object->NumFaces;
     if (nFaces >= EON_MAX_TRIANGLES) {
         return EON_ERROR; /* log */
     }
