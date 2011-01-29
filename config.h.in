@@ -15,4 +15,11 @@
 /* FIXME: reword this one */
 #cmakedefine SDL_FOUND
 
+/* just to be uniform;
+   always true because we always ship RPLY
+*/
+#ifndef RPLY_FOUND
+#define RPLY_FOUND 1
+#endif
+
 #endif /* EON3D_CONFIG_H */
