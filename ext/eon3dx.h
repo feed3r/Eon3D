@@ -54,13 +54,6 @@ EON_Frame      *EONx_consoleGetFrame(EONx_Console *console,
                                      EON_Frame *frame);
 
 
-/*************************************************************************
- * Initialization and Finalization                                       *
- *************************************************************************/
-
-void EONx_setup();
-void EONx_exit();
-
 
 #endif /* EON3DX_H */
 

@@ -2,13 +2,11 @@
  * ex01_cube.c: the very first eon3d example: rotates a flat shaded cube
  */
 
-#include <float.h>
-#include <time.h>
 #include <stdio.h>
-#include <math.h>
+#include <stdlib.h>
 
 #include <eon3d.h> 
-#include <eon3dx.h>
+#include <eon3dx_console.h>
 
 
 enum {
@@ -16,6 +14,13 @@ enum {
     HEIGHT = 480
 };
 
+
+static int EONx_exit(int ret)
+{
+    EON_shutdown();
+    exit(ret);
+    return ret;
+}
 
 
 int main(int argc, char *argv[])
@@ -31,7 +36,7 @@ int main(int argc, char *argv[])
 
     EONx_Console *console;  /* for our viewing pleasure */
 
-    EONx_setup();
+    EON_startup();
 
     cubeMat = EON_newMaterial();    
     cubeMat->NumGradients = 100; /* Have it use 100 colors */
@@ -52,14 +57,14 @@ int main(int argc, char *argv[])
 
     console = EONx_newConsole(camera);
     if (!console) {
-        EONx_exit();
+        EONx_exit(1);
     }
 
     frame = EONx_consoleGetFrame(console, NULL);
 
     rend = EON_newRenderer();
     if (!rend) {
-        EONx_exit();
+        EONx_exit(1);
     }
 
     while (!EONx_consoleNextEvent(console, NULL)) {
@@ -84,9 +89,7 @@ int main(int argc, char *argv[])
     EON_delMaterial(cubeMat);
     EON_delFrame(frame);
 
-    EONx_exit();
-
-    return 0;
+    return EONx_exit(0);
 }
 
 /* vim: set ts=4 sw=4 et */

@@ -497,21 +497,6 @@ EON_Status EONx_consoleClear(EONx_Console *console)
     return err;
 }
 
-
-/*************************************************************************
- * Initialization and Finalization                                       *
- *************************************************************************/
-
-void EONx_setup()
-{
-    EON_startup();
-}
-
-void EONx_exit()
-{
-    EON_shutdown();
-}
-
 /* vim: set ts=4 sw=4 et */
 /* EOF */
 
