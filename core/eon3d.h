@@ -1,6 +1,6 @@
 /**************************************************************************
  * eon3d.h -- Eon3D is a simplistic 3D software renderer.                 *
- * (C) 2010 Francesco Romani <fromani at gmail dot com>                   *
+ * (C) 2010-2011 Francesco Romani <fromani at gmail dot com>              *
  *                                                                        *
  * inspired by and/or derived from                                        *
  *                                                                        *
