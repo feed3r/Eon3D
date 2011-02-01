@@ -35,6 +35,16 @@ Overview
 
 Eon3D is a simplistic 3D software rendered inspired by (now abandoned?)
 `Plush 3D' by Nullsoft.
+Eon3D aims for simplicity, performance (for a software renderer) and
+compactness, in this order.
+Eon3D is composed by a set of libraries which composes the core software
+and a kit of companion tools exploiting those libraries.
+Other key aspects of the software are:
+
+* compactness. Bloat should be trimmed as most as is possible.
+* minimal dependencies set. If the dependency's license allow that and if
+  it's convenient, the dependency is bundled with the software.
+* ease of embeddability (if you care).
 
 
 License Notice
@@ -44,7 +54,7 @@ The core renderer is licensed under a ZLIB-like license,
 as for plush3D (see COPYING).
 The AVI output module uses (and embeds) AVILIB, which is released under
 the GPL2 license. If you enable the AVI output module, the license of
-Eon3D will become GPL2.
+Eon3D will thus become GPL2.
 
 
 Requirements/Dependencies
