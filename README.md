@@ -62,30 +62,34 @@ Components
 
 The modules breakdown of Eon3D follows.
 
-* core
-  License: ZLIB
+* `core`
+  License: `ZLIB`
   Status: In Development
   Dependencies: None
   Description: The core renderer library.
-* console
-  License: ZLIB
+
+* `console`
+  License: `ZLIB`
   Status: In Development
-  Dependencies: libSDL (LGPL, not bundled)
+  Dependencies: `libSDL` (LGPL, not bundled)
   Description: Simple graphical I/O console.
-* model
-  License: ZLIB
+
+* `model`
+  License: `ZLIB`
   Status: In Development
-  Dependencies: rply (MIT, bundled)
+  Dependencies: `rply` (MIT, bundled)
   Description: Simple model file loader.
-* png
-  License: ZLIB
+
+* `png`
+  License: `ZLIB`
   Status: Planned
-  Dependencies: libPNG (not bundled)
+  Dependencies: `libPNG` (not bundled)
   Description: Saves frame to PNG images.
-* avi
-  License: GPL2
+
+* `avi`
+  License: `GPL2`
   Status: Planned
-  Dependencies: avilib (bundled)
+  Dependencies: `avilib` (bundled)
   Description: Save renders to raw AVI files.
 
 
