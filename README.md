@@ -43,6 +43,7 @@ For the very nature of the project, the code will not be ever
 GPU-accelerated.
 
 The objectives for Eon3D are:
+
 * simplicity: the code should be easy to read, easy to maintain and
   easy to keep in mind.
 * compactness. Bloat should be trimmed as most as is possible.
