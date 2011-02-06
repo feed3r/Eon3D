@@ -1,6 +1,7 @@
 /**************************************************************************
- * eon3dx.c -- Eon3D eXtension and companion tools                        *
- * (C) 2010 Francesco Romani <fromani at gmail dot com>                   *
+ * eon3dx_console.c -- Eon3D eXtension and companion tools                *
+ *                  -- Graphical console.                                 *
+ * (C) 2010-2011 Francesco Romani <fromani at gmail dot com>              *
  *                                                                        *
  * This software is provided 'as-is', without any express or implied      *
  * warranty.  In no event will the authors be held liable for any damages *
@@ -23,7 +24,7 @@
 
 #include <stdlib.h>
 
-#include "eon3dx.h"
+#include "eon3dx_console.h"
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
