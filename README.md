@@ -58,6 +58,14 @@ Supporting tools (e.g. 3D model viewers) are provided as clients,
 examples and debugging tools.
 
 
+Requirements/Dependencies (common)
+----------------------------------
+
+* POSIX platform (libC std + stdint/inttypes is enough, actually).
+* C99 compiler (tested against gcc 4+).
+* [cmake](http://www.cmake.org)
+
+
 Components
 ----------
 
@@ -112,14 +120,6 @@ The AVI output module uses (and embeds) AVILIB, which is released under
 the GPL2 license. If you enable the AVI output module, the license of
 Eon3D will thus become GPL2.
 
-
-Requirements/Dependencies
--------------------------
-
-* POSIX platform (libC std + stdint/inttypes is enough, actually).
-* C99 compiler (tested against gcc 4+).
-* SDL for graphical console.
-* libPNG for PNG output.
 
 ### EOF ###
 
