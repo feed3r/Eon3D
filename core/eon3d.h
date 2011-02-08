@@ -41,135 +41,170 @@
 #include <stdarg.h>
 #include <math.h>
 
+/** \file eon3d.h
+    \brief eon3d: a simplistic 3D software renderer (interface).
+*/
+
 /**************************************************************************
  * Configuration section                                                  *
  **************************************************************************/
 
-/* implementation limits */
+/** \enum implementation limits */
 enum {
-    EON_MAX_LOG_LINE_LEN = 1024, /* Maximum user message length */
-    EON_MAX_CHILDREN     = 64,   /* Maximum children per object */
-    EON_MAX_LIGHTS       = 32,   /* Maximum lights per scene --
-                                if you exceed this, they will be ignored */
-    EON_MAX_TRIANGLES    = 1073741824
-    /* Maximum number of triangles per scene -- if you exceed this,
-       entire objects will be ignored.
-       You can increase this if you need it.
-       It takes approximately 8*EON_MAX_TRIANGLES bytes of memory.
-       Not really a big deal.
-     */
+    EON_MAX_LOG_LINE_LEN = 1024,      /**< Maximum user message length */
+    EON_MAX_CHILDREN     = 64,        /**< Maximum children per object */
+    EON_MAX_LIGHTS       = 32,        /**< Maximum lights per scene --
+                                           if you exceed this, the exceeding
+                                           lights will be ignored.
+                                       */
+    EON_MAX_TRIANGLES    = 1073741824 /**< Maximum number of triangles 
+                                           per scene -- if you exceed this,
+					   the exceeding OBJECTS will be
+                                           ignored. You can increase this
+                                           if you need it.
+                                           It takes approximately
+                                           8*EON_MAX_TRIANGLES bytes
+                                           of memory. Not really a big deal.
+                                       */
 };
 
 
-typedef float         EON_ZBuffer;     /* Z-buffer type (must be float)    */
-typedef float         EON_Float;       /* General floating point           */
-typedef float         EON_IEEEFloat32; /* IEEE 32 bit floating point       */ 
-typedef double        EON_Double;      /* Double precision floating point  */
-typedef double        EON_IEEEFloat64; /* IEEE 64 bit floating point       */ 
-typedef int32_t       EON_Int32;       /* signed 32 bit integer            */
-typedef uint32_t      EON_UInt32;      /* unsigned 32 bit integer          */
-typedef int16_t       EON_Int16;       /* signed 16 bit integer            */
-typedef uint16_t      EON_UInt16;      /* unsigned 16 bit integer          */
-typedef int8_t        EON_Int8;        /* signed 8 bit integer             */
-typedef uint8_t       EON_UInt8;       /* unsigned 8 bit integer           */
-typedef int           EON_Int;         /* signed optimal integer           */
-typedef unsigned int  EON_UInt;        /* unsigned optimal integer         */
-typedef unsigned char EON_UChar;       /* unsigned 8 bit integer           */
-typedef signed char   EON_Char;        /* signed 8 bit integer             */
-typedef unsigned char EON_Byte;        /* generic 8 bit byte type          */
+typedef float         EON_ZBuffer;     /** Z-buffer type (must be float)   */
+typedef float         EON_Float;       /** General floating point          */
+typedef float         EON_IEEEFloat32; /** IEEE 32 bit floating point      */ 
+typedef double        EON_Double;      /** Double precision floating point */
+typedef double        EON_IEEEFloat64; /** IEEE 64 bit floating point      */ 
+typedef int32_t       EON_Int32;       /** signed 32 bit integer           */
+typedef uint32_t      EON_UInt32;      /** unsigned 32 bit integer         */
+typedef int16_t       EON_Int16;       /** signed 16 bit integer           */
+typedef uint16_t      EON_UInt16;      /** unsigned 16 bit integer         */
+typedef int8_t        EON_Int8;        /** signed 8 bit integer            */
+typedef uint8_t       EON_UInt8;       /** unsigned 8 bit integer          */
+typedef int           EON_Int;         /** signed optimal integer          */
+typedef unsigned int  EON_UInt;        /** unsigned optimal integer        */
+typedef unsigned char EON_UChar;       /** unsigned 8 bit integer          */
+typedef signed char   EON_Char;        /** signed 8 bit integer            */
+typedef unsigned char EON_Byte;        /** generic 8 bit byte type         */
 
-/* pi! */
+/** pi! */
 #define EON_PI 3.14159265359
 
-/* Utility min() and max() functions */
+/** \macro Utility min() and max() functions */
 #define EON_Min(x, y) (( ( x ) > ( y ) ? ( y ) : ( x )))
 #define EON_Max(x, y) (( ( x ) < ( y ) ? ( y ) : ( x )))
 #define EON_Clamp(a, x, y) EON_Min(EON_Max(( a ), ( x )), ( y ))
 
+/** \enum the obvious boolean type */
 typedef enum eon_boolean_ {
     EON_FALSE = 0,
     EON_TRUE  = 1
 } EON_Boolean;
 
+/** \enum status code for all tha API calls */
 typedef enum eon_status_ {
-    EON_OK    =  0,
-    EON_ERROR = -1
+    EON_OK    =  0, /**< all clean */
+    EON_ERROR = -1  /**< generic error */
 } EON_Status; 
 
+/** \enum log levels */
 typedef enum eon_loglevel_ {
-    EON_LOG_CRITICAL = 0,   /* this MUST be the first */
-    EON_LOG_ERROR,
-    EON_LOG_WARNING,
-    EON_LOG_INFO,
-    EON_LOG_DEBUG,
-    EON_LOG_LAST            /* this MUST be the last 
-                               and should'nt be used */ 
+    EON_LOG_CRITICAL = 0, /**< this MUST be the first and it is
+                               the most important. -- PANIC!     */
+    EON_LOG_ERROR,        /**< you'll need to see this           */
+    EON_LOG_WARNING,      /**< you'd better to see this          */
+    EON_LOG_INFO,         /**< informative messages (for tuning) */
+    EON_LOG_DEBUG,        /**< debug messages (for devs)         */
+    EON_LOG_LAST          /**< this MUST be the last -- 
+                               and should'nt be used             */
 } EON_LogLevel;
 
 
+/** \var typedef EON_logHandler
+    \brief logging callback function.
+
+    This callback is invoked by the eon3d runtime whenever is needed
+    to log a message.
+
+    eon3d provides a default callback to log to the  stderr.
+
+    \param userData a pointer given at the callback registration
+           time. Fully opaque for eon3d.
+    \param where string identifying the eon3d module/subsystem.
+    \param level the severity of the message.
+    \param fmt printf-like format string for the message.
+    \param ap va_list of the arguments to complete the format string.
+    \return EON_OK on success, a EON_ERROR otherwise.
+
+    \see EON_LogLevel
+*/
 typedef void (*EON_logHandler)(void *userData,
                                const char *where, int level,
                                const char *fmt, va_list ap);
 
 /*************************************************************************/
 
-/* 
-** Note that (EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE) and
-** (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE) are valid shading modes.
+/** \enum shading modes.
+
+    Note (EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE) and
+    (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE) are valid shading modes.
 */
 typedef enum eon_shademode_ {
-    EON_SHADE_NONE             = 1,
-    EON_SHADE_FLAT             = 2,
-    EON_SHADE_FLAT_DISTANCE    = 4,
-    EON_SHADE_GOURAUD          = 8,
-    EON_SHADE_GOURAUD_DISTANCE = 16
+    EON_SHADE_NONE             = 1, /**< no shading     */
+    EON_SHADE_FLAT             = 2, /**< flat shading   */
+    EON_SHADE_FLAT_DISTANCE    = 4, /**< WRITEME        */
+    EON_SHADE_GOURAUD          = 8, /**< gourad shading */
+    EON_SHADE_GOURAUD_DISTANCE = 16 /**< WRITEME        */
 } EON_ShadeMode;
 
-/*
-** Note that EON_LIGHT_POINT_ANGLE assumes no falloff and uses the angle between
-** the light and the point, EON_LIGHT_POINT_DISTANCE has falloff with proportion
-** to distance**2 (see EON_LightSet() for setting it), EON_LIGHT_POINT does both.
+
+/** \enum lighting mode.
+
+    Note EON_LIGHT_POINT_ANGLE assumes no falloff and uses the angle between
+    the light and the point, EON_LIGHT_POINT_DISTANCE has falloff with proportion
+    to distance**2 (see EON_LightSet() for setting it), EON_LIGHT_POINT does both.
 */
 typedef enum eon_lightmode_ {
-    EON_LIGHT_NONE           = 0x0,
-    EON_LIGHT_VECTOR         = 0x1,
-    EON_LIGHT_POINT          = 0x2|0x4,
-    EON_LIGHT_POINT_DISTANCE = 0x2,
-    EON_LIGHT_POINT_ANGLE    = 0x4
+    EON_LIGHT_NONE           = 0x0,      /**< no lightining */
+    EON_LIGHT_VECTOR         = 0x1,      /**< vector light  */
+    EON_LIGHT_POINT          = 0x2|0x4,  /**< point light   */
+    EON_LIGHT_POINT_DISTANCE = 0x2,      /**< WRITEME       */
+    EON_LIGHT_POINT_ANGLE    = 0x4       /**< WRITEME       */
 } EON_LightMode;
 
-/* TODO WRITEME
-** those can't be combined
+/** \enum polygon filling mode.
+    Note those cannot be combined
 */
 typedef enum eon_fillmode_ {
-    EON_FILL_DEFAULT     = 0,
-    EON_FILL_NONE        = 1, /* just the vertexes */
-    EON_FILL_WIREFRAME   = 2,
-    EON_FILL_SOLID       = 4,
-    EON_FILL_TEXTURE     = 8,
-    EON_FILL_ENVIRONMENT = 16,
+    EON_FILL_DEFAULT     = 0,  /**< runtime default. FIXME              */
+    EON_FILL_NONE        = 1,  /**< just the vertexes (no fill at all)  */
+    EON_FILL_WIREFRAME   = 2,  /**< wireframe fill (vertexes and edges) */
+    EON_FILL_SOLID       = 4,  /**< solid color fill                    */
+    EON_FILL_TEXTURE     = 8,  /**< texture mapping                     */
+    EON_FILL_ENVIRONMENT = 16, /**< WRITEME */
 } EON_FillMode;
 
+/** \enum texture/environment operation */
 typedef enum eon_texenvop_ {
-    EON_TEXENV_ADD          = 0,
-    EON_TEXENV_MUL          = 1,
-    EON_TEXENV_AVG          = 2,
-    EON_TEXENV_TEXMINUSENV  = 3,
-    EON_TEXENV_ENVMINUSTEX  = 4,
-    EON_TEXENV_MIN          = 5,
-    EON_TEXENV_MAX          = 6
+    EON_TEXENV_ADD          = 0, /**< WRITEME */
+    EON_TEXENV_MUL          = 1, /**< WRITEME */
+    EON_TEXENV_AVG          = 2, /**< WRITEME */
+    EON_TEXENV_TEXMINUSENV  = 3, /**< WRITEME */
+    EON_TEXENV_ENVMINUSTEX  = 4, /**< WRITEME */
+    EON_TEXENV_MIN          = 5, /**< WRITEME */
+    EON_TEXENV_MAX          = 6  /**< WRITEME */
 } EON_TexEnvOp;
 
-/* Polygon sort mode wrt the Camera */
+/** \enum polygon sort mode wrt the camera */
 typedef enum eon_sort_mode_ {
-    EON_SORT_FRONT_TO_BACK = -1,
-    EON_SORT_NONE          =  0,
-    EON_SORT_BACK_TO_FRONT = +1
+    EON_SORT_FRONT_TO_BACK = -1, /**< front to back */
+    EON_SORT_NONE          =  0, /**< no sort       */
+    EON_SORT_BACK_TO_FRONT = +1  /**< back to front */
 } EON_SortMode;
 
+/** \enum frame flags */
 typedef enum eon_frameflags_ {
-    EON_FRAME_FLAG_NONE     = 0x0,
-    EON_FRAME_FLAG_DR       = 0x1, /* direct rendering */
+    EON_FRAME_FLAG_NONE     = 0x0, /**< no flags */
+    EON_FRAME_FLAG_DR       = 0x1, /**< direct rendering (avoid memcpys) */
 } EON_FrameFlags;
 
 /*************************************************************************/
