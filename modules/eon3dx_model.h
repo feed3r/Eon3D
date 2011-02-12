@@ -51,9 +51,9 @@ typedef enum eonx_modelstatus_ {
 typedef struct eonx_model_ EONx_Model;
 
 
-/** \fn allocate a new model.
+/** \fn allocates a new model.
 
-    Allocate a new model handle.
+    Allocates a new model handle.
 
     \return a new model handle if succesfull,
             NULL on error.
@@ -63,9 +63,9 @@ typedef struct eonx_model_ EONx_Model;
 EONx_Model *EONx_newModel();
 
 
-/** \fn release a model handle.
+/** \fn releases a model handle.
 
-    Release a model handle obtained via EONx_newModel().
+    Releases a model handle obtained via EONx_newModel().
 
     \param model a valid EONx_Model handle to release.
 
@@ -74,9 +74,9 @@ EONx_Model *EONx_newModel();
 void EONx_delModel(EONx_Model *model);
 
 
-/** \fn get the last status code of this model.
+/** \fn gets the last status code of this model.
 
-    Get the status code associated to the last action performed
+    Gets the status code associated to the last action performed
     on this model.
 
     \param model a valid EONx_Model handle.
@@ -85,9 +85,9 @@ void EONx_delModel(EONx_Model *model);
 EONx_ModelStatus EONx_modelStatus(EONx_Model *model);
 
 
-/** \fn load a generic model from a file.
+/** \fn loads a generic model from a file.
 
-    Load a model from a file, detecting the model format by
+    Loads a model from a file, detecting the model format by
     the file extension and automatically selecting the
     right loader for the file.
 
@@ -100,9 +100,9 @@ EONx_ModelStatus EONx_modelStatus(EONx_Model *model);
 */
 EON_Object *EONx_modelLoadFile(EONx_Model *model, const char *fileName);
 
-/** \fn load a PLY model from a file.
+/** \fn loads a PLY model from a file.
 
-    Load a model from a PLY file. For a description of the
+    Loads a model from a PLY file. For a description of the
     PLY file format, see
     http://local.wasp.uwa.edu.au/~pbourke/dataformats/ply/
 

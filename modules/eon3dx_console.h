@@ -47,10 +47,10 @@
 typedef struct eonx_console_ EONx_Console;
 
 
-/** \fn allocate a new console.
+/** \fn allocates a new console.
 
-    Allocate a new console and attach it to a given EON_Camera.
-    A console represents a viewpoint, so has to have an attached camera.
+    Allocates a new console and attaches it to a given EON_Camera.
+    A console represents a viewpoint, so it has to have an attached camera.
 
     \param camera a EON_Camera representing the console viewpoint.
     \return a new console handle on success,
@@ -74,9 +74,9 @@ void EONx_delConsole(EONx_Console *console);
 /* TODO */
 EON_Status EONx_consoleNextEvent(EONx_Console *console, void *event);
 
-/** \fn show a frame into the console.
+/** \fn shows a frame into the console.
 
-    Show a given frame into a console.
+    Shows a given frame into a console.
 
     \param console a valid EONx_Console handle.
     \param frame the frame to display.
@@ -87,9 +87,9 @@ EON_Status EONx_consoleNextEvent(EONx_Console *console, void *event);
 */
 EON_Status EONx_consoleShow(EONx_Console *console, EON_Frame *frame);
 
-/** \fn blank the console.
+/** \fn blanks the console.
 
-    Blank the given console.
+    Blanks the given console.
 
     \param console a valid EONx_Console handle.
     \return EON_OK on success,
@@ -98,7 +98,7 @@ EON_Status EONx_consoleShow(EONx_Console *console, EON_Frame *frame);
 EON_Status EONx_consoleClear(EONx_Console *console);
 
 
-/** \fn Get a frame handle optimized for the given console.
+/** \fn Gets a frame handle optimized for the given console.
 
     Any EON_Frame can safely displayed to any console, in the worst case
     involving some memory area copies. This function allow the caller to

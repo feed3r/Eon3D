@@ -329,7 +329,7 @@ void *EON_free(void *ptr)
 typedef struct {
     void            *UserData;
     int             MinLevel;
-    EON_logHandler  Log;
+    EON_LogHandler  Log;
 } EON_LogContext;
 
 /* BIG FAT FIXME */
@@ -357,17 +357,17 @@ void EON_vlog(const char *where, int level, const char *fmt, va_list ap)
     if (!where) {
         where = EON_TAG;
     }
-    if (EON_LogCtx.Log) {
-        EON_LogCtx.Log(EON_LogCtx.UserData, where, level, fmt, ap);
-    }
+
+    EON_LogCtx.Log(EON_LogCtx.UserData, where, level, fmt, ap);
+
     return;
 }
 
-void EON_logSetHandler(EON_logHandler logHandler, void *userData)
+void EON_logSetHandler(EON_LogHandler LogHandler, void *userData)
 {
-    if (logHandler) {
+    if (LogHandler) {
         /* we always must have a valid log handler */
-        EON_LogCtx.Log = logHandler;
+        EON_LogCtx.Log = LogHandler;
     }
     if (EON_LogCtx.Log != EON_logDefaultHandler) {
         /* can't overwrite just the default userdata to avoid
@@ -377,7 +377,7 @@ void EON_logSetHandler(EON_logHandler logHandler, void *userData)
     return;
 }
 
-EON_logHandler EON_logGetHandler(void)
+EON_LogHandler EON_logGetHandler(void)
 {
     return EON_LogCtx.Log;
 }
@@ -1005,7 +1005,7 @@ EON_Camera *EON_newCamera(EON_Int width, EON_Int height,
 {
     EON_Camera *cam = EON_zalloc(sizeof(EON_Camera));
     if (cam) {
-        cam->Fov            = fieldOfView;
+        cam->FieldOfView    = fieldOfView;
         cam->AspectRatio    = aspectRatio;
         cam->Sort           = EON_SORT_BACK_TO_FRONT;
         /* FIXME: if ZBuffer Sort=0 */
@@ -1222,7 +1222,7 @@ static void eon_clipSetFrustum(eon_clipContext *clip, EON_Camera *cam)
     }
 
     clip->AdjAsp = 1.0 / cam->AspectRatio;
-    clip->Fov = EON_Clamp(cam->Fov, 1.0, 179.0);
+    clip->Fov = EON_Clamp(cam->FieldOfView, 1.0, 179.0);
     clip->CX = cam->Center.Width  << 20;
     clip->CY = cam->Center.Height << 20;
     clip->Cam = cam;
