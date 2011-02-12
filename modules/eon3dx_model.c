@@ -41,6 +41,9 @@
 
 #define EONx_EXT_SEP        '.'
 #define EONx_EXT_PLY        ".ply"
+#define EONx_MODEL_TAG      "EONMOD"
+#define EONx_PLY_TAG        "EONPLY"
+
 
 /* opaque. Can use PLY, 3DS or anything else. */
 struct eonx_model_ {
@@ -85,7 +88,8 @@ EONx_ModelStatus EONx_modelStatus(EONx_Model *model)
 
 
 EON_Object *EONx_modelLoadFile(EONx_Model *model,
-                               const char *fileName)
+                               const char *fileName,
+                               EON_Material *material)
 {
     EON_Object *obj = NULL;
     const char *ext = NULL;
@@ -95,7 +99,7 @@ EON_Object *EONx_modelLoadFile(EONx_Model *model,
     ext = strrchr(fileName, EONx_EXT_SEP);
     if (ext) {
         if (!strcasecmp(ext, EONx_EXT_PLY)) {
-            obj = EONx_modelLoadFilePLY(model, fileName);
+            obj = EONx_modelLoadFilePLY(model, fileName, material);
         } else {
             model->Status = EONx_MODEL_UNSUPPORTED;
         }
@@ -106,12 +110,130 @@ EON_Object *EONx_modelLoadFile(EONx_Model *model,
 
 #ifdef HAVE_RPLY
 
-EON_Object *EONx_modelLoadFilePLY(EONx_Model *model,
-                                  const char *fileName)
+#include <rply.h>
+
+
+enum {
+    PLY_N = -1, /* meaning NULL */
+    PLY_X =  0,
+    PLY_Y =  1,
+    PLY_Z =  2
+};
+
+
+typedef struct eonx_plycontext_ {
+    EON_Object  *Obj;
+
+    EON_UInt    Indexes[EON_DIMENSIONS];
+    EON_Int     IndexNum;
+
+    EON_Float   Coords[EON_DIMENSIONS];
+    EON_Int     CoordsNum;
+
+    EON_UInt    VertexesNum;
+	EON_UInt    VertexIdx;
+    EON_UInt    TrianglesNum;
+    EON_UInt    FaceIdx;
+} eonx_PLYContext;
+
+
+static int loadVertex(p_ply_argument argument)
 {
+    eonx_PLYContext *ctx = NULL;
+    long ax = PLY_N;
+
+    ply_get_argument_user_data(argument, (void **)&ctx, &ax);
+    ctx->Coords[ax] = ply_get_argument_value(argument);
+    ctx->CoordsNum++;
+
+    if (ctx->CoordsNum == EON_DIMENSIONS) {
+        EON_Vertex *v = &(ctx->Obj->Vertexes[ctx->VertexIdx]);
+        ctx->VertexIdx++;
+        eon_PointSet(&(v->Coords), ctx->Coords[PLY_X],
+                                   ctx->Coords[PLY_Y],
+                                   ctx->Coords[PLY_Z]);
+        ctx->CoordsNum = 0;
+    }
+    return 1;
+}
+
+static int loadFace(p_ply_argument argument)
+{
+    long length = 0, idx = 0;
+    eonx_PLYContext *ctx = NULL;
+
+    ply_get_argument_user_data(argument, (void **)&ctx, NULL);
+    ply_get_argument_property(argument, NULL, &length, &idx);
+    ctx->Indexes[idx] = ply_get_argument_value(argument);
+
+    if (ctx->IndexNum == EON_DIMENSIONS) {
+        EON_Face *f = &(ctx->Obj->Faces[ctx->FaceIdx]);
+        ctx->FaceIdx++;
+
+        f->Vertexes[0] = &(ctx->Obj->Vertexes[ctx->Indexes[0]]);
+        f->Vertexes[1] = &(ctx->Obj->Vertexes[ctx->Indexes[1]]);
+        f->Vertexes[2] = &(ctx->Obj->Vertexes[ctx->Indexes[2]]);
+
+        ctx->IndexNum = 0;
+    }
+
+    return 1;
+}
+
+EON_Object *EONx_modelLoadFilePLY(EONx_Model *model,
+                                  const char *fileName,
+                                  EON_Material *material)
+{
+    EON_Object *obj = NULL;
+    p_ply ply = NULL;
+    int ret = 0;
+
     RETURN_NULL_IF_INVALID_PARAMS(model, fileName);
+
+    ply = ply_open(fileName, NULL);
+    if (!ply) {
+        EON_log(EONx_PLY_TAG, EON_LOG_ERROR,
+                "unable to open the model [%s]", fileName);
+    } else {
+        ret = ply_read_header(ply);
+        if (!ret) {
+            EON_log(EONx_PLY_TAG, EON_LOG_ERROR,
+                    "unable to parse the header of the model [%s]",
+                    fileName);
+        } else {
+            long V = 0, T = 0;
+            eonx_PLYContext ctx;
+            memset(&ctx, 0, sizeof(ctx));
+
+            V = ply_set_read_cb(ply, "vertex", "x", loadVertex, &ctx, PLY_X);
+                ply_set_read_cb(ply, "vertex", "y", loadVertex, &ctx, PLY_Y);
+                ply_set_read_cb(ply, "vertex", "z", loadVertex, &ctx, PLY_Z);
+            T = ply_set_read_cb(ply, "face", "vertex_indices",
+                                loadFace, &ctx, 0);
     
-    return NULL;
+            EON_log(EONx_PLY_TAG, EON_LOG_DEBUG,
+                    "%s: %lix%li\n", fileName, V, T);
+            ctx.VertexesNum = V;
+            ctx.TrianglesNum = T;
+
+            ctx.Obj = EON_newObject(V, T, material); 
+            if (!ctx.Obj) {
+                EON_log(EONx_PLY_TAG, EON_LOG_ERROR,
+                        "unable to allocate the object");
+            } else {
+                ret = ply_read(ply);
+                if (!ret) {
+                    EON_log(EONx_PLY_TAG, EON_LOG_ERROR,
+                            "failed to parse the body of the model [%s]",
+                            fileName);
+                    EON_delObject(ctx.Obj);
+                    ctx.Obj = NULL;
+                } /* else all done and we're ready to go */
+            }
+        }
+        ply_close(ply);
+    } 
+    return obj;
 }
 
 #else /* ! HAVE_RPLY */

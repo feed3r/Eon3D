@@ -93,12 +93,16 @@ EONx_ModelStatus EONx_modelStatus(EONx_Model *model);
 
     \param model a valid EONx_Model handle.
     \param filename the path of the file to load.
+    \param material material to use for this model.
+           overrides the one loaded from file, if any.
     \return an EON_Object representing the loaded model on success,
             NULL on error.
 
     \see EON_modelStatus
 */
-EON_Object *EONx_modelLoadFile(EONx_Model *model, const char *fileName);
+EON_Object *EONx_modelLoadFile(EONx_Model *model,
+                               const char *fileName,
+                               EON_Material *material);
 
 /** \fn loads a PLY model from a file.
 
@@ -108,12 +112,16 @@ EON_Object *EONx_modelLoadFile(EONx_Model *model, const char *fileName);
 
     \param model a valid EONx_Model handle.
     \param filename the path of the PLY file to load.
+    \param material material to use for this model.
+           overrides the one loaded from file, if any.
     \return an EON_Object representing the loaded model on success,
             NULL on error.
 
     \see EON_modelStatus
 */
-EON_Object *EONx_modelLoadFilePLY(EONx_Model *model, const char *fileName);
+EON_Object *EONx_modelLoadFilePLY(EONx_Model *model,
+                                  const char *fileName,
+                                  EON_Material *material);
 
 
 #endif /* EON3DX_MODEL_H */
