@@ -423,10 +423,10 @@ void EON_logDefaultHandler(void *userData,
 
 void eon_RGBset(EON_RGB *rgb, EON_UInt8 R, EON_UInt8 G, EON_UInt8 B)
 {
-    rgb->R   = R;
-    rgb->G   = G;
-    rgb->B   = B;
-    rgb->Pad = 0;
+    rgb->R = R;
+    rgb->G = G;
+    rgb->B = B;
+    rgb->A = 0;
 }
 
 
