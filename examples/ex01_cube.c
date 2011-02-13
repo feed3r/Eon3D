@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     cubeMat = EON_newMaterial();    
     cubeMat->NumGradients = 100; /* Have it use 100 colors */
     cubeMat->Shade = EON_SHADE_FLAT; 
-    EON_materialInit(cubeMat);   /* Don't forget this! */
+    EON_materialSeal(cubeMat);   /* Don't forget this! */
 
     cube = EON_newBox(100.0, 100.0, 100.0, cubeMat); // Create the cube
 

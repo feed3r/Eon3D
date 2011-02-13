@@ -487,16 +487,21 @@ typedef struct eon_camera_ {
     EON_Float       Roll;        /**< ditto                                */
 } EON_Camera;
 
-
+/** \struct frame
+    \brief a frame is a rendering destination buffer.
+    
+    the fields marked with [X] are `private' for internal usage only.
+    The client shall not touch those.
+*/
 struct eon_frame_ {
-    EON_Rectangle   F;
-    EON_Byte        *Pixels; /* RGB24, not EON_RGB ?!? */
-    EON_UInt32      Flags;
+    EON_Rectangle   F;       /**< frame dimensions */
+    EON_Byte        *Pixels; /**< the actual data (TODO) */
+    EON_UInt32      Flags;   /**< bitmask of options and flags */
 
-    /* direct rendering */
+    /** direct rendering support */
     EON_Status      (*PutPixel)(EON_Frame *frame,
                                 EON_Int x, EON_Int y, EON_UInt32 color);
-    void            *_private;
+    void            *_private; /**< [X] PutPixel private data */
 };
 
 
@@ -504,12 +509,31 @@ struct eon_frame_ {
 /* see fordward declarations above */
 
 
-
 /*************************************************************************
  * Initialization and Finalization                                       *
  *************************************************************************/
 
+/** \fn initializes the Eon3D runtime.
+
+    this function does all the resource acquisition and initialization
+    needed by the Eon3D runtime.
+    The client must invoke this function once before to use any other
+    Eon3D function.
+
+    \see EON_shutdown
+*/
 void EON_startup();
+
+/** \fn finalizes the Eon3D runtime.
+
+    this function frees al the resources acquired by the runtime, both
+    at the initialization and through the usage of it.
+    The client should invoke this function once done with Eon3D.
+    It is safe to call this function multiple times.
+    After this function called, a new runtime intialization is needed.
+    
+    \see EON_startup
+*/
 void EON_shutdown();
 
 /**************************************************************************
@@ -542,9 +566,47 @@ void EON_logDefaultHandler(void *userData,
 /* Materials                                                             */
 /*************************************************************************/
 
+/** \fn creates a new material.
+
+    creates and returns a new generic empty material handle.
+    The client can tune the characteristics of the material by modifying
+    its public fields. Once done, the client must invoke EON_materialSeal
+    to make the changes effective.
+
+    \return a new generic empty material handle on success,
+            NULL otherwise.
+
+    \see EON_delMaterial
+    \see EON_materialSeal
+*/
 EON_Material *EON_newMaterial(void);
+
+/** \fn destroys a material
+
+    relinquish a material created via EON_newMaterial.
+
+    \param material handle to the material to dispose.
+
+    \see EON_newMaterial
+*/
 void EON_delMaterial(EON_Material *material);
-EON_Status EON_materialInit(EON_Material *material);
+
+
+/** \fn seals a material, making a settings change effective.
+
+    updates the internal representation of a material to reflect
+    the changes made through the public fields.
+    The client must call this function after very changeset of
+    the public fields, to make them effective.
+    The client can seal a given material an unlimited number of times.
+
+    \param material handle to the material to seal.
+    \return EON_OK on success,
+            EON_ERROR otherwise.
+
+    \see EON_newMaterial
+*/
+EON_Status EON_materialSeal(EON_Material *material);
 
 /*************************************************************************/
 /* Objects and primitives                                                */
@@ -553,12 +615,14 @@ EON_Status EON_materialInit(EON_Material *material);
 EON_Object *EON_newObject(EON_UInt32 vertexes, EON_UInt32 faces,
                           EON_Material *material);
 EON_Object *EON_delObject(EON_Object *object);
-EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
-                       EON_Material *material);
+
 EON_Status EON_objectSetMaterial(EON_Object *object,
                                  EON_Material *material);
 EON_Status EON_objectCalcNormals(EON_Object *object);
 EON_Status EON_objectCenter(EON_Object *object);
+
+EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
+                       EON_Material *material);
 
 /*************************************************************************/
 /* Lights                                                                */
@@ -576,6 +640,7 @@ void EON_delLight(EON_Light *light);
 
 EON_Frame *EON_newFrame(EON_Int width, EON_Int height);
 void EON_delFrame(EON_Frame *frame);
+
 void EON_frameClean(EON_Frame *frame);
 EON_Status EON_framePutPixel(EON_Frame *frame,
                              EON_Int x, EON_Int y, EON_UInt32 color);
@@ -596,6 +661,7 @@ void EON_delCamera(EON_Camera *camera);
 
 EON_Renderer *EON_newRenderer(void);
 void EON_delRenderer(EON_Renderer *rend);
+
 EON_Status EON_rendererSetup(EON_Renderer *rend, EON_Camera *camera);
 EON_Status EON_rendererLight(EON_Renderer *rend, EON_Light *light);
 EON_Status EON_rendererObject(EON_Renderer *rend, EON_Object *object);

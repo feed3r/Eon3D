@@ -634,7 +634,7 @@ static void eon_makePhongPalette(EON_Material *m)
 }
 
 
-EON_Status EON_materialInit(EON_Material *m)
+EON_Status EON_materialSeal(EON_Material *m)
 {
     EON_Status ret = EON_OK;
     if (!m) {
