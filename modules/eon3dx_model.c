@@ -180,13 +180,68 @@ static int loadFace(p_ply_argument argument)
     return 1;
 }
 
+static void eonx_PLYSetup(eonx_PLYContext *ctx, p_ply ply,
+                          const char *fileName)
+{
+    long V = 0, T = 0;
+
+    V = ply_set_read_cb(ply, "vertex", "x", loadVertex, ctx, PLY_X);
+        ply_set_read_cb(ply, "vertex", "y", loadVertex, ctx, PLY_Y);
+        ply_set_read_cb(ply, "vertex", "z", loadVertex, ctx, PLY_Z);
+    T = ply_set_read_cb(ply, "face", "vertex_indices",
+                        loadFace, ctx, 0);
+    
+    EON_log(EONx_PLY_TAG, EON_LOG_DEBUG,
+            "%s: %lix%li\n", fileName, V, T);
+    ctx->VertexesNum = V;
+    ctx->TrianglesNum = T;
+
+    return;
+}
+
+static EON_Object *eonx_PLYRead(p_ply ply, const char *fileName)
+{
+    EON_Object *obj = NULL;
+    int ret = 0;
+
+    ret = ply_read_header(ply);
+    if (!ret) {
+        EON_log(EONx_PLY_TAG, EON_LOG_ERROR,
+                "unable to parse the header of the model [%s]",
+                fileName);
+    } else {
+        eonx_PLYContext ctx;
+        memset(&ctx, 0, sizeof(ctx));
+
+        eonx_PLYSetup(&ctx, ply, fileName);
+
+        ctx.Obj = EON_newObject(V, T, material); 
+        if (!ctx.Obj) {
+            EON_log(EONx_PLY_TAG, EON_LOG_ERROR,
+                    "unable to allocate the object");
+        } else {
+            ret = ply_read(ply);
+            if (!ret) {
+                EON_log(EONx_PLY_TAG, EON_LOG_ERROR,
+                        "failed to parse the body of the model [%s]",
+                        fileName);
+                EON_delObject(ctx.Obj);
+            } else {
+                EON_objectCalcNormals(ctx.Obj);
+                obj = Ctx.Obj;
+            }
+        }
+    }
+    return obj;
+}
+
+
 EON_Object *EONx_modelLoadFilePLY(EONx_Model *model,
                                   const char *fileName,
                                   EON_Material *material)
 {
     EON_Object *obj = NULL;
     p_ply ply = NULL;
-    int ret = 0;
 
     RETURN_NULL_IF_INVALID_PARAMS(model, fileName);
 
@@ -195,42 +250,7 @@ EON_Object *EONx_modelLoadFilePLY(EONx_Model *model,
         EON_log(EONx_PLY_TAG, EON_LOG_ERROR,
                 "unable to open the model [%s]", fileName);
     } else {
-        ret = ply_read_header(ply);
-        if (!ret) {
-            EON_log(EONx_PLY_TAG, EON_LOG_ERROR,
-                    "unable to parse the header of the model [%s]",
-                    fileName);
-        } else {
-            long V = 0, T = 0;
-            eonx_PLYContext ctx;
-            memset(&ctx, 0, sizeof(ctx));
-
-            V = ply_set_read_cb(ply, "vertex", "x", loadVertex, &ctx, PLY_X);
-                ply_set_read_cb(ply, "vertex", "y", loadVertex, &ctx, PLY_Y);
-                ply_set_read_cb(ply, "vertex", "z", loadVertex, &ctx, PLY_Z);
-            T = ply_set_read_cb(ply, "face", "vertex_indices",
-                                loadFace, &ctx, 0);
-    
-            EON_log(EONx_PLY_TAG, EON_LOG_DEBUG,
-                    "%s: %lix%li\n", fileName, V, T);
-            ctx.VertexesNum = V;
-            ctx.TrianglesNum = T;
-
-            ctx.Obj = EON_newObject(V, T, material); 
-            if (!ctx.Obj) {
-                EON_log(EONx_PLY_TAG, EON_LOG_ERROR,
-                        "unable to allocate the object");
-            } else {
-                ret = ply_read(ply);
-                if (!ret) {
-                    EON_log(EONx_PLY_TAG, EON_LOG_ERROR,
-                            "failed to parse the body of the model [%s]",
-                            fileName);
-                    EON_delObject(ctx.Obj);
-                    ctx.Obj = NULL;
-                } /* else all done and we're ready to go */
-            }
-        }
+        obj = eonx_PLYRead(ply, fileName);
         ply_close(ply);
     } 
     return obj;
