@@ -511,6 +511,7 @@ static void eon_normalizeVector(EON_Vector *V)
         V->Y = 0.0;
         V->Z = 0.0;
     }
+    return;
 }
 
 /*************************************************************************/
@@ -668,12 +669,13 @@ EON_Status EON_materialInit(EON_Material *m)
 /* Objects and primitives                                                */
 /*************************************************************************/
 
-static void eon_objectInitFaces(EON_Object *obj)
+static void eon_objectInitFaces(EON_Object *o, EON_Material *m)
 {
     EON_UInt32 x = 0;
 
-    for (x = 0; x < obj->NumFaces; x++) {
-        eon_faceInit(&(obj->Faces[x]));
+    for (x = 0; x < o->NumFaces; x++) {
+        eon_faceInit(&(o->Faces[x]));
+        eon_faceSetMaterial(&(o->Faces[x]), m);
     }
 
     return;
@@ -720,7 +722,11 @@ EON_Object *EON_delObject(EON_Object *obj)
 EON_Object *EON_newObject(EON_UInt32 vertices, EON_UInt32 faces,
                           EON_Material *material)
 {
-    EON_Object *object = EON_zalloc(sizeof(EON_Object));
+    EON_Object *object = NULL;
+    
+    /* TODO sanity checks; material CANNOT be NULL */
+
+    object = EON_zalloc(sizeof(EON_Object));
     if (object) {
         object->GenMatrix    = EON_TRUE;
         object->BackfaceCull = EON_TRUE;
@@ -731,7 +737,7 @@ EON_Object *EON_newObject(EON_UInt32 vertices, EON_UInt32 faces,
         object = eon_objectAllocItems(object, (void**)&(object->Faces),
                                       sizeof(EON_Face), faces);
         
-        EON_objectSetMaterial(object, material);
+        eon_objectInitFaces(object, material);
   }
   return object;
 }
@@ -820,6 +826,8 @@ EON_Status EON_objectSetMaterial(EON_Object *object,
                                  EON_Material *material)
 {
     EON_UInt32 x = 0;
+
+    /* TODO sanity checks; material CANNOT be NULL */
 
     for (x = 0; x < object->NumFaces; x++) {
         eon_faceSetMaterial(&(object->Faces[x]), material);
