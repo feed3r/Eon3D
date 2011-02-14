@@ -1816,12 +1816,35 @@ static int eon_renderFaceNull(EON_Renderer *renderer,
 }
 
 
-static int eon_renderFaceVertexes(EON_Renderer *renderer,
-                                  EON_Face *face, EON_Frame *frame)
+static int eon_cameraProjectPoint(EON_Camera *camera,
+                                  const EON_Point *worldPoint,
+                                  EON_ScreenPoint *screenPoint)
 {
     /* TODO */
     return 0;
 }
+
+static int eon_renderFaceVertexes(EON_Renderer *renderer,
+                                  EON_Face *face, EON_Frame *frame)
+{
+    static const EON_RGB rgb = { .R = 255; .G = 255; .B = 255; .A = 255; };
+    EON_UInt32 color = EON_RGBPack(&rgb);
+    EON_Camera *cam = renderer->Camera; /* shortcut */
+    EON_ScreenPoint point;
+
+    /* loop unrolled */
+    eon_cameraProjectPoint(cam, &(face->Vertexes[EON_X]->Formed), &point);
+    EON_framePutPixel(frame, screenPoint.X, screenPoint.Y, color);
+
+    eon_cameraProjectPoint(cam, &(face->Vertexes[EON_Y]->Formed), &point);
+    EON_framePutPixel(frame, screenPoint.X, screenPoint.Y, color);
+
+    eon_cameraProjectPoint(cam, &(face->Vertexes[EON_Z]->Formed), &point);
+    EON_framePutPixel(frame, screenPoint.X, screenPoint.Y, color);
+
+    return 0;
+}
+
 
 /*************************************************************************
  * Initialization and Finalization                                       *
