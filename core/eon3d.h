@@ -118,6 +118,13 @@ typedef enum eon_loglevel_ {
                                and should'nt be used             */
 } EON_LogLevel;
 
+/** \enum canonical dimensions */
+typedef enum eon_dimension_ {
+    EON_X = 0,
+    EON_Y = 1,
+    EON_X = 2
+} EON_Dimension;
+
 
 /** \var typedef EON_LogHandler
     \brief logging callback function.
@@ -312,6 +319,12 @@ typedef int (*EON_RenderFaceFn)(EON_Renderer *renderer,
 typedef int (*EON_ProcessFaceFn)(EON_Face *face, EON_Renderer *rend);
 
 /*************************************************************************/
+
+typedef struct eon_screenpoint_ {
+    EON_Int32 X;
+    EON_Int32 Y;
+} EON_ScreenPoint;
+
 
 /* \struct material type.
  
@@ -560,6 +573,15 @@ void *EON_logGetUserData(void);
 void EON_logDefaultHandler(void *userData,
                            const char *where, int level,
                            const char* fmt, va_list ap);
+
+
+/*************************************************************************/
+/* RGB/color handling                                                    */
+/*************************************************************************/
+
+void EON_RGBSet(EON_RGB *rgb, EON_UInt8 R, EON_UInt8 G, EON_UInt8 B);
+EON_UInt32 EON_RGBPack(const EON_RGB *RGB);
+void EON_RGBUnpack(EON_RGB *RGB, EON_UInt32 color);
 
 
 /*************************************************************************/

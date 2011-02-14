@@ -421,12 +421,30 @@ void EON_logDefaultHandler(void *userData,
 /* RGB utilities                                                         */
 /*************************************************************************/
 
-void eon_RGBset(EON_RGB *rgb, EON_UInt8 R, EON_UInt8 G, EON_UInt8 B)
+void EON_RGBSet(EON_RGB *rgb, EON_UInt8 R, EON_UInt8 G, EON_UInt8 B)
 {
     rgb->R = R;
     rgb->G = G;
     rgb->B = B;
     rgb->A = 0;
+}
+
+EON_UInt32 EON_RGBPack(const EON_RGB *RGB)
+{
+    EON_UInt32 color = (((EON_UInt32)RGB->R) << 24)
+                     | (((EON_UInt32)RGB->G) << 16)
+                     | (((EON_UInt32)RGB->B) <<  8)
+                     | (((EON_UInt32)RGB->A)      );
+    return color;
+}
+
+void EON_RGBUnpack(EON_RGB *RGB, EON_UInt32 color)
+{
+    RGB->R = (color >> 24) & 0xFF;
+    RGB->G = (color >> 16) & 0xFF;
+    RGB->B = (color >>  8) & 0xFF;
+    RGB->A = (color      ) & 0xFF;
+    return;
 }
 
 
@@ -554,9 +572,9 @@ EON_Material *EON_newMaterial(void)
     if (m) { /* FIXME magic numbers */
         m->EnvScaling = 1.0f;
         m->TexScaling = 1.0f;
-        eon_RGBset(&m->Ambient,  0,   0,   0);
-        eon_RGBset(&m->Diffuse,  128, 128, 128);
-        eon_RGBset(&m->Specular, 128, 128, 128);
+        eon_RGBSet(&m->Ambient,  0,   0,   0);
+        eon_RGBSet(&m->Diffuse,  128, 128, 128);
+        eon_RGBSet(&m->Specular, 128, 128, 128);
         m->Shininess = 4;
         m->NumGradients = 32;
         m->FadeDist = 1000.0;

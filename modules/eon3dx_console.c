@@ -146,36 +146,41 @@ static eonx_SDLConsole *eonx_finiSDLSurface(eonx_SDLConsole *console)
 
 /* Almost verbatim copy from www.libsdl.org "Introduction" section */
 static EON_Status eonx_SDLDrawPixel(eonx_SDLConsole *console,
-                                    int y, int x, Uint32 color)
+                                    int y, int x, EON_UInt32 color)
 {
     void *drawArea = console->Surface->pixels;
     Uint32 pitch = console->Surface->pitch;
+    Uint32 px = 0;
+    EON_RGB RGB;
+
+    EON_RGBUnpack(&RGB, color);
+    px = SDL_MapRGB(console->Surface->format, RGB.R, RGB.G, RGB.B); 
 
     switch (console->Surface->format->BytesPerPixel) {
       case 1: { /* Assuming 8-bpp */
         Uint8 *bufp = (Uint8 *)drawArea + y * pitch + x;
-        *bufp = color;
+        *bufp = px; /* FIXME */
       }
       break;
 
       case 2: { /* Probably 15-bpp or 16-bpp */
         Uint16 *bufp = (Uint16 *)drawArea + y * pitch/2 + x;
-        *bufp = color;
+        *bufp = px; /* FIXME */
       }
       break;
 
       case 3: { /* Slow 24-bpp mode, usually not used */
         Uint8 *bufp = drawArea + y * pitch + x;
         SDL_PixelFormat *fmt = console->Surface->format;
-        *(bufp + fmt->Rshift/8) = ((color & fmt->Rmask) >> fmt->Rshift) << fmt->Rloss;
-        *(bufp + fmt->Gshift/8) = ((color & fmt->Gmask) >> fmt->Gshift) << fmt->Gloss;
-        *(bufp + fmt->Bshift/8) = ((color & fmt->Bmask) >> fmt->Bshift) << fmt->Bloss;
+        *(bufp + fmt->Rshift/8) = ((px & fmt->Rmask) >> fmt->Rshift) << fmt->Rloss;
+        *(bufp + fmt->Gshift/8) = ((px & fmt->Gmask) >> fmt->Gshift) << fmt->Gloss;
+        *(bufp + fmt->Bshift/8) = ((px & fmt->Bmask) >> fmt->Bshift) << fmt->Bloss;
       }
       break;
 
       case 4: { /* Probably 32-bpp */
         Uint32 *bufp = drawArea + y * pitch/4 + x;
-        *bufp = color;
+        *bufp = px;
       }
       break;
     }
