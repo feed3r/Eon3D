@@ -399,10 +399,10 @@ struct eon_face_ {
     EON_Vertex   *Vertexes[EON_DIMENSIONS];   /**< vertexes of triangle    */
     EON_Vector3  Norm;                        /**< normal (object space)   */
     EON_Material *Material;                   /**< material of triangle    */
-    EON_Int32    ScrX[EON_DIMENSIONS];        /**< FXP12.20 projected screen
+    EON_Int32    ScreenX[EON_DIMENSIONS];     /**< FXP12.20 projected screen
                                                    coordinates             */
-    EON_Int32    ScrY[EON_DIMENSIONS];        /**< ditto                   */
-    EON_Float    ScrZ[EON_DIMENSIONS];        /**< Projected 1/Z
+    EON_Int32    ScreenY[EON_DIMENSIONS];     /**< ditto                   */
+    EON_Float    ScreenZ[EON_DIMENSIONS];     /**< Projected 1/Z
                                                    coordinates             */
     EON_Int32    MappingU[EON_DIMENSIONS];    /**< FXP16.16 texture mapping
                                                    coordinatess            */

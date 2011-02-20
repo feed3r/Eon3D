@@ -267,15 +267,15 @@ typedef struct eon_clipcontext_ {
 
 
 struct eon_renderer_ {
-    EON_Camera      *Camera;
-    EON_ZBuffer     *ZBuffer;
+    EON_Camera      *Camera;        /**< camera reference */
+    EON_ZBuffer     *ZBuffer;       /**< WRITEME          */
 
-    eon_array       Faces;
-    eon_array       Lights;
+    eon_array       Faces;          /**< faces to render  */
+    eon_array       Lights;         /**< lights to render */
 
-    EON_Float       CMatrix[4 * 4];
+    EON_Float       CMatrix[4 * 4]; /**< viewpoint transformation matrix */
     EON_UInt32      TriStats[EON_TRI_STAT_NUM];
-    eon_clipContext Clip;
+    eon_clipContext Clip;           /**< clip information */
 };
 
 /**************************************************************************
@@ -457,16 +457,16 @@ void EON_RGBUnpack(EON_RGB *RGB, EON_UInt32 color)
  **************************************************************************/
 
 static void eon_matrix4x4Rotation(EON_Float matrix[],
-                                  EON_Byte m, EON_Float Deg)
+                                  EON_Byte ax, EON_Float Deg)
 {
     EON_Byte m1, m2;
     EON_Double d = Deg * EON_PI / 180.0;
     EON_Double c = cos(d), s = sin(d);
 
     memset(matrix, 0, sizeof(EON_Float)* 4 * 4);
-    matrix[((m - 1) << 2) + m - 1] = 1.0;
-    matrix[15]                     = 1.0;
-    m1 = ( m       % 3);
+    matrix[((ax - 1) << 2) + ax - 1] = 1.0;
+    matrix[15]                       = 1.0;
+    m1 = ( ax      % 3);
     m2 = ((m1 + 1) % 3);
 
     matrix[(m1 << 2) + m1] = (EON_Float)c;
@@ -1323,15 +1323,15 @@ static void eon_clipDoRenderFace(eon_clipContext *clip, EON_UInt numVerts,
             newface.MappingV[a]    = (EON_Int32)CI->MappingV[w];
             newface.EnvMappingU[a] = (EON_Int32)CI->EnvMappingU[w];
             newface.EnvMappingV[a] = (EON_Int32)CI->EnvMappingV[w];
-            newface.ScrZ[a]        = 1.0f / (newface.Vertexes[a]->Formed.Z);
+            newface.ScreenZ[a]        = 1.0f / (newface.Vertexes[a]->Formed.Z);
 
-            ZFov = clip->Fov * newface.ScrZ[a];
+            ZFov = clip->Fov * newface.ScreenZ[a];
             XFov = ZFov * newface.Vertexes[a]->Formed.X;
             YFov = ZFov * newface.Vertexes[a]->Formed.Y;
 
             /* XXX */
-            newface.ScrX[a] = clip->CX + ((EON_Int32)((XFov *                (float) (1<<20))));
-            newface.ScrX[a] = clip->CY - ((EON_Int32)((YFov * clip->AdjAsp * (float) (1<<20))));
+            newface.ScreenX[a] = clip->CX + ((EON_Int32)((XFov *                (float) (1<<20))));
+            newface.ScreenX[a] = clip->CY - ((EON_Int32)((YFov * clip->AdjAsp * (float) (1<<20))));
         }
         newface.Material->_renderFace(rend, &newface, frame);
         rend->TriStats[EON_TRI_STAT_TESSELLED]++;
@@ -1357,6 +1357,7 @@ void eon_clipRenderFace(eon_clipContext *clip,
     return;
 }
 
+/* FIXME: misleading name? */
 EON_Int eon_clipIsNeeded(eon_clipContext *clip, EON_Face *face)
 {
     EON_Rectangle *center = &(clip->Cam->Center);
@@ -1464,9 +1465,12 @@ EON_Status EON_rendererSetup(EON_Renderer *rend,
     eon_arrayReset(&(rend->Faces));
     eon_arrayReset(&(rend->Lights));
 
+    /* rend->CMatrix initialized as side effect */
     eon_matrix4x4Rotation(rend->CMatrix, 2, -camera->Pan);
+    /* tempMatrix initialized as side effect */
     eon_matrix4x4Rotation(tempMatrix,    1, -camera->Pitch);
     eon_matrix4x4Multiply(rend->CMatrix,    tempMatrix);
+    /* tempMatrix initialized as side effect */
     eon_matrix4x4Rotation(tempMatrix,    3, -camera->Roll);
     eon_matrix4x4Multiply(rend->CMatrix,    tempMatrix);
 
@@ -1603,46 +1607,46 @@ EON_Status EON_rendererProcess(EON_Renderer *rend,
 
 static void eon_rendererSetupObjectMatrixes(EON_Renderer *rend,
                                             EON_Object *obj,
-                                            EON_Float *oMatrix,
-                                            EON_Float *nMatrix,
+                                            EON_Float *objMatrix,
+                                            EON_Float *normMatrix,
                                             EON_Float *bmatrix,
                                             EON_Float *bnmatrix)
 {
     EON_Float tempMatrix[4 * 4];
 
     if (obj->GenMatrix) {
-        eon_matrix4x4Rotation(nMatrix,    1, obj->Rotation.X);
+        eon_matrix4x4Rotation(normMatrix,    1, obj->Rotation.X);
         eon_matrix4x4Rotation(tempMatrix, 2, obj->Rotation.Y);
-        eon_matrix4x4Multiply(nMatrix,       tempMatrix);
+        eon_matrix4x4Multiply(normMatrix,       tempMatrix);
         eon_matrix4x4Rotation(tempMatrix, 3, obj->Rotation.Z);
-        eon_matrix4x4Multiply(nMatrix,       tempMatrix);
-        memcpy(oMatrix, nMatrix, sizeof(EON_Float) * 4 * 4);
+        eon_matrix4x4Multiply(normMatrix,       tempMatrix);
+        memcpy(objMatrix, normMatrix, sizeof(EON_Float) * 4 * 4);
     } else {
-        memcpy(nMatrix, obj->RMatrix, sizeof(EON_Float) * 4 * 4);
+        memcpy(normMatrix, obj->RMatrix, sizeof(EON_Float) * 4 * 4);
     }
 
     if (bnmatrix) {
-        eon_matrix4x4Multiply(nMatrix, bnmatrix);
+        eon_matrix4x4Multiply(normMatrix, bnmatrix);
     }
 
     if (obj->GenMatrix) {
         eon_matrix4x4Translate(tempMatrix,
-                          obj->Position.X, obj->Position.Y, obj->Position.Z);
-        eon_matrix4x4Multiply(oMatrix, tempMatrix);
+                               obj->Position.X, obj->Position.Y, obj->Position.Z);
+        eon_matrix4x4Multiply(objMatrix, tempMatrix);
     } else {
-        memcpy(oMatrix, obj->TMatrix, sizeof(EON_Float) * 4 * 4);
+        memcpy(objMatrix, obj->TMatrix, sizeof(EON_Float) * 4 * 4);
     }
 
     if (bmatrix) {
-        eon_matrix4x4Multiply(oMatrix, bmatrix);
+        eon_matrix4x4Multiply(objMatrix, bmatrix);
     }
     return;
 }
 
 static EON_Status eon_rendererProcessObjectChildrens(EON_Renderer *rend,
                                                      EON_Object *object,
-                                                     EON_Float *oMatrix,
-                                                     EON_Float *nMatrix)
+                                                     EON_Float *objMatrix,
+                                                     EON_Float *normMatrix)
 {
     int i = 0;
     if (!object) {
@@ -1652,7 +1656,7 @@ static EON_Status eon_rendererProcessObjectChildrens(EON_Renderer *rend,
     for (i = 0; i < EON_MAX_CHILDREN; i ++) {
         if (object->Children[i]) {
             eon_rendererProcessObject(rend, object->Children[i],
-                                      oMatrix, nMatrix);
+                                      objMatrix, normMatrix);
         }
     }
 
@@ -1692,17 +1696,17 @@ static int eon_processFaceFillEnvironment(EON_Face *face,
 
 static void eon_rendererAdjustVertexMatrix(EON_Renderer *rend,
                                            EON_Object *obj,
-                                           EON_Float *oMatrix,
-                                           EON_Float *nMatrix)
+                                           EON_Float *objMatrix,
+                                           EON_Float *normMatrix)
 {
     EON_UInt32 x = obj->NumVertexes;
     EON_Vertex *V = obj->Vertexes;
 
     do {
-        eon_matrix4x4Apply(oMatrix,
+        eon_matrix4x4Apply(objMatrix,
                             V->Coords.X,  V->Coords.Y,  V->Coords.Z,
                            &V->Formed.X, &V->Formed.Y, &V->Formed.Z);
-        eon_matrix4x4Apply(nMatrix,
+        eon_matrix4x4Apply(normMatrix,
                             V->Norm.X,        V->Norm.Y,        V->Norm.Z,
                            &V->NormFormed.X, &V->NormFormed.Y, &V->NormFormed.Z);
         V++;
@@ -1727,21 +1731,19 @@ static int eon_rendererIsFaceVisible(EON_Face *face, EON_Vector3 *N)
 {
     EON_Vector3 *V = (EON_Vector3 *)&(face->Vertexes[0]->Formed);
     EON_Double p = eon_dotProduct(N, V);
-    /* XXX NormFormed !?! */
     return p < EON_ZEROF;
 }
 
-/* XXX ugliest name ever */
-static eon_rendererSetupCMatrix(EON_Renderer *rend,
-                                EON_Float *oMatrix, EON_Float *nMatrix)
+static eon_rendererAdjustByCamera(EON_Renderer *rend,
+                                  EON_Float *objMatrix, EON_Float *normMatrix)
 {
     EON_Float tempMatrix[4 * 4];
     EON_Vector3 *P = &(rend->Camera->Position);
 
     eon_matrix4x4Translate(tempMatrix, P->X, P->Y, P->Z);
-    eon_matrix4x4Multiply(oMatrix, tempMatrix);
-    eon_matrix4x4Multiply(oMatrix, rend->CMatrix);
-    eon_matrix4x4Multiply(nMatrix, rend->CMatrix);
+    eon_matrix4x4Multiply(objMatrix, tempMatrix);
+    eon_matrix4x4Multiply(objMatrix, rend->CMatrix);
+    eon_matrix4x4Multiply(normMatrix, rend->CMatrix);
 }
 
 static int eon_faceIsFlatShaded(EON_Face *face)
@@ -1756,8 +1758,8 @@ static EON_Status eon_rendererProcessObject(EON_Renderer *rend,
                                             EON_Float *bnmatrix)
 {
     EON_UInt32 j = 0, nFaces = 0;
-    EON_Float oMatrix[4 * 4], nMatrix[4 * 4], tempMatrix[4 * 4];
-    EON_Vector3 N;
+    EON_Float objMatrix[4 * 4], normMatrix[4 * 4], tempMatrix[4 * 4];
+    EON_Vector3 N = { .X = 0.0f, .Y = 0.0f, .Z = 0.0f };
 
     if (!rend || !object || !object->NumFaces || !object->NumVertexes) {
         return EON_ERROR; /* log */
@@ -1771,18 +1773,18 @@ static EON_Status eon_rendererProcessObject(EON_Renderer *rend,
     rend->TriStats[EON_TRI_STAT_INITIAL] += object->NumFaces;
 
     eon_rendererSetupObjectMatrixes(rend, object,
-                                    oMatrix, nMatrix,
+                                    objMatrix, normMatrix,
                                     bmatrix, bnmatrix);
     
-    eon_rendererProcessObjectChildrens(rend, object, oMatrix, nMatrix);
+    eon_rendererProcessObjectChildrens(rend, object, objMatrix, normMatrix);
 
-    eon_rendererSetupCMatrix(rend, oMatrix, nMatrix);
-    eon_rendererAdjustVertexMatrix(rend, object, oMatrix, nMatrix);
+    eon_rendererAdjustByCamera(rend, objMatrix, normMatrix);
+    eon_rendererAdjustVertexMatrix(rend, object, objMatrix, normMatrix);
 
     for (j = 0; j < object->NumFaces; j++) {
         EON_Face *face = &(object->Faces[j]);
         if (object->BackfaceCull || eon_faceIsFlatShaded(face)) {
-            eon_matrix4x4Apply(nMatrix,
+            eon_matrix4x4Apply(normMatrix,
                                face->Norm.X, face->Norm.Y, face->Norm.Z,
                                &N.X, &N.Y, &N.Z);
         }
