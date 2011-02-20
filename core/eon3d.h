@@ -376,18 +376,18 @@ typedef struct eon_material_ {
 /** \struct vector into a three-dimensional space.
 
 */
-typedef struct eon_vector_ {
+typedef struct eon_vector3_ {
     EON_Float X;
     EON_Float Y;
     EON_Float Z;
-} EON_Vector;
+} EON_Vector3;
 
 /** \struct a vertex, used within EON_Object */
 typedef struct eon_vertex_ {
-    EON_Vector Coords;     /**< vertex coordinate              (objectspace)*/
-    EON_Vector Formed;     /**< transformed vertex coordinate  (cameraspace)*/
-    EON_Vector Norm;       /**< unit vertex normal             (objectspace)*/
-    EON_Vector NormFormed; /**< transformed unit vertex normal (cameraspace)*/
+    EON_Vector3 Coords;    /**< vertex coordinate              (objectspace)*/
+    EON_Vector3 Formed;    /**< transformed vertex coordinate  (cameraspace)*/
+    EON_Vector3 Norm;      /**< unit vertex normal             (objectspace)*/
+    EON_Vector3 NormFormed;/**< transformed unit vertex normal (cameraspace)*/
 } EON_Vertex;
 
 /** \struct face (triangle) 
@@ -397,7 +397,7 @@ typedef struct eon_vertex_ {
 */
 struct eon_face_ {
     EON_Vertex   *Vertexes[EON_DIMENSIONS];   /**< vertexes of triangle    */
-    EON_Vector   Norm;                        /**< normal (object space)   */
+    EON_Vector3  Norm;                        /**< normal (object space)   */
     EON_Material *Material;                   /**< material of triangle    */
     EON_Int32    ScrX[EON_DIMENSIONS];        /**< FXP12.20 projected screen
                                                    coordinates             */
@@ -443,8 +443,8 @@ typedef struct eon_object_ {
                                              behind them?                  */
     EON_Boolean GenMatrix;              /**< Generate Matrix from the 
                                              following if set              */
-    EON_Vector   Position;
-    EON_Vector   Rotation;
+    EON_Vector3 Position;
+    EON_Vector3 Rotation;
                                         /**< Position and rotation of object:
                                              Note: rotations are around 
                                              X then Y then Z.
@@ -458,7 +458,7 @@ typedef struct eon_object_ {
 /** \struct light */
 typedef struct eon_light_ {
     EON_LightMode Type;            /**< ligthining mode                    */   
-    EON_Vector    Coords;          /**< If Type=EON_LIGHT_POINT*,
+    EON_Vector3   Coords;          /**< If Type=EON_LIGHT_POINT*,
                                         this is Position (EON_LIGHT_POINT_*),
                                         otherwise if EON_LIGHT_VECTOR,
                                         Unit vector                        */
@@ -476,7 +476,7 @@ typedef struct eon_camera_ {
     EON_Area        Clip;        /**< screen Clipping                      */
     EON_Rectangle   Screen;      /**< screen dimensions                    */
     EON_Rectangle   Center;      /**< center of screen                     */
-    EON_Vector      Position;    /**< position (worldspace)                */
+    EON_Vector3     Position;    /**< position (worldspace)                */
     EON_Float       Pitch;       /**< angle in degrees (worldspace)        */
     EON_Float       Pan;         /**< ditto                                */
     EON_Float       Roll;        /**< ditto                                */

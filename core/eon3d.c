@@ -511,12 +511,12 @@ static void eon_matrix4x4Apply(EON_Float *m,
     *outz = x*m[8] + y*m[9] + z*m[10] + m[11];
 }
 
-static EON_Double eon_dotProduct(EON_Vector *V1, EON_Vector *V2)
+static EON_Double eon_dotProduct(EON_Vector3 *V1, EON_Vector3 *V2)
 {
     return ((V1->X * V2->X) + (V1->Y * V2->Y) + (V1->Z * V2->Z));
 }
 
-static void eon_normalizeVector(EON_Vector *V)
+static void eon_normalizeVector(EON_Vector3 *V)
 {
     EON_Double len = eon_dotProduct(V, V);
     if (len > 0.0000000001) { /* FIXME magic numbers */
@@ -772,22 +772,23 @@ static void eon_resetVertexesNormals(EON_Object *obj)
     return;
 }
 
-static void eon_pointSet(EON_Vector *P, EON_Float X, EON_Float Y, EON_Float Z)
+static void eon_pointSet(EON_Vector3 *P,
+                         EON_Float X, EON_Float Y, EON_Float Z)
 {
     P->X = X;
     P->Y = Y;
     P->Z = Z;
 }
 
-static void eon_pointRAdd(EON_Vector *P, const EON_Vector *OP)
+static void eon_pointRAdd(EON_Vector3 *P, const EON_Vector3 *OP)
 {
     P->X += OP->X;
     P->Y += OP->Y;
     P->Z += OP->Z;
 }
 
-static void eon_pointDiff(const EON_Vector *P1, const EON_Vector *P2,
-                          EON_Vector *D)
+static void eon_pointDiff(const EON_Vector3 *P1, const EON_Vector3 *P2,
+                          EON_Vector3 *D)
 {
     D->X = P1->X - P2->X;
     D->Y = P1->Y - P2->Y;
@@ -805,7 +806,7 @@ int EON_objectCalcNormals(EON_Object *object)
 
     for (i = 0; i < object->NumFaces; i++) {
         EON_Face *f = &(object->Faces[i]);
-        EON_Vector d1, d2;
+        EON_Vector3 d1, d2;
 
         eon_pointDiff(&(f->Vertexes[0]->Coords),
                       &(f->Vertexes[1]->Coords), &d1);
@@ -1064,7 +1065,7 @@ typedef struct {
 
 typedef struct {
   EON_Light     *Light;
-  EON_Vector     Pos;
+  EON_Vector3   Pos;
 } eon_lightInfo;
 
 /*************************************************************************/
@@ -1129,7 +1130,7 @@ static EON_Float eon_clipCalcScaled(EON_Float aX, EON_Float bX, EON_Double scale
     EON_Float f = (EON_Float) (aX + (bX - aX) * scale);
 }
 
-static EON_Vector *eon_clipGetVertexFormed(eon_clipInfo *CI, int j, int vi)
+static EON_Vector3 *eon_clipGetVertexFormed(eon_clipInfo *CI, int j, int vi)
 {
     return &(CI[j].newVertexes[vi].Formed);
 }
@@ -1162,9 +1163,9 @@ static EON_UInt eon_clipToPlane(eon_clipContext *clip,
             EON_Double scale = (plane[3] - cur.Dot) / (next.Dot - cur.Dot);
 
             /* Points corresponding to Vertexes */
-            EON_Vector *iP = eon_clipGetVertexFormed(CI, 0, iV);
-            EON_Vector *nP = eon_clipGetVertexFormed(CI, 0, nV);
-            EON_Vector *oP = eon_clipGetVertexFormed(CI, 1, oV); /* careful! */
+            EON_Vector3 *iP = eon_clipGetVertexFormed(CI, 0, iV);
+            EON_Vector3 *nP = eon_clipGetVertexFormed(CI, 0, nV);
+            EON_Vector3 *oP = eon_clipGetVertexFormed(CI, 1, oV); /* careful! */
 
             oP->X = eon_clipCalcScaled(iP->X, nP->X, scale);
             oP->Y = eon_clipCalcScaled(iP->Y, nP->Y, scale);
@@ -1718,9 +1719,9 @@ static EON_Status eon_rendererAppendFace(EON_Renderer *rend,
     return eon_arrayAppend(&(rend->Faces), &fi);
 }
 
-static int eon_rendererIsFaceVisible(EON_Face *face, EON_Vector *N)
+static int eon_rendererIsFaceVisible(EON_Face *face, EON_Vector3 *N)
 {
-    EON_Vector *V = (EON_Vector *)&(face->Vertexes[0]->Formed);
+    EON_Vector3 *V = (EON_Vector3 *)&(face->Vertexes[0]->Formed);
     EON_Double p = eon_dotProduct(N, V);
     /* XXX NormFormed !?! */
     return p < 0.0000001; /* FIXME magic number */
@@ -1731,7 +1732,7 @@ static eon_rendererSetupCMatrix(EON_Renderer *rend,
                                 EON_Float *oMatrix, EON_Float *nMatrix)
 {
     EON_Float tempMatrix[4 * 4];
-    EON_Vector *P = &(rend->Camera->Position);
+    EON_Vector3 *P = &(rend->Camera->Position);
 
     eon_matrix4x4Translate(tempMatrix, P->X, P->Y, P->Z);
     eon_matrix4x4Multiply(oMatrix, tempMatrix);
@@ -1752,7 +1753,7 @@ static EON_Status eon_rendererProcessObject(EON_Renderer *rend,
 {
     EON_UInt32 j = 0, nFaces = 0;
     EON_Float oMatrix[4 * 4], nMatrix[4 * 4], tempMatrix[4 * 4];
-    EON_Vector N;
+    EON_Vector3 N;
 
     if (!rend || !object || !object->NumFaces || !object->NumVertexes) {
         return EON_ERROR; /* log */
@@ -1811,7 +1812,7 @@ static int eon_renderFaceNull(EON_Renderer *renderer,
 
 
 static int eon_cameraProjectPoint(EON_Camera *camera,
-                                  const EON_Vector *worldPoint,
+                                  const EON_Vector3 *worldPoint,
                                   EON_ScreenPoint *screenPoint)
 {
     /* TODO */
