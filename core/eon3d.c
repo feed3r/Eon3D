@@ -1703,8 +1703,8 @@ static void eon_rendererAdjustVertexMatrix(EON_Renderer *rend,
                             V->Coords.X,  V->Coords.Y,  V->Coords.Z,
                            &V->Formed.X, &V->Formed.Y, &V->Formed.Z);
         eon_matrix4x4Apply(nMatrix,
-                            V->Norm.X,    V->Norm.Y,    V->Norm.Z,
-                           &V->Formed.X, &V->Formed.Y, &V->Formed.Z);
+                            V->Norm.X,        V->Norm.Y,        V->Norm.Z,
+                           &V->NormFormed.X, &V->NormFormed.Y, &V->NormFormed.Z);
         V++;
     } while (--x);
 
