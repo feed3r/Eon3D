@@ -397,19 +397,8 @@ typedef struct eon_vertex_ {
 */
 struct eon_face_ {
     EON_Vertex   *Vertexes[EON_DIMENSIONS];   /**< vertexes of triangle    */
-    EON_Vector3  Norm;                        /**< normal (object space)   */
     EON_Material *Material;                   /**< material of triangle    */
-    EON_Int32    ScreenX[EON_DIMENSIONS];     /**< FXP12.20 projected screen
-                                                   coordinates             */
-    EON_Int32    ScreenY[EON_DIMENSIONS];     /**< ditto                   */
-    EON_Float    ScreenZ[EON_DIMENSIONS];     /**< Projected 1/Z
-                                                   coordinates             */
-    EON_Int32    MappingU[EON_DIMENSIONS];    /**< FXP16.16 texture mapping
-                                                   coordinatess            */
-    EON_Int32    MappingV[EON_DIMENSIONS];    /**< Ditto                   */
-    EON_Int32    EnvMappingU[EON_DIMENSIONS]; /**< FXP16.16 environment
-                                                   mapping coordinatess    */
-    EON_Int32    EnvMappingV[EON_DIMENSIONS]; /**< Ditto                   */
+    EON_Vector3  Norm;                        /**< normal (object space)   */
     EON_Float    FlatShade;                   /**< Flat intensity          */
     EON_Float    StaticLighting;              /**< Face static lighting.
                                                    Should usually be 0.0   */

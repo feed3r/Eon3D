@@ -248,10 +248,6 @@ typedef struct eon_clipinfo_ {
     EON_Vertex  newVertexes[8];
 
     EON_Double  Shades[8];
-    EON_Double  MappingU[8];
-    EON_Double  MappingV[8];
-    EON_Double  EnvMappingU[8];
-    EON_Double  EnvMappingV[8];
 } eon_clipInfo;
 
 
@@ -896,13 +892,6 @@ EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
             f->Vertexes[1] = o->Vertexes + *vv++;
             f->Vertexes[2] = o->Vertexes + *vv++;
 
-            f->MappingU[0] = (EON_Int32) ((EON_Double)*mm++ * 65535.0);
-            f->MappingV[0] = (EON_Int32) ((EON_Double)*mm++ * 65535.0);
-            f->MappingU[1] = (EON_Int32) ((EON_Double)*mm++ * 65535.0);
-            f->MappingV[1] = (EON_Int32) ((EON_Double)*mm++ * 65535.0);
-            f->MappingU[2] = (EON_Int32) ((EON_Double)*mm++ * 65535.0);
-            f->MappingV[2] = (EON_Int32) ((EON_Double)*mm++ * 65535.0);
-
             f++;
         }
 
@@ -1120,10 +1109,6 @@ static void eon_clipCalcPlaneData(eon_clipPlaneData *PD,
 static void eon_clipCopyInfo(eon_clipInfo *CI, EON_UInt inV, EON_UInt outV)
 {
     CI[1].Shades[outV]      = CI[0].Shades[inV];
-    CI[1].MappingU[outV]    = CI[0].MappingU[inV];
-    CI[1].MappingV[outV]    = CI[0].MappingV[inV];
-    CI[1].EnvMappingU[outV] = CI[0].EnvMappingU[inV];
-    CI[1].EnvMappingV[outV] = CI[0].EnvMappingV[inV];
     CI[1].newVertexes[outV] = CI[0].newVertexes[inV];
     return;
 }
@@ -1177,10 +1162,6 @@ static EON_UInt eon_clipToPlane(eon_clipContext *clip,
 
             /* XXX */
             CI[1].Shades[oV]      = eon_clipCalcScaled(CI[0].Shades[iV],      CI[0].Shades[nV],      scale);
-            CI[1].MappingU[oV]    = eon_clipCalcScaled(CI[0].MappingU[iV],    CI[0].MappingU[nV],    scale);
-            CI[1].MappingV[oV]    = eon_clipCalcScaled(CI[0].MappingV[iV],    CI[0].MappingV[nV],    scale);
-            CI[1].EnvMappingU[oV] = eon_clipCalcScaled(CI[0].EnvMappingU[iV], CI[0].EnvMappingU[nV], scale);
-            CI[1].EnvMappingV[oV] = eon_clipCalcScaled(CI[0].EnvMappingV[iV], CI[0].EnvMappingV[nV], scale);
 
             oV++;
         }
@@ -1276,10 +1257,6 @@ static void eon_clipCopyFaceInfo(eon_clipContext *clip,
     for (a = 0; a < 3; a++) {
         clip->ClipInfo[0].newVertexes[a] = *(face->Vertexes[a]);
         clip->ClipInfo[0].Shades[a]      =   face->Shades[a];
-        clip->ClipInfo[0].MappingU[a]    =   face->MappingU[a];
-        clip->ClipInfo[0].MappingV[a]    =   face->MappingV[a];
-        clip->ClipInfo[0].EnvMappingU[a] =   face->EnvMappingU[a];
-        clip->ClipInfo[0].EnvMappingV[a] =   face->EnvMappingV[a];
     }
 
     return;
@@ -1315,23 +1292,8 @@ static void eon_clipDoRenderFace(eon_clipContext *clip, EON_UInt numVerts,
         for (a = 0; a < 3; a ++) {
             eon_clipInfo *CI = &(clip->ClipInfo[0]);
             EON_UInt w = (a == 0) ?0 :(a + (k - 2));
-            EON_Double XFov, YFov, ZFov;
-
             newface.Vertexes[a]    =            CI->newVertexes + w;
             newface.Shades[a]      = (EON_Float)CI->Shades[w];
-            newface.MappingU[a]    = (EON_Int32)CI->MappingU[w];
-            newface.MappingV[a]    = (EON_Int32)CI->MappingV[w];
-            newface.EnvMappingU[a] = (EON_Int32)CI->EnvMappingU[w];
-            newface.EnvMappingV[a] = (EON_Int32)CI->EnvMappingV[w];
-            newface.ScreenZ[a]        = 1.0f / (newface.Vertexes[a]->Formed.Z);
-
-            ZFov = clip->Fov * newface.ScreenZ[a];
-            XFov = ZFov * newface.Vertexes[a]->Formed.X;
-            YFov = ZFov * newface.Vertexes[a]->Formed.Y;
-
-            /* XXX */
-            newface.ScreenX[a] = clip->CX + ((EON_Int32)((XFov *                (float) (1<<20))));
-            newface.ScreenX[a] = clip->CY - ((EON_Int32)((YFov * clip->AdjAsp * (float) (1<<20))));
         }
         newface.Material->_renderFace(rend, &newface, frame);
         rend->TriStats[EON_TRI_STAT_TESSELLED]++;
@@ -1685,12 +1647,6 @@ static int eon_processFaceGouradShading(EON_Face *face,
 static int eon_processFaceFillEnvironment(EON_Face *face,
                                           EON_Renderer *rend)
 {
-    face->EnvMappingU[0] = 32768 + (EON_Int32)(face->Vertexes[0]->NormFormed.X * 32768.0);
-    face->EnvMappingV[0] = 32768 - (EON_Int32)(face->Vertexes[0]->NormFormed.Y * 32768.0);
-    face->EnvMappingU[1] = 32768 + (EON_Int32)(face->Vertexes[1]->NormFormed.X * 32768.0);
-    face->EnvMappingV[1] = 32768 - (EON_Int32)(face->Vertexes[1]->NormFormed.Y * 32768.0);
-    face->EnvMappingU[2] = 32768 + (EON_Int32)(face->Vertexes[2]->NormFormed.X * 32768.0);
-    face->EnvMappingV[2] = 32768 - (EON_Int32)(face->Vertexes[2]->NormFormed.Y * 32768.0);
     return 0;
 }
 
