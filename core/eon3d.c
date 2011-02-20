@@ -572,9 +572,9 @@ EON_Material *EON_newMaterial(void)
     if (m) { /* FIXME magic numbers */
         m->EnvScaling = 1.0f;
         m->TexScaling = 1.0f;
-        eon_RGBSet(&m->Ambient,  0,   0,   0);
-        eon_RGBSet(&m->Diffuse,  128, 128, 128);
-        eon_RGBSet(&m->Specular, 128, 128, 128);
+        EON_RGBSet(&m->Ambient,  0,   0,   0);
+        EON_RGBSet(&m->Diffuse,  128, 128, 128);
+        EON_RGBSet(&m->Specular, 128, 128, 128);
         m->Shininess = 4;
         m->NumGradients = 32;
         m->FadeDist = 1000.0;
@@ -772,28 +772,22 @@ static void eon_resetVertexesNormals(EON_Object *obj)
     return;
 }
 
-typedef struct eon_pointx_ {
-    EON_Double X;
-    EON_Double Y;
-    EON_Double Z;
-} EON_PointX;
-
-static void eon_PointSet(EON_Point *P, EON_Float X, EON_Float Y, EON_Float Z)
+static void eon_pointSet(EON_Vector *P, EON_Float X, EON_Float Y, EON_Float Z)
 {
     P->X = X;
     P->Y = Y;
     P->Z = Z;
 }
 
-static void eon_PointRAdd(EON_Point *P, const EON_Point *OP)
+static void eon_pointRAdd(EON_Vector *P, const EON_Vector *OP)
 {
     P->X += OP->X;
     P->Y += OP->Y;
     P->Z += OP->Z;
 }
 
-static void eon_PointDiff(const EON_Point *P1, const EON_Point *P2,
-                          EON_PointX *D)
+static void eon_pointDiff(const EON_Vector *P1, const EON_Vector *P2,
+                          EON_Vector *D)
 {
     D->X = P1->X - P2->X;
     D->Y = P1->Y - P2->Y;
@@ -811,27 +805,27 @@ int EON_objectCalcNormals(EON_Object *object)
 
     for (i = 0; i < object->NumFaces; i++) {
         EON_Face *f = &(object->Faces[i]);
-        EON_PointX d1, d2;
+        EON_Vector d1, d2;
 
-        eon_PointDiff(&(f->Vertexes[0]->Coords),
+        eon_pointDiff(&(f->Vertexes[0]->Coords),
                       &(f->Vertexes[1]->Coords), &d1);
-        eon_PointDiff(&(f->Vertexes[0]->Coords),
+        eon_pointDiff(&(f->Vertexes[0]->Coords),
                       &(f->Vertexes[2]->Coords), &d2);
 
         f->Norm.X = (EON_Float) (d1.Y * d2.Z - d1.Z * d2.Y);
         f->Norm.Y = (EON_Float) (d1.Z * d2.X - d1.X * d2.Z);
         f->Norm.Z = (EON_Float) (d1.X * d2.Y - d1.Y * d2.X);
 
-        eon_normalizeVector((EON_Vector *)&(f->Norm));
+        eon_normalizeVector(&(f->Norm));
 
-        eon_PointRAdd(&(f->Vertexes[0]->Norm), &(f->Norm));
-        eon_PointRAdd(&(f->Vertexes[1]->Norm), &(f->Norm));
-        eon_PointRAdd(&(f->Vertexes[2]->Norm), &(f->Norm));
+        eon_pointRAdd(&(f->Vertexes[0]->Norm), &(f->Norm));
+        eon_pointRAdd(&(f->Vertexes[1]->Norm), &(f->Norm));
+        eon_pointRAdd(&(f->Vertexes[2]->Norm), &(f->Norm));
     }
 
     for (i = 0; i < object->NumVertexes; i++) {
         EON_Vertex *v = &(object->Vertexes[i]);
-        eon_normalizeVector((EON_Vector *)&(v->Norm));
+        eon_normalizeVector(&(v->Norm));
     }
 
     for (i = 0; i < EON_MAX_CHILDREN; i++) {
@@ -883,14 +877,14 @@ EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
         h /= 2;
         d /= 2;
 
-        eon_PointSet(&(v[0].Coords), -w,  h,  d);
-        eon_PointSet(&(v[1].Coords),  w,  h,  d);
-        eon_PointSet(&(v[2].Coords), -w,  h, -d);
-        eon_PointSet(&(v[3].Coords),  w,  h, -d);
-        eon_PointSet(&(v[4].Coords), -w, -h,  d);
-        eon_PointSet(&(v[5].Coords),  w, -h,  d);
-        eon_PointSet(&(v[6].Coords), -w, -h, -d);
-        eon_PointSet(&(v[7].Coords),  w, -h, -d);
+        eon_pointSet(&(v[0].Coords), -w,  h,  d);
+        eon_pointSet(&(v[1].Coords),  w,  h,  d);
+        eon_pointSet(&(v[2].Coords), -w,  h, -d);
+        eon_pointSet(&(v[3].Coords),  w,  h, -d);
+        eon_pointSet(&(v[4].Coords), -w, -h,  d);
+        eon_pointSet(&(v[5].Coords),  w, -h,  d);
+        eon_pointSet(&(v[6].Coords), -w, -h, -d);
+        eon_pointSet(&(v[7].Coords),  w, -h, -d);
 
         for (x = 0; x < 12; x ++) {
             f->Vertexes[0] = o->Vertexes + *vv++;
@@ -1070,7 +1064,7 @@ typedef struct {
 
 typedef struct {
   EON_Light     *Light;
-  EON_Point     Pos;
+  EON_Vector     Pos;
 } eon_lightInfo;
 
 /*************************************************************************/
@@ -1135,7 +1129,7 @@ static EON_Float eon_clipCalcScaled(EON_Float aX, EON_Float bX, EON_Double scale
     EON_Float f = (EON_Float) (aX + (bX - aX) * scale);
 }
 
-static EON_Point *eon_clipGetVertexFormed(eon_clipInfo *CI, int j, int vi)
+static EON_Vector *eon_clipGetVertexFormed(eon_clipInfo *CI, int j, int vi)
 {
     return &(CI[j].newVertexes[vi].Formed);
 }
@@ -1168,9 +1162,9 @@ static EON_UInt eon_clipToPlane(eon_clipContext *clip,
             EON_Double scale = (plane[3] - cur.Dot) / (next.Dot - cur.Dot);
 
             /* Points corresponding to Vertexes */
-            EON_Point *iP = eon_clipGetVertexFormed(CI, 0, iV);
-            EON_Point *nP = eon_clipGetVertexFormed(CI, 0, nV);
-            EON_Point *oP = eon_clipGetVertexFormed(CI, 1, oV); /* careful! */
+            EON_Vector *iP = eon_clipGetVertexFormed(CI, 0, iV);
+            EON_Vector *nP = eon_clipGetVertexFormed(CI, 0, nV);
+            EON_Vector *oP = eon_clipGetVertexFormed(CI, 1, oV); /* careful! */
 
             oP->X = eon_clipCalcScaled(iP->X, nP->X, scale);
             oP->Y = eon_clipCalcScaled(iP->Y, nP->Y, scale);
@@ -1737,7 +1731,7 @@ static eon_rendererSetupCMatrix(EON_Renderer *rend,
                                 EON_Float *oMatrix, EON_Float *nMatrix)
 {
     EON_Float tempMatrix[4 * 4];
-    EON_Point *P = &(rend->Camera->Position);
+    EON_Vector *P = &(rend->Camera->Position);
 
     eon_matrix4x4Translate(tempMatrix, P->X, P->Y, P->Z);
     eon_matrix4x4Multiply(oMatrix, tempMatrix);
@@ -1817,7 +1811,7 @@ static int eon_renderFaceNull(EON_Renderer *renderer,
 
 
 static int eon_cameraProjectPoint(EON_Camera *camera,
-                                  const EON_Point *worldPoint,
+                                  const EON_Vector *worldPoint,
                                   EON_ScreenPoint *screenPoint)
 {
     /* TODO */
@@ -1827,20 +1821,20 @@ static int eon_cameraProjectPoint(EON_Camera *camera,
 static int eon_renderFaceVertexes(EON_Renderer *renderer,
                                   EON_Face *face, EON_Frame *frame)
 {
-    static const EON_RGB rgb = { .R = 255; .G = 255; .B = 255; .A = 255; };
+    static const EON_RGB rgb = { .R = 255, .G = 255, .B = 255, .A = 255 };
     EON_UInt32 color = EON_RGBPack(&rgb);
     EON_Camera *cam = renderer->Camera; /* shortcut */
     EON_ScreenPoint point;
 
     /* loop unrolled */
     eon_cameraProjectPoint(cam, &(face->Vertexes[EON_X]->Formed), &point);
-    EON_framePutPixel(frame, screenPoint.X, screenPoint.Y, color);
+    EON_framePutPixel(frame, point.X, point.Y, color);
 
     eon_cameraProjectPoint(cam, &(face->Vertexes[EON_Y]->Formed), &point);
-    EON_framePutPixel(frame, screenPoint.X, screenPoint.Y, color);
+    EON_framePutPixel(frame, point.X, point.Y, color);
 
     eon_cameraProjectPoint(cam, &(face->Vertexes[EON_Z]->Formed), &point);
-    EON_framePutPixel(frame, screenPoint.X, screenPoint.Y, color);
+    EON_framePutPixel(frame, point.X, point.Y, color);
 
     return 0;
 }

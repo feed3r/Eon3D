@@ -122,7 +122,7 @@ typedef enum eon_loglevel_ {
 typedef enum eon_dimension_ {
     EON_X = 0,
     EON_Y = 1,
-    EON_X = 2
+    EON_Z = 2
 } EON_Dimension;
 
 
@@ -372,27 +372,9 @@ typedef struct eon_material_ {
                                                   with this material       */
 } EON_Material;
 
-/** \struct point into a three-dimensional space.
-
-    The layout (and thus the ABI) must always be compatibile 
-    with EON_Vector.
-
-    \see EON_Vector.
-*/
-typedef struct eon_point_ {
-    EON_Float X;
-    EON_Float Y;
-    EON_Float Z;
-} EON_Point;
-
 
 /** \struct vector into a three-dimensional space.
 
-    has just one endpoint since the other one is always the origin. 
-    The layout (and thus the ABI) must always be compatibile 
-    with EON_Point.
-
-    \see EON_Point.
 */
 typedef struct eon_vector_ {
     EON_Float X;
@@ -402,10 +384,10 @@ typedef struct eon_vector_ {
 
 /** \struct a vertex, used within EON_Object */
 typedef struct eon_vertex_ {
-    EON_Point Coords;      /**< vertex coordinate              (objectspace)*/
-    EON_Point Formed;      /**< transformed vertex coordinate  (cameraspace)*/
-    EON_Point Norm;        /**< unit vertex normal             (objectspace)*/
-    EON_Point NormFormed;  /**< transformed unit vertex normal (cameraspace)*/
+    EON_Vector Coords;     /**< vertex coordinate              (objectspace)*/
+    EON_Vector Formed;     /**< transformed vertex coordinate  (cameraspace)*/
+    EON_Vector Norm;       /**< unit vertex normal             (objectspace)*/
+    EON_Vector NormFormed; /**< transformed unit vertex normal (cameraspace)*/
 } EON_Vertex;
 
 /** \struct face (triangle) 
@@ -415,7 +397,7 @@ typedef struct eon_vertex_ {
 */
 struct eon_face_ {
     EON_Vertex   *Vertexes[EON_DIMENSIONS];   /**< vertexes of triangle    */
-    EON_Point    Norm;                        /**< normal (object space)   */
+    EON_Vector   Norm;                        /**< normal (object space)   */
     EON_Material *Material;                   /**< material of triangle    */
     EON_Int32    ScrX[EON_DIMENSIONS];        /**< FXP12.20 projected screen
                                                    coordinates             */
@@ -461,8 +443,8 @@ typedef struct eon_object_ {
                                              behind them?                  */
     EON_Boolean GenMatrix;              /**< Generate Matrix from the 
                                              following if set              */
-    EON_Point   Position;
-    EON_Point   Rotation;
+    EON_Vector   Position;
+    EON_Vector   Rotation;
                                         /**< Position and rotation of object:
                                              Note: rotations are around 
                                              X then Y then Z.
@@ -476,7 +458,7 @@ typedef struct eon_object_ {
 /** \struct light */
 typedef struct eon_light_ {
     EON_LightMode Type;            /**< ligthining mode                    */   
-    EON_Point     Coords;          /**< If Type=EON_LIGHT_POINT*,
+    EON_Vector    Coords;          /**< If Type=EON_LIGHT_POINT*,
                                         this is Position (EON_LIGHT_POINT_*),
                                         otherwise if EON_LIGHT_VECTOR,
                                         Unit vector                        */
@@ -494,7 +476,7 @@ typedef struct eon_camera_ {
     EON_Area        Clip;        /**< screen Clipping                      */
     EON_Rectangle   Screen;      /**< screen dimensions                    */
     EON_Rectangle   Center;      /**< center of screen                     */
-    EON_Point       Position;    /**< position (worldspace)                */
+    EON_Vector      Position;    /**< position (worldspace)                */
     EON_Float       Pitch;       /**< angle in degrees (worldspace)        */
     EON_Float       Pan;         /**< ditto                                */
     EON_Float       Roll;        /**< ditto                                */
