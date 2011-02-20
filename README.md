@@ -107,6 +107,28 @@ The modules breakdown of Eon3D follows.
   - Description: Save renders to raw AVI files.
 
 
+Getting Started
+---------------
+
+Assumptions: you got a *nix-like (linux) shell running
+and you are positioned into the eon3d source tree root.
+`$` represents the command prompt. The eon3d source tree root
+it is supposed to be named `eon3d`.
+
+First, you need to build the software. While in-tree builds
+are supported, out of tree builds are recommended.
+To create the binaries dir: `mkdir ../build_eon3d`.
+Then move into it: `cd ../build_eon3d`.
+Run cmake to configure the build environment: `cmake ../eon3d`.
+If you need to specify some configuration options, you
+can check out the 
+[cmake docs](http://www.cmake.org/cmake/help/runningcmake.html).
+Now you can build the package: `make`.
+If you want to install the software: `make install`.
+
+Once Eon3D is built, you can start playing with the `tools` and/or
+the runnable `examples` (check the corresponding subdirectoris).
+
 License Notice
 --------------
 
