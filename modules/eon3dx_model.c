@@ -199,7 +199,8 @@ static void eonx_PLYSetup(eonx_PLYContext *ctx, p_ply ply,
     return;
 }
 
-static EON_Object *eonx_PLYRead(p_ply ply, const char *fileName)
+static EON_Object *eonx_PLYRead(p_ply ply, const char *fileName,
+                                EON_Material *material)
 {
     EON_Object *obj = NULL;
     int ret = 0;
@@ -215,7 +216,9 @@ static EON_Object *eonx_PLYRead(p_ply ply, const char *fileName)
 
         eonx_PLYSetup(&ctx, ply, fileName);
 
-        ctx.Obj = EON_newObject(V, T, material); 
+        ctx.Obj = EON_newObject(ctx.VertexesNum,
+                                ctx.TrianglesNum,
+                                material); 
         if (!ctx.Obj) {
             EON_log(EONx_PLY_TAG, EON_LOG_ERROR,
                     "unable to allocate the object");
@@ -228,7 +231,7 @@ static EON_Object *eonx_PLYRead(p_ply ply, const char *fileName)
                 EON_delObject(ctx.Obj);
             } else {
                 EON_objectCalcNormals(ctx.Obj);
-                obj = Ctx.Obj;
+                obj = ctx.Obj;
             }
         }
     }
@@ -250,7 +253,7 @@ EON_Object *EONx_modelLoadFilePLY(EONx_Model *model,
         EON_log(EONx_PLY_TAG, EON_LOG_ERROR,
                 "unable to open the model [%s]", fileName);
     } else {
-        obj = eonx_PLYRead(ply, fileName);
+        obj = eonx_PLYRead(ply, fileName, material);
         ply_close(ply);
     } 
     return obj;
