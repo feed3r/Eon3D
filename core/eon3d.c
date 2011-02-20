@@ -39,6 +39,10 @@ enum {
     EON_MAX_LOG_PREFIX_LEN = 32
 };
 
+
+/* `almost' zero in floating point */
+#define EON_ZEROF   (0.0000000001)
+
 /*************************************************************************/
 /* Rendering utilities: generic resizable array object                   */
 /*************************************************************************/
@@ -519,7 +523,7 @@ static EON_Double eon_dotProduct(EON_Vector3 *V1, EON_Vector3 *V2)
 static void eon_normalizeVector(EON_Vector3 *V)
 {
     EON_Double len = eon_dotProduct(V, V);
-    if (len > 0.0000000001) { /* FIXME magic numbers */
+    if (len > EON_ZEROF) {
         EON_Float t = (EON_Float)sqrt(len);
         V->X /= t;
         V->Y /= t;
@@ -1211,7 +1215,7 @@ static void eon_clipSetFrustumPlane(eon_clipContext *clip,
     EON_Double *clipPlane = clip->ClipPlanes[dir];
     const int *nVec = nVector[dir];
 
-    clipPlane[3] = 0.00000001; /* FIXME */
+    clipPlane[3] = EON_ZEROF;
     if (ref == limit) {
         clipPlane[0] = orient[dir];
     } else {
@@ -1724,7 +1728,7 @@ static int eon_rendererIsFaceVisible(EON_Face *face, EON_Vector3 *N)
     EON_Vector3 *V = (EON_Vector3 *)&(face->Vertexes[0]->Formed);
     EON_Double p = eon_dotProduct(N, V);
     /* XXX NormFormed !?! */
-    return p < 0.0000001; /* FIXME magic number */
+    return p < EON_ZEROF;
 }
 
 /* XXX ugliest name ever */
