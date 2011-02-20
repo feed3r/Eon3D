@@ -25,8 +25,6 @@ static int EONx_exit(int ret)
 
 int main(int argc, char *argv[])
 {
-    int i, ret;
-
     EON_Light *light;       /* Our light */
     EON_Object *cube;       /* Our cube object */
     EON_Material *cubeMat;  /* The material for the cube */
