@@ -122,13 +122,7 @@ static eonx_SDLConsole *eonx_initSDLSurface(eonx_SDLConsole *console)
 {
     RETURN_IF_NULL_PTR(console);
 
-    if (SDL_MUSTLOCK(console->Surface)) {
-        if (SDL_LockSurface(console->Surface) < 0 ) {
-            EON_log(EONx_SDL_TAG, EON_LOG_ERROR,
-                    "cannot lock the SDL Surface: %s", SDL_GetError());
-            console = NULL;
-        }
-    }
+    /* stub */
 
     return console;
 }
@@ -137,16 +131,15 @@ static eonx_SDLConsole *eonx_finiSDLSurface(eonx_SDLConsole *console)
 {
     RETURN_IF_NULL_PTR(console);
 
-    if (SDL_MUSTLOCK(console->Surface)) {
-        SDL_UnlockSurface(console->Surface);
-    }
+    /* stub */
+
     return console;
 }
 
 
 /* Almost verbatim copy from www.libsdl.org "Introduction" section */
 static EON_Status eonx_SDLDrawPixel(eonx_SDLConsole *console,
-                                    int y, int x, EON_UInt32 color)
+                                    int x, int y, EON_UInt32 color)
 {
     void *drawArea = console->Surface->pixels;
     Uint32 pitch = console->Surface->pitch;
@@ -155,6 +148,16 @@ static EON_Status eonx_SDLDrawPixel(eonx_SDLConsole *console,
 
     EON_RGBUnpack(&RGB, color);
     px = SDL_MapRGB(console->Surface->format, RGB.R, RGB.G, RGB.B); 
+
+    EON_log(EONx_SDL_TAG, EON_LOG_DEBUG, "Pixel @ (%ix%i)", x, y);
+
+    if (SDL_MUSTLOCK(console->Surface)) {
+        if (SDL_LockSurface(console->Surface) < 0 ) {
+            EON_log(EONx_SDL_TAG, EON_LOG_ERROR,
+                    "cannot lock the SDL Surface: %s", SDL_GetError());
+            return EON_ERROR;
+        }
+    }
 
     switch (console->Surface->format->BytesPerPixel) {
       case 1: { /* Assuming 8-bpp */
@@ -185,6 +188,9 @@ static EON_Status eonx_SDLDrawPixel(eonx_SDLConsole *console,
       break;
     }
 
+    if (SDL_MUSTLOCK(console->Surface)) {
+        SDL_UnlockSurface(console->Surface);
+    }
     return EON_OK;
 }
 
@@ -198,7 +204,7 @@ static EON_Status eonx_SDLPutPixel(EON_Frame *frame,
     }
     eonx_SDLConsole *SDLCon = frame->_private;
 
-    return eonx_SDLDrawPixel(SDLCon, y, x, color);
+    return eonx_SDLDrawPixel(SDLCon, x, y, color);
 }
 
 /*************************************************************************/
@@ -210,6 +216,8 @@ static EON_Status eonx_SDLConsoleClear(void *SDLCon_)
     
     FAIL_IF_NULL_PTR(SDLCon, EONx_SDL_TAG, "clear");
     
+    EON_log(EONx_SDL_TAG, EON_LOG_DEBUG, "clear surface");
+
     Uint32 color = SDL_MapRGB(SDLCon->Surface->format, C, C, C);
     SDL_FillRect(SDLCon->Surface, NULL, color);
 
@@ -272,11 +280,15 @@ static EON_Status eonx_SDLConsoleShow(void *SDLCon_,
     FAIL_IF_NULL_PTR(SDLCon, EONx_SDL_TAG, "show frame");
     FAIL_IF_NULL_PTR(frame,  EONx_SDL_TAG, "show frame");
 
+    EON_log(EONx_SDL_TAG, EON_LOG_DEBUG, "show frame @%p DR=[%s]",
+            frame, (frame->Flags & EON_FRAME_FLAG_DR) ?"Y" :"N");
+
     if (!(frame->Flags & EON_FRAME_FLAG_DR)) {
         ret = eonx_SDLCopyFrame(SDLCon, frame);
     }
 
-    /* blit surface */
+    SDL_UpdateRect(SDLCon->Surface, 0, 0, 0, 0);
+    SDL_Flip(SDLCon->Surface);
 
     return ret;
 }
