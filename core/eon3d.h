@@ -253,7 +253,10 @@ typedef struct eon_texture_ {
     EON_Float       VScale; /**< ditto                                 */
 } EON_Texture;
 
-/** \struct a RGB24 values. Alpha channel is carried as bonus. */
+/** \struct represents a RGB(A)32 type. Alpha channel is carried as bonus.
+
+    8 bits per component.
+*/
 typedef struct eon_rgb_ {
     EON_UInt8 R;  /**< Red                      */
     EON_UInt8 G;  /**< Green                    */
@@ -320,6 +323,9 @@ typedef int (*EON_ProcessFaceFn)(EON_Face *face, EON_Renderer *rend);
 
 /*************************************************************************/
 
+/* \struct point in two-dimensional (screen) space
+
+*/
 typedef struct eon_screenpoint_ {
     EON_Int32 X;
     EON_Int32 Y;
@@ -418,8 +424,6 @@ struct eon_face_ {
 /** \struct object
 
     An object is the main viewable content.
-
-    TODO: port to eon_array?
 */
 typedef struct eon_object_ {
     EON_UInt32  NumVertexes;            /**< number of vertexes            */
@@ -550,8 +554,37 @@ void EON_logDefaultHandler(void *userData,
 /* RGB/color handling                                                    */
 /*************************************************************************/
 
+/** \fn sets the colour component values of a RGB type.
+
+    \param RGB the type to setup.
+    \param R the new value for the Red component.
+    \param G the new value for the Green component.
+    \param B the new value for the Blue component.
+
+    \see EON_RGB
+*/
 void EON_RGBSet(EON_RGB *rgb, EON_UInt8 R, EON_UInt8 G, EON_UInt8 B);
+
+/** \fn packs a RGB type into a suitable native type.
+
+    encodes the RGB type into a machine integer.
+
+    \param RGB the RGB type to pack
+    \return a native type which encodes the RGB.
+
+    \see EON_RGBUnpack
+*/
 EON_UInt32 EON_RGBPack(const EON_RGB *RGB);
+
+/** \fn unpacks a RGB type from a native type.
+
+   decodes a machine integer back into a RGB.
+
+   \param RGB the RGB type to unpack.
+   \param color the encoded RGB value.
+
+   \see EON_RGBPack
+*/
 void EON_RGBUnpack(EON_RGB *RGB, EON_UInt32 color);
 
 
@@ -605,15 +638,95 @@ EON_Status EON_materialSeal(EON_Material *material);
 /* Objects and primitives                                                */
 /*************************************************************************/
 
+/** \fn allocates a new raw object.
+
+    allocate the resources for a new object with the given number
+    of vertexes and faces. The vertexes and the faces are left not
+    initialized not connected. Further processing is needed to properly
+    setup the newly created object.
+
+    \param vertexes number of vertexes of the object.
+    \param faces number of facees of the object.
+    \param material handle of the material of the object.
+    \return a new object handle on success,
+            NULL on failure.
+
+    \see EON_delObject
+*/
 EON_Object *EON_newObject(EON_UInt32 vertexes, EON_UInt32 faces,
                           EON_Material *material);
+
+/** \fn deallocates an object.
+
+    deallocates any EON_Object and frees all the resources acquired
+    by the object.
+
+    \param object the object to deallocate.
+    \return always NULL
+
+    \see EON_newObject
+*/ 
 EON_Object *EON_delObject(EON_Object *object);
 
+/** \fn (re)set the material for an object.
+
+    reset the material associated to a given object.
+    It is safe to call multiple times this function against
+    a given object.
+
+    \param object handle to an EON_Object.
+    \param material handle of the material of the object.
+    \return EON_OK on success,
+            EON_ERROR otherwise.
+
+    \see EON_newObject
+*/ 
 EON_Status EON_objectSetMaterial(EON_Object *object,
                                  EON_Material *material);
+
+/** \fn (re)calculate the normals of the faces for a given object.
+
+    It is safe to call multiple times this function against
+    a given object.
+
+    \param object handle to an EON_Object.
+    \return EON_OK on success,
+            EON_ERROR otherwise.
+*/
 EON_Status EON_objectCalcNormals(EON_Object *object);
+
+/** \fn center an object into the worldspace coordinates.
+
+    It is safe to call multiple times this function against
+    a given object.
+
+    \param object handle to an EON_Object.
+    \return EON_OK on success,
+            EON_ERROR otherwise.
+*/
 EON_Status EON_objectCenter(EON_Object *object);
 
+
+/*************************************************************************/
+/* Prebuilt basic objects                                                */
+/*************************************************************************/
+
+/** \fn build a box (pseudocube) object centered in the origin of the
+    worldspace.
+
+    release this object using EON_delObject.
+
+    \param w width of the box.
+    \param d depth of the box.
+    \param h height of the box.
+    \param material handle to the new material of the object.
+    \param material handle of the material of the object.
+    \return a new object handle on success,
+            NULL on failure.
+
+    \see EON_delObject
+    \see EON_newObject
+*/
 EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
                        EON_Material *material);
 
