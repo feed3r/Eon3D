@@ -1,6 +1,8 @@
 project(eon3d)
 cmake_minimum_required(VERSION 2.8)
 
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
+
 include(CheckIncludeFile)
 include(CheckCSourceCompiles)
 include(CheckFunctionExists)
@@ -17,4 +19,5 @@ add_subdirectory(core)
 add_subdirectory(modules)
 add_subdirectory(examples)
 add_subdirectory(deps/rply-1.01)
+add_subdirectory(tests)
 
