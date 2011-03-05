@@ -11,5 +11,3 @@ target_link_libraries(ex01_cube eon3d)
 target_link_libraries(ex01_cube eon3dx_console)
 target_link_libraries(ex01_cube m)
 
-
-

@@ -1,12 +1,12 @@
-/*
- * ex01_cube.c: the very first eon3d example: rotates a flat shaded cube
- */
+/**************************************************************************
+ * ex01_cube.c: the very first eon3d example: rotates a flat shaded cube  *
+ **************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <eon3d.h> 
-#include <eon3dx_console.h>
+#include "eon3d.h"
+#include "eon3dx_console.h"
 
 
 enum {
@@ -36,9 +36,9 @@ int main(int argc, char *argv[])
 
     EON_startup();
 
-    cubeMat = EON_newMaterial();    
+    cubeMat = EON_newMaterial();
     cubeMat->NumGradients = 100; /* Have it use 100 colors */
-    cubeMat->Shade = EON_SHADE_FLAT; 
+    cubeMat->Shade = EON_SHADE_FLAT;
     EON_materialSeal(cubeMat);   /* Don't forget this! */
 
     cube = EON_newBox(100.0, 100.0, 100.0, cubeMat); // Create the cube
