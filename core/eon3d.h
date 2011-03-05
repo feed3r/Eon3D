@@ -460,7 +460,10 @@ typedef struct eon_light_ {
                                         EON_LIGHT_POINT_DISTANCE is 50%    */
 } EON_Light;
 
-/** \struct camera */
+/** \struct camera
+
+    FIXME explain.
+*/
 typedef struct eon_camera_ {
     EON_Float       FieldOfView; /**< FOV in degrees valid range is 1-179  */
     EON_Float       AspectRatio; /**< aspect ratio (usually 1.0)           */
@@ -478,12 +481,14 @@ typedef struct eon_camera_ {
 /** \struct frame
     \brief a frame is a rendering destination buffer.
     
+    FIXME explain.
+    
     the fields marked with [X] are `private' for internal usage only.
     The client shall not touch those.
 */
 struct eon_frame_ {
     EON_Rectangle   F;       /**< frame dimensions */
-    EON_Byte        *Pixels; /**< the actual data (TODO) */
+    EON_Byte        *Pixels; /**< the actual data (FIXME) */
     EON_UInt32      Flags;   /**< bitmask of options and flags */
 
     /** direct rendering support */
@@ -656,9 +661,9 @@ EON_Status EON_materialSeal(EON_Material *material);
 EON_Object *EON_newObject(EON_UInt32 vertexes, EON_UInt32 faces,
                           EON_Material *material);
 
-/** \fn deallocates an object.
+/** \fn deallocate an object.
 
-    deallocates any EON_Object and frees all the resources acquired
+    deallocate any EON_Object and frees all the resources acquired
     by the object.
 
     \param object the object to deallocate.
@@ -734,20 +739,107 @@ EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
 /* Lights                                                                */
 /*************************************************************************/
 
+/** \fn create (allocate and initialize) a new light.
+
+    release this light using EON_delLight.
+
+    \param mode type of the new light (see EON_LightMode).
+    \param x X coordinate of the light source (worldspace).
+    \param y Y coordinate of the light source (worldspace).
+    \param z Z coordinate of the light source (worldspace).
+    \param intensity intensity of the light source (FIXME).
+    \param halfDist FIXME.
+    \return a new light handle on success,
+            NULL on error.
+
+    \see EON_delLight
+*/
 EON_Light *EON_newLight(EON_LightMode mode,
                         EON_Float x, EON_Float y, EON_Float z,
                         EON_Float intensity,
                         EON_Float halfDist);
+
+/** \fn deallocate a light.
+
+    deallocate any EON_Light and frees all the resources acquired
+    by the light.
+
+    \param light handle to the light to deallocate.
+
+    \see EON_newLight
+*/ 
 void EON_delLight(EON_Light *light);
 
 /*************************************************************************/
 /* Frames                                                                */
 /*************************************************************************/
 
+/** \fn create (allocate and initialize) a new frame.
+
+    A frame is a rendering target for EON and will contain the rendered
+    product. A frame can be just a buffer ready for further processing
+    or efficiently bound to a console for direct display.
+
+    The frame dimensions usually matches the corresponding camera
+    dimensions used for rendering, however this constraint is not
+    enforced until the actual rendering step.
+
+    Read access to the frame content (i.e. the pixels) is always possible
+    (FIXME).
+    Write access is possible through the EON_framePutPixel function.
+
+    \param width the width of the frame.
+    \param height the height of the frame.
+    \return a new frame handle on success,
+            NULL on error.
+
+    \see EON_delFrame
+    \see EON_framePutPixel
+    \see EON_Frame
+    \see EON_Camera
+*/
 EON_Frame *EON_newFrame(EON_Int width, EON_Int height);
+
+/** \fn deallocate a frame.
+
+    deallocate any EON_Frame (i.e. obtained through EON_newFrame, 
+    from a console or from whatever EON source) and frees all the
+    resources acquired by the frame.
+
+    \param handle to frame the frame to deallocate.
+
+    \see EON_newFrame
+*/ 
 void EON_delFrame(EON_Frame *frame);
 
+/** \fn blank a frame.
+
+    erase the content a frame. Use this function when you need a `blank'
+    frame from EON.
+
+    \param frame the frame to blank.
+
+*/
 void EON_frameClean(EON_Frame *frame);
+
+/** \fn draw a pixel into a frame.
+
+    draw a pixel into a frame using the most efficient way avalaible.
+    Direct rendering will take place if avalaible.
+
+    FIXME: explain write direct pixel access
+
+    \param frame handle to the frame to be modified.
+    \param x the X coordinate of the pixel to be drawn.
+    \param y the Y coordinate of the pixel to be drawn.
+    \param color RGB(A) packed color of the pixel.
+
+    \return EON_OK if succesfull,
+            EON_ERROR otherwise.
+
+    \see EON_newFrame
+    \see EON_RGBPack
+*/
 EON_Status EON_framePutPixel(EON_Frame *frame,
                              EON_Int x, EON_Int y, EON_UInt32 color);
 
@@ -756,22 +848,82 @@ EON_Status EON_framePutPixel(EON_Frame *frame,
 /* Camera                                                                */
 /*************************************************************************/
 
+/** \fn create (allocate and initialize) a new camera.
+
+    A camera represents a viewpoint of a rendered scene.
+    Any rendering needs one (and exactly one) camera to perform meaningful
+    results.
+
+    The frame dimensions usually matches the corresponding destination
+    frame dimensions used for rendering, however this constraint is not
+    enforced until the actual rendering step.
+
+    \param width the width of the camera.
+    \param height the height of the camera.
+    \param aspectRatio FIXME.
+    \param fieldOfView FIXME.
+    \return a new camera handle on success,
+            NULL on error.
+
+    \see EON_delCamera
+*/
 EON_Camera *EON_newCamera(EON_Int width, EON_Int height,
                           EON_Float aspectRatio,
                           EON_Float fieldOfView);
+
+/** \fn deallocate a camera.
+
+    deallocate an EON_Camera and frees all the
+    resources acquired by the frame.
+
+    \param camera handle to the camera to deallocate.
+
+    \see EON_newCamera
+*/ 
 void EON_delCamera(EON_Camera *camera);
 
 /*************************************************************************/
 /* Rendering                                                             */
 /*************************************************************************/
 
+/**\fn create (allocate and initialize) a new renderer.
+
+   FIXME
+
+   \return a new renderer handle on success,
+           NULL on error.
+*/
 EON_Renderer *EON_newRenderer(void);
+
+/** \fn deallocate a renderer.
+
+    deallocate an EON_Renderer and frees all the
+    resources acquired by the frame.
+
+    \param rend handle to the renderer to deallocate.
+
+    \see EON_newRenderer
+*/ 
 void EON_delRenderer(EON_Renderer *rend);
 
+/** \fn initialize a new rendering scene.
+*/
 EON_Status EON_rendererSetup(EON_Renderer *rend, EON_Camera *camera);
+
+/** \fn add a light into current scene.
+*/
 EON_Status EON_rendererLight(EON_Renderer *rend, EON_Light *light);
+
+/** \fn add an object into current scene.
+*/
 EON_Status EON_rendererObject(EON_Renderer *rend, EON_Object *object);
+
+/** \fn render the current scene into a frame.
+*/
 EON_Status EON_rendererProcess(EON_Renderer *rend, EON_Frame *frame);
+
+/** \fn finalize a new rendering scene.
+*/
 EON_Status EON_rendererTeardown(EON_Renderer *rend);
 
 /*************************************************************************/
