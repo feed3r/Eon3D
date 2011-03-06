@@ -18,6 +18,11 @@ if(ENABLE_TESTS)
     add_executable(check_template check_template.c)
     target_link_libraries(check_template check)
     target_link_libraries(check_template eon3d)
-    target_link_libraries(check_template m)
+#    target_link_libraries(check_template m)
+    
+    add_executable(check_rgb check_rgb.c)
+    target_link_libraries(check_rgb check)
+    target_link_libraries(check_rgb eon3d)
+#    target_link_libraries(check_rgb m)
 endif(ENABLE_TESTS)
 
