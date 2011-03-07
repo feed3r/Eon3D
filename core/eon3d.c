@@ -125,9 +125,9 @@ static EON_Int32 eon_arrayAdjustItemSize(EON_Int32 itemSize)
     return itemSize;
 }
 
-
-static EON_Status eon_arrayAlloc(eon_array *array,
-                                 EON_UInt32 size, EON_UInt32 itemSize)
+EON_PRIVATE
+EON_Status eon_arrayAlloc(eon_array *array,
+                          EON_UInt32 size, EON_UInt32 itemSize)
 {
     EON_Status ret = EON_OK;
     itemSize = eon_arrayAdjustItemSize(itemSize);
@@ -147,7 +147,8 @@ static EON_Status eon_arrayAlloc(eon_array *array,
     return ret;
 }
 
-static EON_Status eon_arrayFree(eon_array *array)
+EON_PRIVATE
+EON_Status eon_arrayFree(eon_array *array)
 {
     EON_ARRAY_CHECK_REF(array);
 
@@ -165,7 +166,8 @@ static void *eon_arrayItemPtr(eon_array *array, EON_Int32 position)
     return p;
 }
 
-static EON_Status eon_arrayInsert(eon_array *array, EON_Int32 position, const void *element)
+EON_PRIVATE
+EON_Status eon_arrayInsert(eon_array *array, EON_Int32 position, const void *element)
 {
     EON_Status ret = EON_ERROR;
 
@@ -180,13 +182,15 @@ static EON_Status eon_arrayInsert(eon_array *array, EON_Int32 position, const vo
     return ret;
 }
 
-static EON_Status eon_arrayAppend(eon_array *array, const void *element)
+EON_PRIVATE
+EON_Status eon_arrayAppend(eon_array *array, const void *element)
 {
     EON_ARRAY_CHECK_REF(array);
     return eon_arrayInsert(array, array->Length, element);
 }
 
-static EON_Status eon_arrayReset(eon_array *array)
+EON_PRIVATE
+EON_Status eon_arrayReset(eon_array *array)
 {
     EON_ARRAY_CHECK_REF(array);
 
@@ -194,7 +198,8 @@ static EON_Status eon_arrayReset(eon_array *array)
     return EON_OK;
 }
 
-static EON_Status eon_arrayLength(eon_array *array, EON_UInt32 *len)
+EON_PRIVATE
+EON_Status eon_arrayLength(eon_array *array, EON_UInt32 *len)
 {
     EON_ARRAY_CHECK_REF(array);
     if (len) {
@@ -203,7 +208,8 @@ static EON_Status eon_arrayLength(eon_array *array, EON_UInt32 *len)
     return EON_OK;
 }
 
-static void *eon_arrayGet(eon_array *array, EON_UInt32 index)
+EON_PRIVATE
+void *eon_arrayGet(eon_array *array, EON_UInt32 index)
 {
     void *ptr = NULL;
     if (array) {
@@ -213,7 +219,8 @@ static void *eon_arrayGet(eon_array *array, EON_UInt32 index)
     return ptr;
 }
 
-static void *eon_arrayLast(eon_array *array)
+EON_PRIVATE
+void *eon_arrayLast(eon_array *array)
 {
     void *ptr = NULL;
     if (array && array->Length > 0) {
@@ -452,8 +459,9 @@ void EON_RGBUnpack(EON_RGB *RGB, EON_UInt32 color)
  * Internal functions: Matrix manipulation                                *
  **************************************************************************/
 
-static void eon_matrix4x4Rotation(EON_Float matrix[],
-                                  EON_Byte ax, EON_Float Deg)
+EON_PRIVATE
+void eon_matrix4x4Rotation(EON_Float matrix[],
+                           EON_Byte ax, EON_Float Deg)
 {
     EON_Byte m1, m2;
     EON_Double d = Deg * EON_PI / 180.0;
@@ -471,8 +479,9 @@ static void eon_matrix4x4Rotation(EON_Float matrix[],
     matrix[(m2 << 2) + m1] = (EON_Float)-s;
 }
 
-static void eon_matrix4x4Translate(EON_Float m[],
-                                   EON_Float x, EON_Float y, EON_Float z)
+EON_PRIVATE
+void eon_matrix4x4Translate(EON_Float m[],
+                            EON_Float x, EON_Float y, EON_Float z)
 {
      memset(m, 0, sizeof(EON_Float) * 4 * 4);
      m[0     ] = 1.0;
@@ -484,7 +493,8 @@ static void eon_matrix4x4Translate(EON_Float m[],
      m[8  + 3] = z;
 }
 
-static void eon_matrix4x4Multiply(EON_Float *dest, EON_Float src[])
+EON_PRIVATE
+void eon_matrix4x4Multiply(EON_Float *dest, EON_Float src[])
 {
     EON_Float tmp[4 * 4];
     EON_UInt i;
@@ -502,21 +512,24 @@ static void eon_matrix4x4Multiply(EON_Float *dest, EON_Float src[])
     }
 }
 
-static void eon_matrix4x4Apply(EON_Float *m,
-                               EON_Float x, EON_Float y, EON_Float z,
-                               EON_Float *outx, EON_Float *outy, EON_Float *outz)
+EON_PRIVATE
+void eon_matrix4x4Apply(EON_Float *m,
+                        EON_Float x, EON_Float y, EON_Float z,
+                        EON_Float *outx, EON_Float *outy, EON_Float *outz)
 {
     *outx = x*m[0] + y*m[1] + z*m[2 ] + m[3 ];
     *outy = x*m[4] + y*m[5] + z*m[6 ] + m[7 ];
     *outz = x*m[8] + y*m[9] + z*m[10] + m[11];
 }
 
-static EON_Double eon_dotProduct(EON_Vector3 *V1, EON_Vector3 *V2)
+EON_PRIVATE
+EON_Double eon_dotProduct(EON_Vector3 *V1, EON_Vector3 *V2)
 {
     return ((V1->X * V2->X) + (V1->Y * V2->Y) + (V1->Z * V2->Z));
 }
 
-static void eon_normalizeVector(EON_Vector3 *V)
+EON_PRIVATE
+void eon_normalizeVector(EON_Vector3 *V)
 {
     EON_Double len = eon_dotProduct(V, V);
     if (len > EON_ZEROF) {
@@ -1073,7 +1086,8 @@ typedef enum eon_clipdirection_ {
     EON_CLIP_BOTTOM = 4
 } eon_clipDirection;
 
-static void eon_findNormal(EON_Double x2, EON_Double x3,EON_Double y2, EON_Double y3,
+static void eon_findNormal(EON_Double x2, EON_Double x3,
+                           EON_Double y2, EON_Double y3,
                            EON_Double zv, EON_Double *res)
 {
     res[0] = zv * (y2 - y3);

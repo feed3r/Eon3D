@@ -2,6 +2,7 @@
 set(LIBEON3D_SOURCES eon3d.c)
 
 add_definitions(-DHAVE_CONFIG_H) # always
+add_definitions(-DEON_PRIVATE=static) # always
 
 include_directories(${eon3d_BINARY_DIR})
 include_directories(${eon3d_SOURCE_DIR})
