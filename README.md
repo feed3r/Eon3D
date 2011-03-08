@@ -130,10 +130,11 @@ Once Eon3D is built, you can start playing with the `tools` and/or
 the runnable `examples` (check the corresponding subdirectoris).
 
 Eon3D comes with a (growing) set of tests. To build and run then,
-you need the [check package](http://check.sf.net).
+you need the [check package](http://check.sf.net) and [python >= 2.5](http://www.python.org).
+Python is already bundled in any {recent,decent} unix-like system.
 Then you must explicitely enable the test suite at the configuration
 step by modifying the above command in `cmake -DENABLE_TESTS=1 ../eon3d`.
-The tests will now be built and can be run.
+The tests will now be built and they can be run.
 
 License Notice
 --------------
