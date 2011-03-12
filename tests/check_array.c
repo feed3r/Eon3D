@@ -146,7 +146,7 @@ START_TEST(test_arrayAppendNAndGet)
     for (j = 0; j < LEN; j++) {
         int *elem = eon_arrayGet(array, j);
         fail_unless(elem != NULL, "lost the %i-th element", j);
-        fail_unless(*elem == j, "%i-th element mismatch", j);
+        fail_unless(*elem == j, "%i-th element mismatch found=%i", j, *elem);
     }
     eon_arrayFree(array);
 }
@@ -170,6 +170,22 @@ START_TEST(test_arrayAppendNWithGrow)
 }
 END_TEST
 
+START_TEST(test_arrayAppendNWithGrowAndGetEarly)
+{
+    eon_array *array = eon_arrayNew(1, sizeof(int));
+    EON_Status ret = EON_ERROR;
+    int j = 0,  LEN = 11;
+    int *elem = NULL;
+
+    for (j = 0; j < LEN; j++) {
+        ret = eon_arrayAppend(array, &j);
+        elem = eon_arrayGet(array, j);
+        fail_unless(elem != NULL, "lost the %i-th element", j);
+        fail_unless(*elem == j, "%i-th element mismatch found=%i", j, *elem);
+    }
+    eon_arrayFree(array);
+}
+END_TEST
 
 START_TEST(test_arrayAppendNWithGrowAndGet)
 {
@@ -183,13 +199,11 @@ START_TEST(test_arrayAppendNWithGrowAndGet)
     for (j = 0; j < LEN; j++) {
         int *elem = eon_arrayGet(array, j);
         fail_unless(elem != NULL, "lost the %i-th element", j);
-        fail_unless(*elem == j, "%i-th element mismatch", j);
+        fail_unless(*elem == j, "%i-th element mismatch found=%i", j, *elem);
     }
     eon_arrayFree(array);
 }
 END_TEST
-
-
 
 
 /*************************************************************************/
@@ -210,6 +224,7 @@ static Suite *eon3d_suiteArray(void)
     tcase_add_test(tcArray, test_arrayAppendN);
     tcase_add_test(tcArray, test_arrayAppendNAndGet);
     tcase_add_test(tcArray, test_arrayAppendNWithGrow);
+    tcase_add_test(tcArray, test_arrayAppendNWithGrowAndGetEarly);
     tcase_add_test(tcArray, test_arrayAppendNWithGrowAndGet);
 
     suite_add_tcase(s, tcArray);

@@ -84,9 +84,9 @@ static int eon_arrayAdjustPosition(eon_array *array, EON_Int32 position)
 static EON_Status eon_arrayGrow(eon_array *array)
 {
     EON_Status ret = EON_OK;
-    void *ndata = realloc(array->Data, array->Size * 2);
+    void *ndata = realloc(array->Data, array->Size * array->ItemSize * 2);
     if (ndata) {
-        memset(array->Data + array->Size, 0, array->Size);
+        memset(ndata + array->Size, 0, array->Size);
     } else {
         ndata = calloc(array->Size * 2, array->ItemSize);
         if (ndata) {
