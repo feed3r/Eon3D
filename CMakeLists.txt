@@ -13,6 +13,10 @@ set(CMAKE_REQUIRED_INCLUDES 	stdlib.h)
 set(CMAKE_REQUIRED_INCLUDES 	stdint.h)
 set(CMAKE_REQUIRED_INCLUDES 	inttypes.h)
 
+if(CMAKE_COMPILER_IS_GNUCC)
+    add_definitions(-g -Os -Wall)# -Werror
+endif(CMAKE_COMPILER_IS_GNUCC)
+
 configure_file(${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_BINARY_DIR}/config.h)
 
 add_subdirectory(core)
