@@ -269,6 +269,7 @@ static EON_Frame *eonx_SDLConsoleGetFrame(void *SDLCon_,
 static EON_Status eonx_SDLCopyFrame(eonx_SDLConsole *SDLCon,
                                     EON_Frame *frame)
 {
+    return EON_OK; /* always do nothing succesfully */
 }
 
 static EON_Status eonx_SDLConsoleShow(void *SDLCon_,
@@ -499,7 +500,6 @@ EON_Status EONx_consoleShow(EONx_Console *console, EON_Frame *frame)
 EON_Frame *EONx_consoleGetFrame(EONx_Console *console,
                                 EON_Frame *frame)
 {
-    EON_Status err = EON_ERROR;
     if (console && console->GetFrame) {
         frame = console->GetFrame(console->_private, frame);
     }

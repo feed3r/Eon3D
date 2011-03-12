@@ -26,6 +26,7 @@ if(ENABLE_TESTS)
 
     add_definitions(-DHAVE_CONFIG_H) # always
     add_definitions(-DEON_PRIVATE=extern) # always
+    add_definitions(-DEON_DEBUG=1)
 
     add_library(eon3d_dbg STATIC ${LIBEON3D_DBG_SOURCES})
     target_link_libraries(eon3d_dbg m)

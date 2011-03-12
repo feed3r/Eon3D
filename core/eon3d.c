@@ -163,7 +163,8 @@ EON_Status eon_arrayFree(eon_array *array)
     return EON_ERROR;
 }
 
-/* mainly for debug purposes */
+#ifdef EON_DEBUG
+
 EON_PRIVATE
 eon_array *eon_arrayNew(EON_Int32 size, EON_Int32 itemSize)
 {
@@ -177,6 +178,8 @@ eon_array *eon_arrayNew(EON_Int32 size, EON_Int32 itemSize)
     }
     return array;
 }
+
+#endif /* EON_DEBUG */
 
 static void *eon_arrayItemPtr(eon_array *array, EON_Int32 position)
 {

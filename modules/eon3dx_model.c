@@ -149,9 +149,10 @@ static int loadVertex(p_ply_argument argument)
     if (ctx->CoordsNum == EON_DIMENSIONS) {
         EON_Vertex *v = &(ctx->Obj->Vertexes[ctx->VertexIdx]);
         ctx->VertexIdx++;
-        eon_PointSet(&(v->Coords), ctx->Coords[PLY_X],
-                                   ctx->Coords[PLY_Y],
-                                   ctx->Coords[PLY_Z]);
+        /* FIXME: cleanup */
+        v->Coords.X = ctx->Coords[PLY_X];
+        v->Coords.Y = ctx->Coords[PLY_Y];
+        v->Coords.Z = ctx->Coords[PLY_Z];
         ctx->CoordsNum = 0;
     }
     return 1;
