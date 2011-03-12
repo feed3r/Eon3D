@@ -50,10 +50,10 @@ enum {
 typedef struct {
     void       *Data;
 
-    EON_UInt32  ItemSize;
+    EON_Int32   ItemSize;
 
-    EON_UInt32  Size;
-    EON_UInt32  Length;
+    EON_Int32   Size;
+    EON_Int32   Length;
 } eon_array;
 
 enum {
@@ -68,14 +68,15 @@ enum {
 
 static int eon_arrayAdjustPosition(eon_array *array, EON_Int32 position)
 {
-    if (position < 0) {
-        position = array->Length - position;
+    int32_t pos = position;
+    if (pos < 0) {
+        pos = array->Length - pos;
     }
-    if (position < 0) {
-        position = 0;
+    if (pos < 0) {
+        pos = 0;
     }
-    if (position > array->Length) {
-        position = array->Length;
+    if (pos >= array->Length) {
+        pos = array->Length;
     }
     return position;
 }
@@ -127,14 +128,16 @@ static EON_Int32 eon_arrayAdjustItemSize(EON_Int32 itemSize)
 
 EON_PRIVATE
 EON_Status eon_arrayAlloc(eon_array *array,
-                          EON_UInt32 size, EON_UInt32 itemSize)
+                          EON_Int32 size, EON_Int32 itemSize)
 {
     EON_Status ret = EON_OK;
     itemSize = eon_arrayAdjustItemSize(itemSize);
 
     EON_ARRAY_CHECK_REF(array);
 
-    if (array) {
+    if (!array || !size) {
+        ret = EON_ERROR;
+    } else {
         array->Data = calloc(size, itemSize);
         if (!array->Data) {
             ret = EON_ERROR;
@@ -158,6 +161,21 @@ EON_Status eon_arrayFree(eon_array *array)
     }
  
     return EON_ERROR;
+}
+
+/* mainly for debug purposes */
+EON_PRIVATE
+eon_array *eon_arrayNew(EON_Int32 size, EON_Int32 itemSize)
+{
+    eon_array *array = calloc(1, sizeof(eon_array));
+    if (array) {
+        EON_Status ret = eon_arrayAlloc(array, size, itemSize);
+        if (ret != EON_OK) {
+            free(array);
+            array = NULL;
+        }
+    }
+    return array;
 }
 
 static void *eon_arrayItemPtr(eon_array *array, EON_Int32 position)
@@ -199,7 +217,7 @@ EON_Status eon_arrayReset(eon_array *array)
 }
 
 EON_PRIVATE
-EON_Status eon_arrayLength(eon_array *array, EON_UInt32 *len)
+EON_Status eon_arrayLength(eon_array *array, EON_Int32 *len)
 {
     EON_ARRAY_CHECK_REF(array);
     if (len) {
@@ -209,11 +227,10 @@ EON_Status eon_arrayLength(eon_array *array, EON_UInt32 *len)
 }
 
 EON_PRIVATE
-void *eon_arrayGet(eon_array *array, EON_UInt32 index)
+void *eon_arrayGet(eon_array *array, EON_Int32 index)
 {
     void *ptr = NULL;
-    if (array) {
-        index = eon_arrayAdjustPosition(array, index);
+    if (array && index >= 0 && index < array->Length) {
         ptr = eon_arrayItemPtr(array, index);
     }
     return ptr;
@@ -325,6 +342,7 @@ void *EON_zalloc(size_t size)
 void *EON_free(void *ptr)
 {
     free(ptr);
+    return NULL;
 }
 
 /*************************************************************************
@@ -869,6 +887,7 @@ EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
         0,4,1, 1,4,5, 0,1,2, 3,2,1, 2,3,6, 3,7,6,
         6,7,4, 4,7,5, 1,7,3, 7,1,5, 2,6,0, 4,0,6
     };
+/*
     static const EON_Byte map[24*2*3] = {
         1,0, 1,1, 0,0, 0,0, 1,1, 0,1,
         0,0, 1,0, 0,1, 1,1, 0,1, 1,0,
@@ -877,8 +896,7 @@ EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
         1,0, 0,1, 0,0, 0,1, 1,0, 1,1,
         1,0, 1,1, 0,0, 0,1, 0,0, 1,1
     };
-
-    const EON_Byte *mm = map;
+*/
     const EON_Byte *vv = verts;
 
     EON_Object *o = EON_newObject(8, 12, material);
@@ -1131,6 +1149,7 @@ static void eon_clipCopyInfo(eon_clipInfo *CI, EON_UInt inV, EON_UInt outV)
 static EON_Float eon_clipCalcScaled(EON_Float aX, EON_Float bX, EON_Double scale)
 {
     EON_Float f = (EON_Float) (aX + (bX - aX) * scale);
+    return f;
 }
 
 static EON_Vector3 *eon_clipGetVertexFormed(eon_clipInfo *CI, int j, int vi)
@@ -1470,7 +1489,7 @@ EON_Status EON_rendererLight(EON_Renderer *rend,
                              EON_Light *light)
 {
     EON_Float Xp = 0.0, Yp = 0.0, Zp = 0.0;
-    EON_UInt32 nLights = 0;
+    EON_Int32 nLights = 0;
 
     if (!rend && !light) {
         return EON_ERROR;
@@ -1562,7 +1581,7 @@ static void eon_polySort(eon_polySortContext *SC,
 EON_Status EON_rendererProcess(EON_Renderer *rend,
                                EON_Frame *frame)
 {
-    EON_UInt32 j = 0, nFaces = 0;
+    EON_Int32 j = 0, nFaces = 0;
     eon_polySortContext SC = { NULL };
 
     if (!rend && !frame) {
@@ -1626,7 +1645,7 @@ static EON_Status eon_rendererProcessObjectChildrens(EON_Renderer *rend,
 {
     int i = 0;
     if (!object) {
-        return;
+        return EON_ERROR;
     }
 
     for (i = 0; i < EON_MAX_CHILDREN; i ++) {
@@ -1636,7 +1655,7 @@ static EON_Status eon_rendererProcessObjectChildrens(EON_Renderer *rend,
         }
     }
 
-    return;
+    return EON_OK;
 }
 
 static int eon_processFaceNull(EON_Face *face, EON_Renderer *rend)
@@ -1704,8 +1723,9 @@ static int eon_rendererIsFaceVisible(EON_Face *face, EON_Vector3 *N)
     return p < EON_ZEROF;
 }
 
-static eon_rendererAdjustByCamera(EON_Renderer *rend,
-                                  EON_Float *objMatrix, EON_Float *normMatrix)
+static void eon_rendererAdjustByCamera(EON_Renderer *rend,
+                                       EON_Float *objMatrix,
+                                       EON_Float *normMatrix)
 {
     EON_Float tempMatrix[4 * 4];
     EON_Vector3 *P = &(rend->Camera->Position);
@@ -1727,8 +1747,8 @@ static EON_Status eon_rendererProcessObject(EON_Renderer *rend,
                                             EON_Float *bmatrix,
                                             EON_Float *bnmatrix)
 {
-    EON_UInt32 j = 0, nFaces = 0;
-    EON_Float objMatrix[4 * 4], normMatrix[4 * 4], tempMatrix[4 * 4];
+    EON_Int32 j = 0, nFaces = 0;
+    EON_Float objMatrix[4 * 4], normMatrix[4 * 4];/*, tempMatrix[4 * 4];*/
     EON_Vector3 N = { .X = 0.0f, .Y = 0.0f, .Z = 0.0f };
 
     if (!rend || !object || !object->NumFaces || !object->NumVertexes) {
