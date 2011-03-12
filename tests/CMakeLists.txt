@@ -43,5 +43,9 @@ if(ENABLE_TESTS)
     add_executable(check_rgb check_rgb.c)
     target_link_libraries(check_rgb check)
     target_link_libraries(check_rgb eon3d_dbg)
+
+    add_executable(check_array check_array.c)
+    target_link_libraries(check_array check)
+    target_link_libraries(check_array eon3d_dbg)
 endif(ENABLE_TESTS)
 

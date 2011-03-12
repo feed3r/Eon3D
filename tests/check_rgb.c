@@ -1,5 +1,5 @@
 /**************************************************************************
- * check_rgb: RGB functions unit test (yes, is that simple)               *
+ * check_RGB: RGB functions unit test (yes, is that simple)               *
  **************************************************************************/
 #include <strings.h>
 #include <string.h>
@@ -16,7 +16,7 @@
 
 /*************************************************************************/
 
-START_TEST(test_rgb_create_black)
+START_TEST(test_RGBCreateBlack)
 {
     EON_RGB rgb;
     EON_RGBSet(&rgb, EON_RGB_BLACK, EON_RGB_BLACK, EON_RGB_BLACK);
@@ -27,7 +27,7 @@ START_TEST(test_rgb_create_black)
 }
 END_TEST
 
-START_TEST(test_rgb_create_zero)
+START_TEST(test_RGBCreateZero)
 {
     EON_RGB rgb;
     EON_RGBSet(&rgb, 0, 0, 0);
@@ -38,7 +38,7 @@ START_TEST(test_rgb_create_zero)
 }
 END_TEST
 
-START_TEST(test_rgb_create_rand)
+START_TEST(test_RGBCreateRand)
 {
     int R = 42, G = 63, B = 101;
     EON_RGB rgb;
@@ -50,7 +50,7 @@ START_TEST(test_rgb_create_rand)
 }
 END_TEST
 
-START_TEST(test_rgb_pack_unpack)
+START_TEST(test_RGBPackUnpack)
 {
     int R = 42, G = 63, B = 101;
     EON_RGB rgb1, rgb2;
@@ -74,17 +74,17 @@ END_TEST
 
 /*************************************************************************/
 
-static Suite *eon3d_suite_rgb(void)
+static Suite *eon3d_suiteRGB(void)
 {
-    Suite *s = suite_create("eon3d_core_rgb");
+    Suite *s = suite_create("eon3d.core.RGB");
 
-    TCase *tc_rgb = tcase_create("rgb");
-    tcase_add_test(tc_rgb, test_rgb_create_black);
-    tcase_add_test(tc_rgb, test_rgb_create_zero);
-    tcase_add_test(tc_rgb, test_rgb_create_rand);
-    tcase_add_test(tc_rgb, test_rgb_pack_unpack);
+    TCase *tcRGB = tcase_create("RGB");
+    tcase_add_test(tcRGB, test_RGBCreateBlack);
+    tcase_add_test(tcRGB, test_RGBCreateZero);
+    tcase_add_test(tcRGB, test_RGBCreateRand);
+    tcase_add_test(tcRGB, test_RGBPackUnpack);
 
-    suite_add_tcase(s, tc_rgb);
+    suite_add_tcase(s, tcRGB);
 
     return s;
 }
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
 {
     int number_failed = 0;
 
-    Suite *s = eon3d_suite_rgb();
+    Suite *s = eon3d_suiteRGB();
     SRunner *sr = srunner_create(s);
 
     srunner_run_all(sr, CK_ENV);
