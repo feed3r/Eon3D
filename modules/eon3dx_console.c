@@ -227,7 +227,6 @@ static EON_Status eonx_SDLConsoleClear(void *SDLCon_)
 
 static EON_Status eonx_SDLConsoleNextEvent(void *SDLCon_, void *ev)
 {
-    eonx_SDLConsole *SDLCon = SDLCon_;
     EON_Status ret = EON_OK; 
     SDL_Event event;
 
