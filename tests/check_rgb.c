@@ -74,18 +74,22 @@ END_TEST
 
 /*************************************************************************/
 
-static Suite *eon3d_suiteRGB(void)
+TCase *eon3d_testCaseRGB(void)
 {
-    Suite *s = suite_create("eon3d.core.RGB");
-
-    TCase *tcRGB = tcase_create("RGB");
+    TCase *tcRGB = tcase_create("eon3d.core.RGB");
     tcase_add_test(tcRGB, test_RGBCreateBlack);
     tcase_add_test(tcRGB, test_RGBCreateZero);
     tcase_add_test(tcRGB, test_RGBCreateRand);
     tcase_add_test(tcRGB, test_RGBPackUnpack);
+    return tcRGB;
+}
 
+
+static Suite *eon3d_suiteRGB(void)
+{
+    TCase *tcRGB = eon3d_testCaseRGB();
+    Suite *s = suite_create("eon3d.core.RGB");
     suite_add_tcase(s, tcRGB);
-
     return s;
 }
 

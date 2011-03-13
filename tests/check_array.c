@@ -208,11 +208,9 @@ END_TEST
 
 /*************************************************************************/
 
-static Suite *eon3d_suiteArray(void)
+TCase *eon3d_testCaseArray(void)
 {
-    Suite *s = suite_create("eon3d.core.array");
-
-    TCase *tcArray = tcase_create("array");
+    TCase *tcArray = tcase_create("eon3d.core.array");
     tcase_add_test(tcArray, test_arrayNewZeroSizes);
     tcase_add_test(tcArray, test_arrayNewZeroItemSize);
     tcase_add_test(tcArray, test_arrayEmptyLength);
@@ -226,9 +224,16 @@ static Suite *eon3d_suiteArray(void)
     tcase_add_test(tcArray, test_arrayAppendNWithGrow);
     tcase_add_test(tcArray, test_arrayAppendNWithGrowAndGetEarly);
     tcase_add_test(tcArray, test_arrayAppendNWithGrowAndGet);
+    return tcArray;
+}
 
+
+
+static Suite *eon3d_suiteArray(void)
+{
+    TCase *tcArray = eon3d_testCaseArray();
+    Suite *s = suite_create("eon3d.core.array");
     suite_add_tcase(s, tcArray);
-
     return s;
 }
 

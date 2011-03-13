@@ -25,15 +25,19 @@ END_TEST
 
 /*************************************************************************/
 
-static Suite *eon3d_suiteNone(void)
+TCase *eon3d_testCaseNone(void)
 {
-    Suite *s = suite_create("eon3d.core.none");
-
-    TCase *tcNone = tcase_create("none");
+    TCase *tcNone = tcase_create("eon3d.core.none");
     tcase_add_test(tcNone, test_none);
 
-    suite_add_tcase(s, tcNone);
+    return tcNone;
+}
 
+static Suite *eon3d_suiteNone(void)
+{
+    TCase *tc = eon3d_testCaseNone();
+    Suite *s = suite_create("eon3d.core.none");
+    suite_add_tcase(s, tc);
     return s;
 }
 
