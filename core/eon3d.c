@@ -480,13 +480,14 @@ void EON_RGBUnpack(EON_RGB *RGB, EON_UInt32 color)
 /**************************************************************************
  * Internal functions: Matrix manipulation                                *
  **************************************************************************/
+/* NOTE: eon3D uses column vectors                                        */
 
 EON_PRIVATE
-void eon_matrix4x4Rotation(EON_Float matrix[],
-                           EON_Byte ax, EON_Float Deg)
+EON_Float *eon_matrix4x4MakeRotation(EON_Float *matrix,
+                                     EON_Byte ax, EON_Float deg)
 {
     EON_Byte m1, m2;
-    EON_Double d = Deg * EON_PI / 180.0;
+    EON_Double d = deg * EON_PI / 180.0;
     EON_Double c = cos(d), s = sin(d);
 
     memset(matrix, 0, sizeof(EON_Float)* 4 * 4);
@@ -495,43 +496,49 @@ void eon_matrix4x4Rotation(EON_Float matrix[],
     m1 = ( ax      % 3);
     m2 = ((m1 + 1) % 3);
 
-    matrix[(m1 << 2) + m1] = (EON_Float)c;
-    matrix[(m1 << 2) + m2] = (EON_Float)s;
-    matrix[(m2 << 2) + m2] = (EON_Float)c;
+    matrix[(m1 << 2) + m1] = (EON_Float)+c;
+    matrix[(m1 << 2) + m2] = (EON_Float)+s;
+    matrix[(m2 << 2) + m2] = (EON_Float)+c;
     matrix[(m2 << 2) + m1] = (EON_Float)-s;
+
+    return matrix;
 }
 
 EON_PRIVATE
-void eon_matrix4x4Translate(EON_Float m[],
-                            EON_Float x, EON_Float y, EON_Float z)
+EON_Float * eon_matrix4x4MakeTranslation(EON_Float *matrix,
+                                         EON_Float x,
+                                         EON_Float y,
+                                         EON_Float z)
 {
-     memset(m, 0, sizeof(EON_Float) * 4 * 4);
-     m[0     ] = 1.0;
-     m[4  + 1] = 1.0;
-     m[8  + 2] = 1.0;
-     m[12 + 3] = 1.0;
-     m[0  + 3] = x;
-     m[4  + 3] = y;
-     m[8  + 3] = z;
+     memset(matrix, 0, sizeof(EON_Float) * 4 * 4);
+     matrix[0     ] = 1.0;
+     matrix[4  + 1] = 1.0;
+     matrix[8  + 2] = 1.0;
+     matrix[12 + 3] = 1.0;
+     matrix[0  + 3] = x;
+     matrix[4  + 3] = y;
+     matrix[8  + 3] = z;
+     return matrix;
 }
 
 EON_PRIVATE
-void eon_matrix4x4Multiply(EON_Float *dest, EON_Float src[])
+EON_Float *eon_matrix4x4Multiply(EON_Float *dst, const EON_Float *src)
 {
-    EON_Float tmp[4 * 4];
     EON_UInt i;
-    memcpy(tmp, dest, sizeof(EON_Float) * 4 * 4);
+    EON_Float tmp[4 * 4];
+    memcpy(tmp, dst, sizeof(EON_Float) * 4 * 4);
 
     for (i = 0; i < (4 * 4); i += 4) {
-        *dest++ = src[i+0]*tmp[(0<<2)+0]+src[i+1]*tmp[(1<<2)+0]
-                + src[i+2]*tmp[(2<<2)+0]+src[i+3]*tmp[(3<<2)+0];
-        *dest++ = src[i+0]*tmp[(0<<2)+1]+src[i+1]*tmp[(1<<2)+1]
-                + src[i+2]*tmp[(2<<2)+1]+src[i+3]*tmp[(3<<2)+1];
-        *dest++ = src[i+0]*tmp[(0<<2)+2]+src[i+1]*tmp[(1<<2)+2]
-                + src[i+2]*tmp[(2<<2)+2]+src[i+3]*tmp[(3<<2)+2];
-        *dest++ = src[i+0]*tmp[(0<<2)+3]+src[i+1]*tmp[(1<<2)+3]
-                + src[i+2]*tmp[(2<<2)+3]+src[i+3]*tmp[(3<<2)+3];
+        *dst++ = src[i+0]*tmp[(0<<2)+0]+src[i+1]*tmp[(1<<2)+0]
+               + src[i+2]*tmp[(2<<2)+0]+src[i+3]*tmp[(3<<2)+0];
+        *dst++ = src[i+0]*tmp[(0<<2)+1]+src[i+1]*tmp[(1<<2)+1]
+               + src[i+2]*tmp[(2<<2)+1]+src[i+3]*tmp[(3<<2)+1];
+        *dst++ = src[i+0]*tmp[(0<<2)+2]+src[i+1]*tmp[(1<<2)+2]
+               + src[i+2]*tmp[(2<<2)+2]+src[i+3]*tmp[(3<<2)+2];
+        *dst++ = src[i+0]*tmp[(0<<2)+3]+src[i+1]*tmp[(1<<2)+3]
+               + src[i+2]*tmp[(2<<2)+3]+src[i+3]*tmp[(3<<2)+3];
     }
+    return dst;
 }
 
 EON_PRIVATE
@@ -958,11 +965,11 @@ EON_Light *EON_newLight(EON_LightMode mode,
         light->HalfDistSquared = halfDist * halfDist;
 
         if (mode == EON_LIGHT_VECTOR) {
-            eon_matrix4x4Rotation(m,  1, x);
-            eon_matrix4x4Rotation(m2, 2, y);
-            eon_matrix4x4Multiply(m,     m2);
-            eon_matrix4x4Rotation(m2, 3, z);
-            eon_matrix4x4Multiply(m,     m2);
+            eon_matrix4x4MakeRotation(m,  1, x);
+            eon_matrix4x4MakeRotation(m2, 2, y);
+            eon_matrix4x4Multiply(m,         m2);
+            eon_matrix4x4MakeRotation(m2, 3, z);
+            eon_matrix4x4Multiply(m,         m2);
             eon_matrix4x4Apply(m, 0.0 ,0.0, -1.0, &x, &y, &z);
             /* use only recycled bytes */
         } /* else we're already set */
@@ -1465,13 +1472,13 @@ EON_Status EON_rendererSetup(EON_Renderer *rend,
     eon_arrayReset(&(rend->Lights));
 
     /* rend->CMatrix initialized as side effect */
-    eon_matrix4x4Rotation(rend->CMatrix, 2, -camera->Pan);
+    eon_matrix4x4MakeRotation(rend->CMatrix, 2, -camera->Pan);
     /* tempMatrix initialized as side effect */
-    eon_matrix4x4Rotation(tempMatrix,    1, -camera->Pitch);
-    eon_matrix4x4Multiply(rend->CMatrix,    tempMatrix);
+    eon_matrix4x4MakeRotation(tempMatrix,    1, -camera->Pitch);
+    eon_matrix4x4Multiply(rend->CMatrix,        tempMatrix);
     /* tempMatrix initialized as side effect */
-    eon_matrix4x4Rotation(tempMatrix,    3, -camera->Roll);
-    eon_matrix4x4Multiply(rend->CMatrix,    tempMatrix);
+    eon_matrix4x4MakeRotation(tempMatrix,    3, -camera->Roll);
+    eon_matrix4x4Multiply(rend->CMatrix,        tempMatrix);
 
     eon_clipInit(&(rend->Clip));
     eon_clipSetFrustum(&(rend->Clip), camera);
@@ -1614,11 +1621,11 @@ static void eon_rendererSetupObjectMatrixes(EON_Renderer *rend,
     EON_Float tempMatrix[4 * 4];
 
     if (obj->GenMatrix) {
-        eon_matrix4x4Rotation(normMatrix,    1, obj->Rotation.X);
-        eon_matrix4x4Rotation(tempMatrix, 2, obj->Rotation.Y);
-        eon_matrix4x4Multiply(normMatrix,       tempMatrix);
-        eon_matrix4x4Rotation(tempMatrix, 3, obj->Rotation.Z);
-        eon_matrix4x4Multiply(normMatrix,       tempMatrix);
+        eon_matrix4x4MakeRotation(normMatrix, 1, obj->Rotation.X);
+        eon_matrix4x4MakeRotation(tempMatrix, 2, obj->Rotation.Y);
+        eon_matrix4x4Multiply(normMatrix,        tempMatrix);
+        eon_matrix4x4MakeRotation(tempMatrix, 3, obj->Rotation.Z);
+        eon_matrix4x4Multiply(normMatrix,        tempMatrix);
         memcpy(objMatrix, normMatrix, sizeof(EON_Float) * 4 * 4);
     } else {
         memcpy(normMatrix, obj->RMatrix, sizeof(EON_Float) * 4 * 4);
@@ -1629,8 +1636,10 @@ static void eon_rendererSetupObjectMatrixes(EON_Renderer *rend,
     }
 
     if (obj->GenMatrix) {
-        eon_matrix4x4Translate(tempMatrix,
-                               obj->Position.X, obj->Position.Y, obj->Position.Z);
+        eon_matrix4x4MakeTranslation(tempMatrix,
+                                     obj->Position.X,
+                                     obj->Position.Y,
+                                     obj->Position.Z);
         eon_matrix4x4Multiply(objMatrix, tempMatrix);
     } else {
         memcpy(objMatrix, obj->TMatrix, sizeof(EON_Float) * 4 * 4);
@@ -1734,7 +1743,7 @@ static void eon_rendererAdjustByCamera(EON_Renderer *rend,
     EON_Float tempMatrix[4 * 4];
     EON_Vector3 *P = &(rend->Camera->Position);
 
-    eon_matrix4x4Translate(tempMatrix, P->X, P->Y, P->Z);
+    eon_matrix4x4MakeTranslation(tempMatrix, P->X, P->Y, P->Z);
     eon_matrix4x4Multiply(objMatrix, tempMatrix);
     eon_matrix4x4Multiply(objMatrix, rend->CMatrix);
     eon_matrix4x4Multiply(normMatrix, rend->CMatrix);
