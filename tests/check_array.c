@@ -1,5 +1,5 @@
 /**************************************************************************
- * check_template: template of an eon3d unit test                         *
+ * check_array: varray function unit tests                                *
  **************************************************************************/
 #include <strings.h>
 #include <string.h>

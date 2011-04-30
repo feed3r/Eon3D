@@ -1,5 +1,5 @@
 /**************************************************************************
- * check_RGB: RGB functions unit test (yes, is that simple)               *
+ * check_rgb: RGB functions unit tests (yes, is that simple)              *
  **************************************************************************/
 #include <strings.h>
 #include <string.h>
