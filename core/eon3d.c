@@ -551,27 +551,122 @@ void eon_matrix4x4Apply(EON_Float *m,
     *outz = x*m[8] + y*m[9] + z*m[10] + m[11];
 }
 
+
+/*************************************************************************/
+/* Vector3 operations (internal use only)                                */
+/*************************************************************************/
+/* the definition of the following operation set, and the design decision
+   to use Vector3s in lieu of Point3s, came from
+   [3DMath] `3D Math Primer for Graphics and Game Development'
+   (F. Dunn, I. Parberry), WordWare.
+*/
+
+/* TODO? zero, not */
+
 EON_PRIVATE
-EON_Double eon_dotProduct(EON_Vector3 *V1, EON_Vector3 *V2)
+void eon_Vector3Set(EON_Vector3 *V, EON_Float X, EON_Float Y, EON_Float Z)
 {
-    return ((V1->X * V2->X) + (V1->Y * V2->Y) + (V1->Z * V2->Z));
+    V->X = X;
+    V->Y = Y;
+    V->Z = Z;
 }
 
 EON_PRIVATE
-void eon_normalizeVector(EON_Vector3 *V)
+int eon_Vector3IsEqual(const EON_Vector3 *A, const EON_Vector3 *B)
 {
-    EON_Double len = eon_dotProduct(V, V);
-    if (len > EON_ZEROF) {
-        EON_Float t = (EON_Float)sqrt(len);
-        V->X /= t;
-        V->Y /= t;
-        V->Z /= t;
+    return (A->X == B->X && A->Y == A->Y && A->Z && B->Z);
+}
+
+EON_PRIVATE
+void eon_Vector3RAdd(EON_Vector3 *P, const EON_Vector3 *OP)
+{
+    P->X += OP->X;
+    P->Y += OP->Y;
+    P->Z += OP->Z;
+}
+
+EON_PRIVATE
+void eon_Vector3Add(const EON_Vector3 *A, const EON_Vector3 *B,
+                    EON_Vector3 *D)
+{
+    D->X = A->X + B->X;
+    D->Y = A->Y + B->Y;
+    D->Z = A->Z + B->Z;
+}
+
+EON_PRIVATE
+void eon_Vector3Diff(const EON_Vector3 *A, const EON_Vector3 *B,
+                     EON_Vector3 *D)
+{
+    D->X = A->X - B->X;
+    D->Y = A->Y - B->Y;
+    D->Z = A->Z - B->Z;
+}
+
+EON_PRIVATE
+EON_Float eon_Vector3DotProduct(const EON_Vector3 *A, const EON_Vector3 *B)
+{
+    return (A->X * B->X + A->Y * B->Y + A->Z * B->Z);
+}
+
+#define EON_VECTOR3KMULT(V, K) do { \
+    (V)->X *= (K); \
+    (V)->Y *= (K); \
+    (V)->Z *= (K); \
+} while (0)
+
+/* scalar multipliction */
+EON_PRIVATE
+void eon_Vector3Mul(EON_Vector3 *V, EON_Float k)
+{
+    EON_VECTOR3KMULT(V, k);
+}
+
+/* scalar division */
+EON_PRIVATE
+void eon_Vector3Div(EON_Vector3 *V, EON_Float k)
+{
+    /* FIXME: optimization?*/
+    EON_Float kp = 1/k;
+    EON_VECTOR3KMULT(V, kp);
+}
+
+#undef EON_VECTOR3KMULT
+
+EON_PRIVATE
+void eon_Vector3Normalize(EON_Vector3 *V)
+{
+    EON_Float len2 = eon_Vector3DotProduct(V, V);
+    if (len2 > EON_ZEROF) {
+        EON_Float t = (EON_Float)sqrt(len2);
+        eon_Vector3Div(V, t);
     } else {
-        V->X = 0.0;
-        V->Y = 0.0;
-        V->Z = 0.0;
+        eon_Vector3Set(V, 0.0, 0.0, 0.0);
     }
     return;
+}
+
+EON_PRIVATE
+EON_Float eon_Vector3Magnitude(const EON_Vector3 *V)
+{
+    return (EON_Float)sqrt(eon_Vector3DotProduct(V, V));
+}
+
+EON_PRIVATE
+void eon_Vector3CrossProduct(const EON_Vector3 *A, const EON_Vector3 *B,
+                             EON_Vector3 *D)
+{
+    D->X = A->Y * B->Z - A->Z * B->Y;
+    D->Y = A->Z * B->X - A->X * B->Z;
+    D->Z = A->X * B->Y - A->Y * B->X;
+}
+
+EON_PRIVATE
+EON_Float eon_Vector3Distance(const EON_Vector3 *A, const EON_Vector3 *B)
+{
+    EON_Vector3 D;
+    eon_Vector3Diff(A, B, &D);
+    return eon_Vector3Magnitude(&D);
 }
 
 /*************************************************************************/
@@ -814,29 +909,6 @@ static void eon_resetVertexesNormals(EON_Object *obj)
     return;
 }
 
-static void eon_pointSet(EON_Vector3 *P,
-                         EON_Float X, EON_Float Y, EON_Float Z)
-{
-    P->X = X;
-    P->Y = Y;
-    P->Z = Z;
-}
-
-static void eon_pointRAdd(EON_Vector3 *P, const EON_Vector3 *OP)
-{
-    P->X += OP->X;
-    P->Y += OP->Y;
-    P->Z += OP->Z;
-}
-
-static void eon_pointDiff(const EON_Vector3 *P1, const EON_Vector3 *P2,
-                          EON_Vector3 *D)
-{
-    D->X = P1->X - P2->X;
-    D->Y = P1->Y - P2->Y;
-    D->Z = P1->Z - P2->Z;
-}
-
 
 int EON_objectCalcNormals(EON_Object *object)
 {
@@ -850,25 +922,25 @@ int EON_objectCalcNormals(EON_Object *object)
         EON_Face *f = &(object->Faces[i]);
         EON_Vector3 d1, d2;
 
-        eon_pointDiff(&(f->Vertexes[0]->Coords),
-                      &(f->Vertexes[1]->Coords), &d1);
-        eon_pointDiff(&(f->Vertexes[0]->Coords),
+        eon_Vector3Diff(&(f->Vertexes[0]->Coords),
+                        &(f->Vertexes[1]->Coords), &d1);
+        eon_Vector3Diff(&(f->Vertexes[0]->Coords),
                       &(f->Vertexes[2]->Coords), &d2);
 
         f->Norm.X = (EON_Float) (d1.Y * d2.Z - d1.Z * d2.Y);
         f->Norm.Y = (EON_Float) (d1.Z * d2.X - d1.X * d2.Z);
         f->Norm.Z = (EON_Float) (d1.X * d2.Y - d1.Y * d2.X);
 
-        eon_normalizeVector(&(f->Norm));
+        eon_Vector3Normalize(&(f->Norm));
 
-        eon_pointRAdd(&(f->Vertexes[0]->Norm), &(f->Norm));
-        eon_pointRAdd(&(f->Vertexes[1]->Norm), &(f->Norm));
-        eon_pointRAdd(&(f->Vertexes[2]->Norm), &(f->Norm));
+        eon_Vector3RAdd(&(f->Vertexes[0]->Norm), &(f->Norm));
+        eon_Vector3RAdd(&(f->Vertexes[1]->Norm), &(f->Norm));
+        eon_Vector3RAdd(&(f->Vertexes[2]->Norm), &(f->Norm));
     }
 
     for (i = 0; i < object->NumVertexes; i++) {
         EON_Vertex *v = &(object->Vertexes[i]);
-        eon_normalizeVector(&(v->Norm));
+        eon_Vector3Normalize(&(v->Norm));
     }
 
     for (i = 0; i < EON_MAX_CHILDREN; i++) {
@@ -920,14 +992,14 @@ EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
         h /= 2;
         d /= 2;
 
-        eon_pointSet(&(v[0].Coords), -w,  h,  d);
-        eon_pointSet(&(v[1].Coords),  w,  h,  d);
-        eon_pointSet(&(v[2].Coords), -w,  h, -d);
-        eon_pointSet(&(v[3].Coords),  w,  h, -d);
-        eon_pointSet(&(v[4].Coords), -w, -h,  d);
-        eon_pointSet(&(v[5].Coords),  w, -h,  d);
-        eon_pointSet(&(v[6].Coords), -w, -h, -d);
-        eon_pointSet(&(v[7].Coords),  w, -h, -d);
+        eon_Vector3Set(&(v[0].Coords), -w,  h,  d);
+        eon_Vector3Set(&(v[1].Coords),  w,  h,  d);
+        eon_Vector3Set(&(v[2].Coords), -w,  h, -d);
+        eon_Vector3Set(&(v[3].Coords),  w,  h, -d);
+        eon_Vector3Set(&(v[4].Coords), -w, -h,  d);
+        eon_Vector3Set(&(v[5].Coords),  w, -h,  d);
+        eon_Vector3Set(&(v[6].Coords), -w, -h, -d);
+        eon_Vector3Set(&(v[7].Coords),  w, -h, -d);
 
         for (x = 0; x < 12; x ++) {
             f->Vertexes[0] = o->Vertexes + *vv++;
@@ -1732,7 +1804,7 @@ static EON_Status eon_rendererAppendFace(EON_Renderer *rend,
 static int eon_rendererIsFaceVisible(EON_Face *face, EON_Vector3 *N)
 {
     EON_Vector3 *V = (EON_Vector3 *)&(face->Vertexes[0]->Formed);
-    EON_Double p = eon_dotProduct(N, V);
+    EON_Double p = eon_Vector3DotProduct(N, V);
     return p < EON_ZEROF;
 }
 
