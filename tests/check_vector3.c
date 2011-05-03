@@ -12,13 +12,20 @@
 #include "config.h"
 
 #include "eon3d.h" 
-
+#include "eon3d_private.h"
 
 /*************************************************************************/
 
-START_TEST(test_none)
+START_TEST(test_vector3Set)
 {
-    /* TODO */
+    EON_Float X = 1.0, Y = -2.0, Z = 3.0;
+    EON_Vector3 V;
+
+    eon_Vector3Set(&V, X, Y, Z);
+
+    fail_unless(eon_floatAreEquals(V.X, X), "X component mis-set");
+    fail_unless(eon_floatAreEquals(V.Y, Y), "Y component mis-set");
+    fail_unless(eon_floatAreEquals(V.Z, Z), "Z component mis-set");
 }
 END_TEST
 
@@ -28,7 +35,7 @@ END_TEST
 TCase *eon3d_testCaseVector3(void)
 {
     TCase *tcVector3 = tcase_create("eon3d.core.vector3");
-    tcase_add_test(tcVector3, test_none);
+    tcase_add_test(tcVector3, test_vector3Set);
 
     return tcVector3;
 }

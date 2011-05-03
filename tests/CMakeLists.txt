@@ -27,6 +27,8 @@ if(ENABLE_TESTS)
     add_definitions(-DHAVE_CONFIG_H) # always
     add_definitions(-DEON_PRIVATE=extern) # always
     add_definitions(-DEON_DEBUG=1)
+    add_definitions(-DEON_FUTURE_ARRAY=1)
+    add_definitions(-DEON_FUTURE_VECTOR3=1)
 
     add_library(eon3d_dbg STATIC ${LIBEON3D_DBG_SOURCES})
     target_link_libraries(eon3d_dbg m)
@@ -48,5 +50,9 @@ if(ENABLE_TESTS)
     add_executable(check_array check_array.c)
     target_link_libraries(check_array check)
     target_link_libraries(check_array eon3d_dbg)
+
+    add_executable(check_vector3 check_vector3.c)
+    target_link_libraries(check_vector3 check)
+    target_link_libraries(check_vector3 eon3d_dbg)
 endif(ENABLE_TESTS)
 
