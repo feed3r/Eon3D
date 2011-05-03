@@ -240,6 +240,7 @@ void *eon_arrayGet(eon_array *array, EON_Int32 index)
     return ptr;
 }
 
+#ifdef EON_FUTURE_ARRAY
 EON_PRIVATE
 void *eon_arrayLast(eon_array *array)
 {
@@ -249,6 +250,7 @@ void *eon_arrayLast(eon_array *array)
     }
     return ptr;
 }
+#endif /* EON_FUTURE_ARRAY */
 
 #undef EON_ARRAY_CHECK_REF
 
@@ -476,6 +478,139 @@ void EON_RGBUnpack(EON_RGB *RGB, EON_UInt32 color)
     return;
 }
 
+/*************************************************************************/
+/* Vector3 operations (internal use only)                                */
+/*************************************************************************/
+/* the definition of the following operation set, and the design decision
+   to use Vector3s in lieu of Point3s, came from
+   [3DMath] `3D Math Primer for Graphics and Game Development'
+   (F. Dunn, I. Parberry), WordWare.
+*/
+
+/* TODO? zero, not */
+
+EON_PRIVATE 
+EON_Boolean eon_floatAreEquals(EON_Float A, EON_Float B)
+{
+    return (fabs(A - B) < EON_ZEROF);
+}
+
+EON_PRIVATE
+void eon_Vector3Set(EON_Vector3 *V, EON_Float X, EON_Float Y, EON_Float Z)
+{
+    V->X = X;
+    V->Y = Y;
+    V->Z = Z;
+}
+
+#ifdef EON_FUTURE_VECTOR3
+EON_PRIVATE
+int eon_Vector3IsEqual(const EON_Vector3 *A, const EON_Vector3 *B)
+{
+    return (eon_floatAreEquals(A->X, B->X)
+         && eon_floatAreEquals(A->Y, B->Y)
+         && eon_floatAreEquals(A->Z, B->Z));
+}
+#endif /* EON_FUTURE_VECTOR3 */
+
+EON_PRIVATE
+void eon_Vector3RAdd(EON_Vector3 *P, const EON_Vector3 *OP)
+{
+    P->X += OP->X;
+    P->Y += OP->Y;
+    P->Z += OP->Z;
+}
+
+#ifdef EON_FUTURE_VECTOR3
+EON_PRIVATE
+void eon_Vector3Add(const EON_Vector3 *A, const EON_Vector3 *B,
+                    EON_Vector3 *D)
+{
+    D->X = A->X + B->X;
+    D->Y = A->Y + B->Y;
+    D->Z = A->Z + B->Z;
+}
+#endif /* EON_FUTURE_VECTOR3 */
+
+EON_PRIVATE
+void eon_Vector3Diff(const EON_Vector3 *A, const EON_Vector3 *B,
+                     EON_Vector3 *D)
+{
+    D->X = A->X - B->X;
+    D->Y = A->Y - B->Y;
+    D->Z = A->Z - B->Z;
+}
+
+EON_PRIVATE
+EON_Float eon_Vector3DotProduct(const EON_Vector3 *A, const EON_Vector3 *B)
+{
+    return (A->X * B->X + A->Y * B->Y + A->Z * B->Z);
+}
+
+#define EON_VECTOR3KMULT(V, K) do { \
+    (V)->X *= (K); \
+    (V)->Y *= (K); \
+    (V)->Z *= (K); \
+} while (0)
+
+#ifdef EON_FUTURE_VECTOR3
+/* scalar multipliction */
+EON_PRIVATE
+void eon_Vector3Mul(EON_Vector3 *V, EON_Float k)
+{
+    EON_VECTOR3KMULT(V, k);
+}
+#endif /* EON_FUTURE_VECTOR3 */
+
+/* scalar division */
+EON_PRIVATE
+void eon_Vector3Div(EON_Vector3 *V, EON_Float k)
+{
+    /* FIXME: optimization?*/
+    EON_Float kp = 1/k;
+    EON_VECTOR3KMULT(V, kp);
+}
+
+#undef EON_VECTOR3KMULT
+
+EON_PRIVATE
+void eon_Vector3Normalize(EON_Vector3 *V)
+{
+    EON_Float len2 = eon_Vector3DotProduct(V, V);
+    if (len2 > EON_ZEROF) {
+        EON_Float t = (EON_Float)sqrt(len2);
+        eon_Vector3Div(V, t);
+    } else {
+        eon_Vector3Set(V, 0.0, 0.0, 0.0);
+    }
+    return;
+}
+
+#ifdef EON_FUTURE_VECTOR3
+EON_PRIVATE
+EON_Float eon_Vector3Magnitude(const EON_Vector3 *V)
+{
+    return (EON_Float)sqrt(eon_Vector3DotProduct(V, V));
+}
+
+EON_PRIVATE
+void eon_Vector3CrossProduct(const EON_Vector3 *A, const EON_Vector3 *B,
+                             EON_Vector3 *D)
+{
+    D->X = A->Y * B->Z - A->Z * B->Y;
+    D->Y = A->Z * B->X - A->X * B->Z;
+    D->Z = A->X * B->Y - A->Y * B->X;
+}
+
+EON_PRIVATE
+EON_Float eon_Vector3Distance(const EON_Vector3 *A, const EON_Vector3 *B)
+{
+    EON_Vector3 D;
+    eon_Vector3Diff(A, B, &D);
+    return eon_Vector3Magnitude(&D);
+}
+#endif /* EON_FUTURE_VECTOR3 */
+
 
 /**************************************************************************
  * Internal functions: Matrix manipulation                                *
@@ -551,123 +686,6 @@ void eon_matrix4x4Apply(EON_Float *m,
     *outz = x*m[8] + y*m[9] + z*m[10] + m[11];
 }
 
-
-/*************************************************************************/
-/* Vector3 operations (internal use only)                                */
-/*************************************************************************/
-/* the definition of the following operation set, and the design decision
-   to use Vector3s in lieu of Point3s, came from
-   [3DMath] `3D Math Primer for Graphics and Game Development'
-   (F. Dunn, I. Parberry), WordWare.
-*/
-
-/* TODO? zero, not */
-
-EON_PRIVATE
-void eon_Vector3Set(EON_Vector3 *V, EON_Float X, EON_Float Y, EON_Float Z)
-{
-    V->X = X;
-    V->Y = Y;
-    V->Z = Z;
-}
-
-EON_PRIVATE
-int eon_Vector3IsEqual(const EON_Vector3 *A, const EON_Vector3 *B)
-{
-    return (A->X == B->X && A->Y == A->Y && A->Z && B->Z);
-}
-
-EON_PRIVATE
-void eon_Vector3RAdd(EON_Vector3 *P, const EON_Vector3 *OP)
-{
-    P->X += OP->X;
-    P->Y += OP->Y;
-    P->Z += OP->Z;
-}
-
-EON_PRIVATE
-void eon_Vector3Add(const EON_Vector3 *A, const EON_Vector3 *B,
-                    EON_Vector3 *D)
-{
-    D->X = A->X + B->X;
-    D->Y = A->Y + B->Y;
-    D->Z = A->Z + B->Z;
-}
-
-EON_PRIVATE
-void eon_Vector3Diff(const EON_Vector3 *A, const EON_Vector3 *B,
-                     EON_Vector3 *D)
-{
-    D->X = A->X - B->X;
-    D->Y = A->Y - B->Y;
-    D->Z = A->Z - B->Z;
-}
-
-EON_PRIVATE
-EON_Float eon_Vector3DotProduct(const EON_Vector3 *A, const EON_Vector3 *B)
-{
-    return (A->X * B->X + A->Y * B->Y + A->Z * B->Z);
-}
-
-#define EON_VECTOR3KMULT(V, K) do { \
-    (V)->X *= (K); \
-    (V)->Y *= (K); \
-    (V)->Z *= (K); \
-} while (0)
-
-/* scalar multipliction */
-EON_PRIVATE
-void eon_Vector3Mul(EON_Vector3 *V, EON_Float k)
-{
-    EON_VECTOR3KMULT(V, k);
-}
-
-/* scalar division */
-EON_PRIVATE
-void eon_Vector3Div(EON_Vector3 *V, EON_Float k)
-{
-    /* FIXME: optimization?*/
-    EON_Float kp = 1/k;
-    EON_VECTOR3KMULT(V, kp);
-}
-
-#undef EON_VECTOR3KMULT
-
-EON_PRIVATE
-void eon_Vector3Normalize(EON_Vector3 *V)
-{
-    EON_Float len2 = eon_Vector3DotProduct(V, V);
-    if (len2 > EON_ZEROF) {
-        EON_Float t = (EON_Float)sqrt(len2);
-        eon_Vector3Div(V, t);
-    } else {
-        eon_Vector3Set(V, 0.0, 0.0, 0.0);
-    }
-    return;
-}
-
-EON_PRIVATE
-EON_Float eon_Vector3Magnitude(const EON_Vector3 *V)
-{
-    return (EON_Float)sqrt(eon_Vector3DotProduct(V, V));
-}
-
-EON_PRIVATE
-void eon_Vector3CrossProduct(const EON_Vector3 *A, const EON_Vector3 *B,
-                             EON_Vector3 *D)
-{
-    D->X = A->Y * B->Z - A->Z * B->Y;
-    D->Y = A->Z * B->X - A->X * B->Z;
-    D->Z = A->X * B->Y - A->Y * B->X;
-}
-
-EON_PRIVATE
-EON_Float eon_Vector3Distance(const EON_Vector3 *A, const EON_Vector3 *B)
-{
-    EON_Vector3 D;
-    eon_Vector3Diff(A, B, &D);
-    return eon_Vector3Magnitude(&D);
-}
 
 /*************************************************************************/
 /* Faces (internal use only)                                             */
