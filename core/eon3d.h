@@ -98,7 +98,7 @@ typedef unsigned char EON_Byte;        /** generic 8 bit byte type         */
 typedef enum eon_boolean_ {
     EON_FALSE = 0,
     EON_TRUE  = 1
-} EON_Boolean;
+} EON_Bool;
 
 /** \enum status code for all tha API calls */
 typedef enum eon_status_ {
@@ -357,7 +357,7 @@ typedef struct eon_material_ {
     EON_Float        EnvScaling;         /**< environment map scaling      */
     EON_TexEnvOp     TexEnvMode;         /**< TexEnv combining mode
                                               (EON_TEXENV_*)               */
-    EON_Boolean      ZBufferable;        /**< can this material
+    EON_Bool      ZBufferable;        /**< can this material
                                               be zbuffered?                */
     EON_UInt         NumGradients;       /**< desired number of gradients
                                               to be used                   */
@@ -431,10 +431,10 @@ typedef struct eon_object_ {
     EON_Vertex  *Vertexes;              /**< Array of vertexes             */
     EON_Face    *Faces;                 /**< Array of faces                */
     struct eon_object_ *Children[EON_MAX_CHILDREN];
-    EON_Boolean BackfaceCull;           /**< are backfacing polys drawn?   */
-    EON_Boolean BackfaceIllumination;   /**< illuminated by lights 
+    EON_Bool BackfaceCull;           /**< are backfacing polys drawn?   */
+    EON_Bool BackfaceIllumination;   /**< illuminated by lights 
                                              behind them?                  */
-    EON_Boolean GenMatrix;              /**< Generate Matrix from the 
+    EON_Bool GenMatrix;              /**< Generate Matrix from the 
                                              following if set              */
     EON_Vector3 Position;
     EON_Vector3 Rotation;

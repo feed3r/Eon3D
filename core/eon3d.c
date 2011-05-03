@@ -490,7 +490,7 @@ void EON_RGBUnpack(EON_RGB *RGB, EON_UInt32 color)
 /* TODO? zero, not */
 
 EON_PRIVATE 
-EON_Boolean eon_floatAreEquals(EON_Float A, EON_Float B)
+EON_Bool eon_floatAreEquals(EON_Float A, EON_Float B)
 {
     return (fabs(A - B) < EON_ZEROF);
 }
