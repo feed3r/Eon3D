@@ -12,10 +12,6 @@
 #include "config.h"
 
 #include "eon3d.h"
-
-/* yes, this has to be BEFORE the header... yet */
-typedef struct eon_array_ eon_array;
-
 #include "eon3d_private.h"
 
 
