@@ -514,11 +514,11 @@ int eon_Vector3IsEqual(const EON_Vector3 *A, const EON_Vector3 *B)
 #endif /* EON_FUTURE_VECTOR3 */
 
 EON_PRIVATE
-void eon_Vector3RAdd(EON_Vector3 *P, const EON_Vector3 *OP)
+void eon_Vector3RAdd(EON_Vector3 *D, const EON_Vector3 *V)
 {
-    P->X += OP->X;
-    P->Y += OP->Y;
-    P->Z += OP->Z;
+    D->X += V->X;
+    D->Y += V->Y;
+    D->Z += V->Z;
 }
 
 #ifdef EON_FUTURE_VECTOR3
@@ -640,10 +640,10 @@ EON_Float *eon_matrix4x4MakeRotation(EON_Float *matrix,
 }
 
 EON_PRIVATE
-EON_Float * eon_matrix4x4MakeTranslation(EON_Float *matrix,
-                                         EON_Float x,
-                                         EON_Float y,
-                                         EON_Float z)
+EON_Float *eon_matrix4x4MakeTranslation(EON_Float *matrix,
+                                        EON_Float x,
+                                        EON_Float y,
+                                        EON_Float z)
 {
      memset(matrix, 0, sizeof(EON_Float) * 4 * 4);
      matrix[0     ] = 1.0;
