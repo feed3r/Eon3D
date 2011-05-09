@@ -26,6 +26,7 @@
 #include <string.h>
 #include <strings.h>
 
+#include "memorykit.h"
 
 #include "eon3dx_model.h"
 
@@ -54,7 +55,7 @@ struct eonx_model_ {
 
 EONx_Model *EONx_newModel()
 {
-    EONx_Model *model = EON_zalloc(sizeof(EONx_Model));
+    EONx_Model *model = CX_zalloc(sizeof(EONx_Model));
     if (model) {
         model->Status = EONx_MODEL_OK;
     }
@@ -63,7 +64,7 @@ EONx_Model *EONx_newModel()
 
 void EONx_delModel(EONx_Model *model)
 {
-    EON_free(model);
+    CX_free(model);
 }
 
 EONx_ModelStatus EONx_modelStatus(EONx_Model *model)

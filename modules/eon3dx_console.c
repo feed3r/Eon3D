@@ -24,6 +24,8 @@
 
 #include <stdlib.h>
 
+#include "memorykit.h"
+
 #include "eon3dx_console.h"
 
 #ifdef HAVE_CONFIG_H
@@ -251,7 +253,7 @@ static EON_Frame *eonx_SDLConsoleGetFrame(void *SDLCon_,
     RETURN_IF_NULL_PTR_MSG(SDLCon, EONx_SDL_TAG, "get frame");
 
     if (!frame) {
-        frame = EON_zalloc(sizeof(EON_Frame));
+        frame = CX_zalloc(sizeof(EON_Frame));
     }
     if (frame) {
         frame->F.Width  = SDLCon->Width;
@@ -333,7 +335,7 @@ static eonx_SDLConsole *eonx_finiSDLConsole(eonx_SDLConsole *console)
 
 static eonx_SDLConsole *eonx_SDLConsoleAlloc(EON_Camera *camera)
 {
-    eonx_SDLConsole *console = EON_zalloc(sizeof(eonx_SDLConsole));
+    eonx_SDLConsole *console = CX_zalloc(sizeof(eonx_SDLConsole));
     if (!console) {
         EON_log(EONx_SDL_TAG, EON_LOG_ERROR,
                 "cannot allocate a Console Context");
@@ -342,7 +344,7 @@ static eonx_SDLConsole *eonx_SDLConsoleAlloc(EON_Camera *camera)
         if (SDLCon) {
             console = SDLCon;
         } else {
-            EON_free(console);
+            CX_free(console);
             console = NULL;
         }
     }
@@ -458,7 +460,7 @@ static void eonx_NullConsoleRegister(EONx_Console *console)
 
 EONx_Console *EONx_newConsole(EON_Camera *camera)
 {
-    EONx_Console *console = EON_zalloc(sizeof(EONx_Console));
+    EONx_Console *console = CX_zalloc(sizeof(EONx_Console));
     if (console) {
         eonx_NullConsoleRegister(console);
 #ifdef HAVE_SDL

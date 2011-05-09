@@ -22,6 +22,7 @@ configure_file(${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_BINARY_DIR}/config.h)
 add_subdirectory(core)
 add_subdirectory(modules)
 add_subdirectory(examples)
+add_subdirectory(deps/cxkit)
 add_subdirectory(deps/rply-1.01)
 add_subdirectory(tests)
 

@@ -529,14 +529,6 @@ void EON_startup();
 */
 void EON_shutdown();
 
-/**************************************************************************
- * Memory manipulation                                                    *
- **************************************************************************/
-
-void *EON_malloc(size_t size);
-void *EON_zalloc(size_t size);
-void *EON_free(void *ptr);
-
 
 /*************************************************************************
  * Error Handling                                                        *

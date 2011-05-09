@@ -15,10 +15,13 @@ if(ENABLE_TESTS)
     include_directories(${eon3d_BINARY_DIR})
     include_directories(${eon3d_SOURCE_DIR})
     include_directories(${eon3d_SOURCE_DIR}/core)
+    include_directories(${eon3d_SOURCE_DIR}/deps/cxkit)
+    include_directories(${eon3d_SOURCE_DIR}/deps/cxkit/kits)
     # for the custom header
     include_directories(${eon3d_BINARY_DIR}/tests)
 
     link_directories(${eon3d_BINARY_DIR}/core)
+    link_directories(${eon3d_BINARY_DIR}/deps/cxkit)
     # for the custom library
     link_directories(${eon3d_BINARY_DIR}/tests)
 
@@ -42,17 +45,16 @@ if(ENABLE_TESTS)
     add_executable(check_template check_template.c)
     target_link_libraries(check_template check)
     target_link_libraries(check_template eon3d_dbg)
+    target_link_libraries(check_template eon3d_kit)
     
     add_executable(check_rgb check_rgb.c)
     target_link_libraries(check_rgb check)
     target_link_libraries(check_rgb eon3d_dbg)
-
-    add_executable(check_array check_array.c)
-    target_link_libraries(check_array check)
-    target_link_libraries(check_array eon3d_dbg)
+    target_link_libraries(check_rgb eon3d_kit)
 
     add_executable(check_vector3 check_vector3.c)
     target_link_libraries(check_vector3 check)
     target_link_libraries(check_vector3 eon3d_dbg)
+    target_link_libraries(check_vector3 eon3d_kit)
 endif(ENABLE_TESTS)
 
