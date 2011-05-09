@@ -26,7 +26,7 @@ enum {
 
 #define VA_CHECK_REF(VA) do { \
     if (!(VA)) { \
-        return VARRAY_BAD_REF; \
+        return CX_VARRAY_BAD_REF; \
     } \
 } while (0)
 
@@ -121,7 +121,7 @@ int CX_varray_del(CX_VArray *va)
     free(va);
     va = NULL;
 
-    return VARRAY_OK;
+    return CX_VARRAY_OK;
 }
 
 int32_t CX_varray_length(CX_VArray *va)
@@ -195,7 +195,7 @@ int CX_varray_get(CX_VArray *va, int32_t position, void *element)
         void *ptr = va_ptr(va, position);
         memcpy(element, ptr, va->element_size);
     }
-    return VARRAY_OK;
+    return CX_VARRAY_OK;
 }
 
 void *CX_varray_get_ref(CX_VArray *va, int32_t position)
