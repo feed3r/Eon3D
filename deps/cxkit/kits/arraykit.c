@@ -208,5 +208,13 @@ void *CX_varray_get_ref(CX_VArray *va, int32_t position)
     return ptr;
 }
 
+int CX_varray_reset(CX_VArray *va)
+{
+    VA_CHECK_REF(va);
+    va->length = 0;
+    return 0;
+}
+
+
 /* vim: et sw=4 ts=4: */
 

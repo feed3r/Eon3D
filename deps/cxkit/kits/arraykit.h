@@ -15,11 +15,11 @@
 /** \enum Error codes for the varray functions. */
 /** DO NOT rely on their values. ABI isn't guaranteed */
 typedef enum {
-    CX_VARRAY_OK       =  0, /**< success                             */
+    CX_VARRAY_OK       =  0, /**< success (no real error, thus)          */
     CX_VARRAY_EMPTY    = -1, /**< empty CX_VArray element (not critical) */
-    CX_VARRAY_BAD_REF  = -2, /**< bad varray reference given          */
-    CX_VARRAY_BAD_IDX  = -3, /**< bad varray index given              */
-    CX_VARRAY_NO_MEM   = -4  /**< out of memory                       */
+    CX_VARRAY_BAD_REF  = -2, /**< bad varray reference given             */
+    CX_VARRAY_BAD_IDX  = -3, /**< bad varray index given                 */
+    CX_VARRAY_NO_MEM   = -4  /**< out of memory                          */
 } CX_VArrayError;
 
 /** \def opaque for the client */
@@ -38,7 +38,7 @@ CX_VArray *CX_varray_new(int32_t size, int32_t element_size);
 /** \fn Disposes a CX_VArray. */
 /**
   \param va a CX_VArray reference.
-  \return VARRAY_OK on success, a CX_VArrayError otherwise.
+  \return CX_VARRAY_OK on success, a CX_VArrayError otherwise.
   \see CX_varray_new
 */
 int CX_varray_del(CX_VArray *va);
@@ -77,7 +77,7 @@ int32_t CX_varray_element_size(CX_VArray *va);
   \param va a CX_VArray reference.
   \param position in the CX_VArray (like a plain C array) of the element.
   \param element const pointer of the new element.
-  \return VARRAY_OK on success, a CX_VArrayError otherwise.
+  \return CX_VARRAY_OK on success, a CX_VArrayError otherwise.
   \see CX_varray_append
   \see CX_varray_add
 */
@@ -87,7 +87,7 @@ int CX_varray_insert(CX_VArray *va, int32_t position, const void *element);
 /**
   \param va a CX_VArray reference.
   \param element const pointer of the new element.
-  \return VARRAY_OK on success, a CX_VArrayError otherwise.
+  \return CX_VARRAY_OK on success, a CX_VArrayError otherwise.
   \see CX_varray_insert
   \see CX_varray_add
 */
@@ -98,7 +98,7 @@ int CX_varray_append(CX_VArray *va, const void *element);
     the elements after the removed one.
   \param va a CX_VArray reference.
   \param position in the CX_VArray (like a plain C array) of the element.
-  \return VARRAY_OK on success, a CX_VArrayError otherwise.
+  \return CX_VARRAY_OK on success, a CX_VArrayError otherwise.
   \see CX_varray_insert
   \see CX_varray_append
 */
@@ -114,7 +114,7 @@ int CX_varray_remove(CX_VArray *va, int32_t position);
   \param position in the CX_VArray (like a plain C array) of the element.
   \param element pointer to storage to hold the copy of the CX_VArray
          element.
-  \return VARRAY_OK on success, a CX_VArrayError otherwise.
+  \return CX_VARRAY_OK on success, a CX_VArrayError otherwise.
 */
 int CX_varray_get(CX_VArray *va, int32_t position, void *element);
 
@@ -133,6 +133,15 @@ int CX_varray_get(CX_VArray *va, int32_t position, void *element);
   \see CX_varray_remove
 */
 void *CX_varray_get_ref(CX_VArray *va, int32_t position);
+
+/**\fn Resets the varray to a pristine state without deallocating */
+/** Use this function when you want to recycle a VArray and you
+    want to avoid a new round of grow()s, given that the new size
+    of the varray will be something closer to the current one.
+  \param va a CX_VArray reference.
+*/
+int CX_varray_reset(CX_VArray *va);
+
 
 #endif /* CX_ARRAYKIT_H */
 
