@@ -45,218 +45,6 @@ enum {
 /* `almost' zero in floating point */
 #define EON_ZEROF   (0.0000000001)
 
-/*************************************************************************/
-/* Rendering utilities: generic resizable array object                   */
-/*************************************************************************/
-
-typedef struct {
-    void       *Data;
-
-    EON_Int32   ItemSize;
-
-    EON_Int32   Size;
-    EON_Int32   Length;
-} eon_array;
-
-enum {
-    EON_ARRAY_ITEM_SIZE_MIN = 1,
-};
-
-#define EON_ARRAY_CHECK_REF(VA) do { \
-    if (!(VA)) { \
-        return EON_ERROR; \
-    } \
-} while (0)
-
-static int eon_arrayAdjustPosition(eon_array *array, EON_Int32 position)
-{
-    int32_t pos = position;
-    if (pos < 0) {
-        pos = array->Length - pos;
-    }
-    if (pos < 0) {
-        pos = 0;
-    }
-    if (pos >= array->Length) {
-        pos = array->Length;
-    }
-    return position;
-}
-
-static EON_Status eon_arrayGrow(eon_array *array)
-{
-    EON_Status ret = EON_OK;
-    int memSize = array->Size * array->ItemSize;
-    void *newData = realloc(array->Data, memSize * 2);
-    if (newData) {
-        memset(newData + memSize, 0, array->Size);
-    } else {
-        newData = calloc(1, memSize);
-        if (newData) {
-            memcpy(newData, array->Data, array->Size);
-            free(array->Data);
-        }
-    }
-    
-    if (newData) {
-        array->Data = newData;
-        array->Size *= 2;
-    } else {
-        ret = EON_ERROR;
-    }
-    return ret;
-}
-
-static int eon_arrayPreparePut(eon_array *array, EON_Int32 position)
-{
-    EON_Status ret = EON_OK;
-    position = eon_arrayAdjustPosition(array, position);
-    if (position >= array->Size) {
-        ret = eon_arrayGrow(array);
-    }
-    return ret;
-}
-
-static EON_Int32 eon_arrayAdjustItemSize(EON_Int32 itemSize)
-{
-    if (itemSize <= 0) {
-        itemSize = sizeof(void*);
-    }
-    if (itemSize <= EON_ARRAY_ITEM_SIZE_MIN) {
-        itemSize  = EON_ARRAY_ITEM_SIZE_MIN;
-    }
-
-    return itemSize;
-}
-
-EON_PRIVATE
-EON_Status eon_arrayAlloc(eon_array *array,
-                          EON_Int32 size, EON_Int32 itemSize)
-{
-    EON_Status ret = EON_OK;
-    itemSize = eon_arrayAdjustItemSize(itemSize);
-
-    EON_ARRAY_CHECK_REF(array);
-
-    if (!array || !size) {
-        ret = EON_ERROR;
-    } else {
-        array->Data = calloc(size, itemSize);
-        if (!array->Data) {
-            ret = EON_ERROR;
-        } else {
-            array->Size = size;
-            array->ItemSize = itemSize;
-        }
-    }
-
-    return ret;
-}
-
-EON_PRIVATE
-EON_Status eon_arrayFree(eon_array *array)
-{
-    EON_ARRAY_CHECK_REF(array);
-
-    if (array->Data) {
-        free(array->Data);
-        array->Data = NULL;
-    }
- 
-    return EON_ERROR;
-}
-
-#ifdef EON_DEBUG
-
-EON_PRIVATE
-eon_array *eon_arrayNew(EON_Int32 size, EON_Int32 itemSize)
-{
-    eon_array *array = calloc(1, sizeof(eon_array));
-    if (array) {
-        EON_Status ret = eon_arrayAlloc(array, size, itemSize);
-        if (ret != EON_OK) {
-            free(array);
-            array = NULL;
-        }
-    }
-    return array;
-}
-
-#endif /* EON_DEBUG */
-
-static void *eon_arrayItemPtr(eon_array *array, EON_Int32 position)
-{
-    void *p = (EON_Byte *)array->Data + (position * array->ItemSize);
-    return p;
-}
-
-EON_PRIVATE
-EON_Status eon_arrayInsert(eon_array *array, EON_Int32 position, const void *element)
-{
-    EON_Status ret = EON_ERROR;
-
-    EON_ARRAY_CHECK_REF(array);
-
-    ret = eon_arrayPreparePut(array, position);
-    if (ret == EON_OK) {
-        void *ptr = eon_arrayItemPtr(array, position);
-        memcpy(ptr, element, array->ItemSize);
-        array->Length++;
-    }
-    return ret;
-}
-
-EON_PRIVATE
-EON_Status eon_arrayAppend(eon_array *array, const void *element)
-{
-    EON_ARRAY_CHECK_REF(array);
-    return eon_arrayInsert(array, array->Length, element);
-}
-
-EON_PRIVATE
-EON_Status eon_arrayReset(eon_array *array)
-{
-    EON_ARRAY_CHECK_REF(array);
-
-    array->Length = 0;
-    return EON_OK;
-}
-
-EON_PRIVATE
-EON_Status eon_arrayLength(eon_array *array, EON_Int32 *len)
-{
-    EON_ARRAY_CHECK_REF(array);
-    if (len) {
-        *len = array->Length;
-    }
-    return EON_OK;
-}
-
-EON_PRIVATE
-void *eon_arrayGet(eon_array *array, EON_Int32 index)
-{
-    void *ptr = NULL;
-    if (array && index >= 0 && index < array->Length) {
-        ptr = eon_arrayItemPtr(array, index);
-    }
-    return ptr;
-}
-
-#ifdef EON_FUTURE_ARRAY
-EON_PRIVATE
-void *eon_arrayLast(eon_array *array)
-{
-    void *ptr = NULL;
-    if (array && array->Length > 0) {
-        ptr = eon_arrayItemPtr(array, array->Length - 1);
-    }
-    return ptr;
-}
-#endif /* EON_FUTURE_ARRAY */
-
-#undef EON_ARRAY_CHECK_REF
-
-
 
 /**************************************************************************
  * The unavoidable forward declarations.                                  *
@@ -298,8 +86,8 @@ struct eon_renderer_ {
     EON_Camera      *Camera;        /**< camera reference */
     EON_ZBuffer     *ZBuffer;       /**< WRITEME          */
 
-    eon_array       Faces;          /**< faces to render  */
-    eon_array       Lights;         /**< lights to render */
+    CX_VArray       *Faces;         /**< faces to render  */
+    CX_VArray       *Lights;        /**< lights to render */
 
     EON_Float       CMatrix[4 * 4]; /**< viewpoint transformation matrix */
     EON_UInt32      TriStats[EON_TRI_STAT_NUM];
@@ -1489,12 +1277,12 @@ static void *eon_rendererDestroy(EON_Renderer *rend)
 }
 
 EON_Renderer *eon_rendererAllocArray(EON_Renderer *rend,
-                                     eon_array *array,
+                                     CX_VArray **array,
                                      EON_UInt32 size, EON_UInt32 itemSize)
 {
     if (rend && size && itemSize) {
-        EON_Status err = eon_arrayAlloc(array, size, itemSize);
-        if (err) {
+        *array = CX_varray_new(size, itemSize);
+        if (*array == NULL) {
             rend = eon_rendererDestroy(rend);
         }
     }
@@ -1520,8 +1308,8 @@ EON_Renderer *EON_newRenderer(void)
 void EON_delRenderer(EON_Renderer *rend)
 {
     if (rend) {
-        eon_arrayFree(&(rend->Faces));
-        eon_arrayFree(&(rend->Lights));
+        CX_varray_del(rend->Faces);
+        CX_varray_del(rend->Lights);
         CX_free(rend);
     }
     return;
@@ -1541,8 +1329,8 @@ EON_Status EON_rendererSetup(EON_Renderer *rend,
 
     rend->Camera = camera;
 
-    eon_arrayReset(&(rend->Faces));
-    eon_arrayReset(&(rend->Lights));
+    CX_varray_reset(rend->Faces);
+    CX_varray_reset(rend->Lights);
 
     /* rend->CMatrix initialized as side effect */
     eon_matrix4x4MakeRotation(rend->CMatrix, 2, -camera->Pan);
@@ -1561,8 +1349,8 @@ EON_Status EON_rendererSetup(EON_Renderer *rend,
 
 EON_Status EON_rendererTeardown(EON_Renderer *rend)
 {
-    eon_arrayReset(&(rend->Faces));
-    eon_arrayReset(&(rend->Lights));
+    CX_varray_reset(rend->Faces);
+    CX_varray_reset(rend->Lights);
 
     return EON_OK;
 }
@@ -1578,7 +1366,7 @@ EON_Status EON_rendererLight(EON_Renderer *rend,
     if (!rend && !light) {
         return EON_ERROR;
     }
-    eon_arrayLength(&(rend->Lights), &nLights);
+    nLights = CX_varray_length(rend->Lights);
     if (light->Type == EON_LIGHT_NONE || nLights > EON_MAX_LIGHTS) {
         return EON_OK;
     }
@@ -1599,7 +1387,7 @@ EON_Status EON_rendererLight(EON_Renderer *rend,
                        Xp, Yp, Zp,
                        &(li.Pos.X), &(li.Pos.Y), &(li.Pos.Z));
 
-    eon_arrayAppend(&(rend->Lights), &li);
+    CX_varray_append(rend->Lights, &li);
     return EON_OK;
 }
 
@@ -1667,17 +1455,18 @@ EON_Status EON_rendererProcess(EON_Renderer *rend,
 {
     EON_Int32 j = 0, nFaces = 0;
     eon_polySortContext SC = { NULL };
+    void *Data = NULL;
 
     if (!rend && !frame) {
         return EON_ERROR;
     }
  
-    eon_arrayLength(&(rend->Faces), &nFaces);
-
-    eon_polySort(&SC, rend->Faces.Data, nFaces, rend->Camera->Sort); /* FIXME */
+    nFaces = CX_varray_length(rend->Faces);
+    Data = CX_varray_get_ref(rend->Faces, 0); /* FIXME UGLIEST HACK EVER */
+    eon_polySort(&SC, Data, nFaces, rend->Camera->Sort); /* FIXME/TODO */
 
     for (j = 0; j < nFaces; j++) {
-        eon_faceInfo *fi = eon_arrayGet(&(rend->Faces), j);
+        eon_faceInfo *fi = CX_varray_get_ref(rend->Faces, j);
         eon_clipRenderFace(&(rend->Clip), rend, fi->Face, frame);
     }
 
@@ -1799,7 +1588,7 @@ static EON_Status eon_rendererAppendFace(EON_Renderer *rend,
               face->Vertexes[2]->Formed.Z,
         .Face = face,
     };
-    return eon_arrayAppend(&(rend->Faces), &fi);
+    return CX_varray_append(rend->Faces, &fi);
 }
 
 static int eon_rendererIsFaceVisible(EON_Face *face, EON_Vector3 *N)
@@ -1840,7 +1629,7 @@ static EON_Status eon_rendererProcessObject(EON_Renderer *rend,
     if (!rend || !object || !object->NumFaces || !object->NumVertexes) {
         return EON_ERROR; /* log */
     }
-    eon_arrayLength(&(rend->Faces), &nFaces);
+    nFaces = CX_varray_length(rend->Faces);
     nFaces += object->NumFaces;
     if (nFaces >= EON_MAX_TRIANGLES) {
         return EON_ERROR; /* log */
