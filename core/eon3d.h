@@ -51,7 +51,6 @@
 
 /** \enum implementation limits */
 enum {
-    EON_MAX_LOG_LINE_LEN = 1024,      /**< Maximum user message length */
     EON_MAX_CHILDREN     = 64,        /**< Maximum children per object */
     EON_MAX_LIGHTS       = 32,        /**< Maximum lights per scene --
                                            if you exceed this, the exceeding
@@ -106,18 +105,6 @@ typedef enum eon_status_ {
     EON_ERROR = -1  /**< generic error */
 } EON_Status; 
 
-/** \enum log levels */
-typedef enum eon_loglevel_ {
-    EON_LOG_CRITICAL = 0, /**< this MUST be the first and it is
-                               the most important. -- PANIC!     */
-    EON_LOG_ERROR,        /**< you'll need to see this           */
-    EON_LOG_WARNING,      /**< you'd better to see this          */
-    EON_LOG_INFO,         /**< informative messages (for tuning) */
-    EON_LOG_DEBUG,        /**< debug messages (for devs)         */
-    EON_LOG_LAST          /**< this MUST be the last -- 
-                               and should'nt be used             */
-} EON_LogLevel;
-
 /** \enum canonical dimensions */
 typedef enum eon_dimension_ {
     EON_X = 0,
@@ -125,28 +112,6 @@ typedef enum eon_dimension_ {
     EON_Z = 2
 } EON_Dimension;
 
-
-/** \var typedef EON_LogHandler
-    \brief logging callback function.
-
-    This callback is invoked by the eon3d runtime whenever is needed
-    to log a message.
-
-    eon3d provides a default callback to log to the  stderr.
-
-    \param userData a pointer given at the callback registration
-           time. Fully opaque for eon3d.
-    \param where string identifying the eon3d module/subsystem.
-    \param level the severity of the message.
-    \param fmt printf-like format string for the message.
-    \param ap va_list of the arguments to complete the format string.
-    \return EON_OK on success, a EON_ERROR otherwise.
-
-    \see EON_LogLevel
-*/
-typedef void (*EON_LogHandler)(void *userData,
-                               const char *where, int level,
-                               const char *fmt, va_list ap);
 
 /*************************************************************************/
 
@@ -534,17 +499,28 @@ void EON_shutdown();
  * Error Handling                                                        *
  *************************************************************************/
 
-void EON_log(const char *where, int level, const char *fmt, ...);
-void EON_vlog(const char *where, int level, const char *fmt, va_list ap);
+/* FIXME: this shadows (and must be kept in sync) with the logkit.
+   And that sucks.
+*/
+/** \enum the message levels */
+typedef enum {
+    EON_LOG_CRITICAL = 0, /**< this MUST be the first and it is
+                               the most important. -- PANIC!       */
+    EON_LOG_ERROR,        /**< you'll need to see this             */
+    EON_LOG_WARNING,      /**< you'd better to see this            */
+    EON_LOG_INFO,         /**< informative messages (for tuning)   */
+    EON_LOG_DEBUG,        /**< debug messages (for devs)           */
+    EON_LOG_MARK,         /**< verbatim, don't add anything, ever. */
+    EON_LOG_LAST          /**< this MUST be the last -- 
+                               and should'nt be used               */
+} EON_LogLevel;
 
-void EON_logSetHandler(EON_LogHandler LogHandler, void *userData);
 
-EON_LogHandler EON_logGetHandler(void);
-void *EON_logGetUserData(void);
+int EON_log(const char *tag, int level, const char *fmt, ...);
+int EON_vlog(const char *tag, int level, const char *fmt, va_list args);
 
-void EON_logDefaultHandler(void *userData,
-                           const char *where, int level,
-                           const char* fmt, va_list ap);
+void EON_loggerSet(void *CX_logger);
+void *EON_loggetGet();
 
 
 /*************************************************************************/

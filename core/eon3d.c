@@ -34,6 +34,7 @@
 
 #include "memorykit.h"
 #include "arraykit.h"
+#include "logkit.h"
 
 #include "eon3d.h"
 
@@ -128,96 +129,39 @@ static int eon_processFaceGouradShading(EON_Face *face,
 
 #define EON_TAG "EON3D"
 
-typedef struct {
-    void            *UserData;
-    int             MinLevel;
-    EON_LogHandler  Log;
-} EON_LogContext;
-
 /* BIG FAT FIXME */
-static EON_LogContext EON_LogCtx = {
-    .UserData = NULL, /* watch out below on EON_startup() */
-    .MinLevel = EON_LOG_DEBUG,
-    .Log      = EON_logDefaultHandler
-};
+static CX_LogContext *EON_RLog = NULL; /* running logger */
+static CX_LogContext *EON_Log = NULL;  /* default logger */
+/* watch out below on EON_startup() */
 
-/* ``it's just a %#@ decoy'' */
-void EON_log(const char *where, int level, const char *fmt, ...)
+void EON_loggerSet(void *CX_logger)
 {
-    va_list ap;
-    va_start(ap, fmt);
-
-    EON_vlog(where, level, fmt, ap);
-
-    va_end(ap);
-    return;
+    EON_RLog = CX_logger;
 }
 
-/* here's the real workhorse */
-void EON_vlog(const char *where, int level, const char *fmt, va_list ap)
+void *EON_loggetGet()
 {
-    if (!where) {
-        where = EON_TAG;
-    }
-
-    EON_LogCtx.Log(EON_LogCtx.UserData, where, level, fmt, ap);
-
-    return;
+    return EON_RLog;
 }
 
-void EON_logSetHandler(EON_LogHandler LogHandler, void *userData)
+/* pure delegation to not export the logkit */
+int EON_log(const char *tag, int level, const char *fmt, ...)
 {
-    if (LogHandler) {
-        /* we always must have a valid log handler */
-        EON_LogCtx.Log = LogHandler;
-    }
-    if (EON_LogCtx.Log != EON_logDefaultHandler) {
-        /* can't overwrite just the default userdata to avoid
-           strange things to happen */
-        EON_LogCtx.UserData = userData;
-    }
-    return;
+    int ret = 0;
+    va_list args;
+    va_start(args, fmt);
+
+    ret = EON_vlog(tag, level, fmt, args);
+
+    va_end(args);
+    return ret;
 }
 
-EON_LogHandler EON_logGetHandler(void)
+int EON_vlog(const char *tag, int level, const char *fmt, va_list args)
 {
-    return EON_LogCtx.Log;
+    return CX_log_trace_va(EON_RLog, (CX_LogLevel)level, tag, fmt, args);
 }
 
-void *EON_logGetUserData(void)
-{
-    return EON_LogCtx.UserData;
-}
-
-static const char *eon_logPrefix(int level)
-{
-    /* FIXME: to be kept in sync with EON_LogLevel */
-    static const char *prefixNames[] = {
-        "CRI",
-        "ERR",
-        "WRN",
-        "INF",
-        "DBG",
-        "UNK"  /* EON_LOG_LAST - you should'nt see this */
-    };
-
-    level = EON_Clamp(level, EON_LOG_CRITICAL, EON_LOG_LAST);
-    return prefixNames[level];
-}
-
-/* FIXME: too much stack? */
-void EON_logDefaultHandler(void *userData,
-                           const char *where, int level,
-                           const char* fmt, va_list ap)
-{
-    char buf[EON_MAX_LOG_LINE_LEN] = { '\0' };
-    const char *prefix = eon_logPrefix(level);
-    FILE *sink = userData;
-
-    vsnprintf(buf, sizeof(buf), fmt, ap);
-
-    fprintf(sink, "[%s] %s %s\n", prefix, where, buf);
-}
 
 /*************************************************************************/
 /* RGB utilities                                                         */
@@ -1718,14 +1662,15 @@ static int eon_renderFaceVertexes(EON_Renderer *renderer,
 
 void EON_startup()
 {
-    EON_LogCtx.UserData = stderr;
+    EON_Log = CX_log_open_console(CX_LOG_DEBUG, stderr);
+    EON_RLog = EON_Log;
     return;
 }
 
 
 void EON_shutdown()
 {
-    /* nothing interesting in here */
+    CX_log_close(EON_Log);
     return;
 }
 

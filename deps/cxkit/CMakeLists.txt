@@ -1,5 +1,5 @@
 
-set(LIBEON3D_KIT_SOURCES kits/memorykit.c kits/arraykit.c)
+set(LIBEON3D_KIT_SOURCES kits/memorykit.c kits/arraykit.c kits/logkit.c)
 
 add_definitions(-DHAVE_CONFIG_H) # always
 
