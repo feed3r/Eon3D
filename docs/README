@@ -1,0 +1,22 @@
+This is the eon3D documents collection.
+
+The documentation gathered here is developer-oriented, ranging
+fron topics such design decision, algorhytm selection, code
+organization and stuff.
+
+As already stated, eon3D is a learning project. Neverthless, minimal
+knowledge of the 3D math/programming/jargon is assumed.
+Wherever practical, reminders and links are provided.
+
+The documentation is provided mostly, but not exclusively, as
+simple text. You can distinguish the formats by the file extension:
+
+Extension		Format		Readable as plain text?
+----------------------------------------------------------------
+none/.txt		plain text	yes
+.md			markdown[1]	yes
+
++++
+
+[1] http://daringfireball.net/projects/markdown/
+

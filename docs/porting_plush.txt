@@ -1,0 +1,38 @@
+	Name                    Description				Status
+	----                    -----------                             ------
+	CAM.C			Camera code                             Partly 
+	CLIP.C			Frustum clipping code                   Done
+	LIGHT.C			Light code                              Done
+	MAKE.C			Object primitive code                   InProgress
+	MAT.C			Material code                           InProgress
+	MATH.C			Math functions                          Done
+	OBJ.C			Object code                             InProgress                 
+	PF_PTEX.C		Perspective correct rasterizers         TODO
+	PF_SOLID.C		Solid rasterizers                       TODO
+	PF_TEX.C		Texture mapping rasterizers             TODO
+	PF_TRANS.C		Translucent rasterizers                 TODO
+	PLUSH.C			Misc code                               TODO*
+	READ_3DS.C		3DS reader                              NotNeeded (yet)
+	READ_COB.C		COB reader                              NotNeeded
+	READ_JAW.C		JAW reader                              NotNeeded
+	READ_PCX.C		PCX reader                              TODO
+	RENDER.C		Render manager                          InProgress
+	SPLINE.C		Spline interpolator                     TODO
+	TEXT.C			Bitmaped text                           TODO*
+	PLUSH.H			Main header file                        InProgress
+	PL_CONF.H		Configuration header file               Done
+	PL_DEFS.H		Additional defines/config               Done
+	PL_TYPES.H		Complex types definitions               Done
+	PUTFACE.H		Utility header for pf_*.c               TODO
+	MAKEFILE.LSH		Linux makefile                          MISSING
+	MAKEFILE.WC		Watcom C 10.5 Makefile                  MISSING
+	MAKEFILE.DJ		DJGPP v2 Makefile                       MISSING
+	LICENSE.TXT		Licensing info                          MISSING|VERIFY
+	README.TXT		This file                               NotNeeded
+
+
+TEST
+-------------------
+eon_matrix4x4*
+...
+
