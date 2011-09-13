@@ -1,8 +1,11 @@
-	
+
 Eon3D - A simplistic 3D software renderer
 =========================================
 
 (C) 2010-2011 Francesco Romani < fromani | gmail : com >
+
+**[moved to bitbucket](https://bitbucket.org/france/eon3d/)!**
+
 
 
 	             __        __
