@@ -29,7 +29,5 @@ include_directories(${eon3d_SOURCE_DIR}/core)
 include_directories(${eon3d_SOURCE_DIR}/modules)
 include_directories(${eon3d_SOURCE_DIR}/deps/cxkit)
 include_directories(${eon3d_SOURCE_DIR}/deps/cxkit/kits)
-include_directories(${eon3d_SOURCE_DIR}/deps/rply-1.01)
-
-
+include_directories(${eon3d_SOURCE_DIR}/deps/rply-1.1.2)
 
