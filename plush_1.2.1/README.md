@@ -1,5 +1,15 @@
-homepage: http://www.1014.org/code/nullsoft/plush/
-code taken from `plush_120.zip` 
+This is *NOT* the vanilla plush 1.2.0 source tree.
+This is a snapshot of [my plush 1.2.x fork](http://github.com/mojaves/plush)
+with very minor modifications. You can consult the git changelog
+to see the details.
+
+In order to plainly mark this is a derived version, I marked this
+version as 1.2.1. 
+
+A verbatim, not altered snapshot of the plush 1.2.0 source tree
+is included to better understand the changes and modifications I made.
+
+The code was fetched from the (last known) [plush homepage](http://www.1014.org/code/nullsoft/plush/)
 
 License (copied verbatim from site)
 
