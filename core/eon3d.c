@@ -1,8 +1,8 @@
 /**************************************************************************
- * eon3d.c -- Eon3D is a simplistic 3D software renderer.                 *
- * (C) 2010-2011 Francesco Romani <fromani at gmail dot com>              *
+ * eon3d.h -- Eon3D is a simplistic 3D software renderer.               *
+ * (C) 2010-2013 Francesco Romani <fromani at gmail dot com>              *
  *                                                                        *
- * inspired by and/or derived from                                        *
+ * derived from                                                           *
  *                                                                        *
  * PLUSH 3D VERSION 1.2                                                   *
  * Copyright (c) 1996-2000 Justin Frankel <justin at nullsoft dot com>    *
@@ -26,1654 +26,3853 @@
  * 3. This notice may not be removed or altered from any source           *
  *    distribution.                                                       *
  *                                                                        *
- * Meaning: all good stuff is credited to the plush authors.              *
- * All the bugs,misdesigns and pessimizations are credited to me. ;)      *
+ * Meaning: all good stuff is credited to the plush author(s).            *
+ * All the bugs, misdesigns and pessimizations are credited to me. ;)     *
  *                                                                        *
  **************************************************************************/
 
-
-#include "memorykit.h"
-#include "arraykit.h"
-#include "logkit.h"
-
 #include "eon3d.h"
 
-enum {
-    EON_MAX_LOG_PREFIX_LEN = 32
-};
-
-
-/* `almost' zero in floating point */
-#define EON_ZEROF   (0.0000000001)
-
-
-/**************************************************************************
- * The unavoidable forward declarations.                                  *
- **************************************************************************/
-
-enum {
-    EON_NUM_CLIP_PLANES = 5, /* see clipDirection above */
-};
-
-/* can't find a better nome */
-typedef enum eon_tri_stat_ {
-    EON_TRI_STAT_INITIAL = 0, /* initial triangles                  */
-    EON_TRI_STAT_CULLED,      /* triangles after culling            */
-    EON_TRI_STAT_CLIPPED,     /* final polygons after real clipping */
-    EON_TRI_STAT_TESSELLED,   /* final triangles after tessellation */
-    EON_TRI_STAT_NUM          /* this MUST be the last              */
-} EON_TriStat;
-
-/* FIXME 8 vs 4x2 et al */
-typedef struct eon_clipinfo_ {
-    EON_Vertex  newVertexes[8];
-
-    EON_Double  Shades[8];
-} eon_clipInfo;
-
-
-typedef struct eon_clipcontext_ {
-    eon_clipInfo    ClipInfo[2];
-    EON_Double      ClipPlanes[EON_NUM_CLIP_PLANES][4];
-    EON_Camera      *Cam;
-    EON_Int32       CX; /* XXX */
-    EON_Int32       CY; /* XXX */
-    EON_Double      Fov;
-    EON_Double      AdjAsp;
-} eon_clipContext;
-
-
-struct eon_renderer_ {
-    EON_Camera      *Camera;        /**< camera reference */
-    EON_ZBuffer     *ZBuffer;       /**< WRITEME          */
-
-    CX_VArray       *Faces;         /**< faces to render  */
-    CX_VArray       *Lights;        /**< lights to render */
-
-    EON_Float       CMatrix[4 * 4]; /**< viewpoint transformation matrix */
-    EON_UInt32      TriStats[EON_TRI_STAT_NUM];
-    eon_clipContext Clip;           /**< clip information */
-};
-
-/**************************************************************************
- * The unavoidable forward declarations (/2: functions).                  *
- **************************************************************************/
-
-static EON_Status eon_rendererProcessObject(EON_Renderer *rend,
-                                            EON_Object *object,
-                                            EON_Float *bmatrix,
-                                            EON_Float *bnmatrix);
-
-static int eon_renderFaceNull(EON_Renderer *renderer,
-                              EON_Face *face, EON_Frame *frame);
-
-static int eon_renderFaceVertexes(EON_Renderer *renderer,
-                                  EON_Face *face, EON_Frame *frame);
-
-
-static int eon_processFaceNull(EON_Face *face, EON_Renderer *rend);
-
-static int eon_processFaceFlatLightining(EON_Face *face,
-                                         EON_Renderer *rend);
-
-static int eon_processFaceFillEnvironment(EON_Face *face,
-                                          EON_Renderer *rend);
-
-static int eon_processFaceGouradShading(EON_Face *face,
-                                        EON_Renderer *rend);
-
-
-/*************************************************************************
- * Error Handling                                                        *
- *************************************************************************/
-
-#define EON_TAG "EON3D"
-
-/* BIG FAT FIXME */
-static CX_LogContext *EON_RLog = NULL; /* running logger */
-static CX_LogContext *EON_Log = NULL;  /* default logger */
-/* watch out below on EON_startup() */
-
-void EON_loggerSet(void *CX_logger)
+// math.c
+//
+void EON_MatrixRotate(EON_Float matrix[], EON_uChar m, EON_Float Deg)
 {
-    EON_RLog = CX_logger;
+  EON_uChar m1, m2;
+  double c,s;
+  double d= Deg * EON_PI / 180.0;
+  memset(matrix,0,sizeof(EON_Float)*16);
+  matrix[((m-1)<<2)+m-1] = matrix[15] = 1.0;
+  m1 = (m % 3);
+  m2 = ((m1+1) % 3);
+  c = cos(d); s = sin(d);
+  matrix[(m1<<2)+m1]=(EON_Float)c; matrix[(m1<<2)+m2]=(EON_Float)s;
+  matrix[(m2<<2)+m2]=(EON_Float)c; matrix[(m2<<2)+m1]=(EON_Float)-s;
 }
 
-void *EON_loggetGet()
+void EON_MatrixTranslate(EON_Float m[], EON_Float x, EON_Float y, EON_Float z)
 {
-    return EON_RLog;
+  memset(m,0,sizeof(EON_Float)*16);
+  m[0] = m[4+1] = m[8+2] = m[12+3] = 1.0;
+  m[0+3] = x; m[4+3] = y; m[8+3] = z;
 }
 
-/* pure delegation to not export the logkit */
-int EON_log(const char *tag, int level, const char *fmt, ...)
+void EON_MatrixMultiply(EON_Float *dest, EON_Float src[])
 {
-    int ret = 0;
-    va_list args;
-    va_start(args, fmt);
-
-    ret = EON_vlog(tag, level, fmt, args);
-
-    va_end(args);
-    return ret;
-}
-
-int EON_vlog(const char *tag, int level, const char *fmt, va_list args)
-{
-    return CX_log_trace_va(EON_RLog, (CX_LogLevel)level, tag, fmt, args);
-}
-
-
-/*************************************************************************/
-/* RGB utilities                                                         */
-/*************************************************************************/
-
-void EON_RGBSet(EON_RGB *rgb, EON_UInt8 R, EON_UInt8 G, EON_UInt8 B)
-{
-    rgb->R = R;
-    rgb->G = G;
-    rgb->B = B;
-    rgb->A = 0;
-}
-
-EON_UInt32 EON_RGBPack(const EON_RGB *RGB)
-{
-    EON_UInt32 color = (((EON_UInt32)RGB->R) << 24)
-                     | (((EON_UInt32)RGB->G) << 16)
-                     | (((EON_UInt32)RGB->B) <<  8)
-                     | (((EON_UInt32)RGB->A)      );
-    return color;
-}
-
-void EON_RGBUnpack(EON_RGB *RGB, EON_UInt32 color)
-{
-    RGB->R = (color >> 24) & 0xFF;
-    RGB->G = (color >> 16) & 0xFF;
-    RGB->B = (color >>  8) & 0xFF;
-    RGB->A = (color      ) & 0xFF;
-    return;
-}
-
-/*************************************************************************/
-/* Vector3 operations (internal use only)                                */
-/*************************************************************************/
-/* the definition of the following operation set, and the design decision
-   to use Vector3s in lieu of Point3s, came from
-   [3DMath] `3D Math Primer for Graphics and Game Development'
-   (F. Dunn, I. Parberry), WordWare.
-*/
-
-/* TODO? zero, not */
-
-EON_PRIVATE 
-EON_Bool eon_floatAreEquals(EON_Float A, EON_Float B)
-{
-    return (fabs(A - B) < EON_ZEROF);
-}
-
-EON_PRIVATE
-void eon_Vector3Set(EON_Vector3 *V, EON_Float X, EON_Float Y, EON_Float Z)
-{
-    V->X = X;
-    V->Y = Y;
-    V->Z = Z;
-}
-
-#ifdef EON_FUTURE_VECTOR3
-EON_PRIVATE
-int eon_Vector3IsEqual(const EON_Vector3 *A, const EON_Vector3 *B)
-{
-    return (eon_floatAreEquals(A->X, B->X)
-         && eon_floatAreEquals(A->Y, B->Y)
-         && eon_floatAreEquals(A->Z, B->Z));
-}
-#endif /* EON_FUTURE_VECTOR3 */
-
-EON_PRIVATE
-void eon_Vector3RAdd(EON_Vector3 *D, const EON_Vector3 *V)
-{
-    D->X += V->X;
-    D->Y += V->Y;
-    D->Z += V->Z;
-}
-
-#ifdef EON_FUTURE_VECTOR3
-EON_PRIVATE
-void eon_Vector3Add(const EON_Vector3 *A, const EON_Vector3 *B,
-                    EON_Vector3 *D)
-{
-    D->X = A->X + B->X;
-    D->Y = A->Y + B->Y;
-    D->Z = A->Z + B->Z;
-}
-#endif /* EON_FUTURE_VECTOR3 */
-
-EON_PRIVATE
-void eon_Vector3Diff(const EON_Vector3 *A, const EON_Vector3 *B,
-                     EON_Vector3 *D)
-{
-    D->X = A->X - B->X;
-    D->Y = A->Y - B->Y;
-    D->Z = A->Z - B->Z;
-}
-
-EON_PRIVATE
-EON_Float eon_Vector3DotProduct(const EON_Vector3 *A, const EON_Vector3 *B)
-{
-    return (A->X * B->X + A->Y * B->Y + A->Z * B->Z);
-}
-
-#define EON_VECTOR3KMULT(V, K) do { \
-    (V)->X *= (K); \
-    (V)->Y *= (K); \
-    (V)->Z *= (K); \
-} while (0)
-
-#ifdef EON_FUTURE_VECTOR3
-/* scalar multipliction */
-EON_PRIVATE
-void eon_Vector3Mul(EON_Vector3 *V, EON_Float k)
-{
-    EON_VECTOR3KMULT(V, k);
-}
-#endif /* EON_FUTURE_VECTOR3 */
-
-/* scalar division */
-EON_PRIVATE
-void eon_Vector3Div(EON_Vector3 *V, EON_Float k)
-{
-    /* FIXME: optimization?*/
-    EON_Float kp = 1/k;
-    EON_VECTOR3KMULT(V, kp);
-}
-
-#undef EON_VECTOR3KMULT
-
-EON_PRIVATE
-void eon_Vector3Normalize(EON_Vector3 *V)
-{
-    EON_Float len2 = eon_Vector3DotProduct(V, V);
-    if (len2 > EON_ZEROF) {
-        EON_Float t = (EON_Float)sqrt(len2);
-        eon_Vector3Div(V, t);
-    } else {
-        eon_Vector3Set(V, 0.0, 0.0, 0.0);
-    }
-    return;
-}
-
-#ifdef EON_FUTURE_VECTOR3
-EON_PRIVATE
-EON_Float eon_Vector3Magnitude(const EON_Vector3 *V)
-{
-    return (EON_Float)sqrt(eon_Vector3DotProduct(V, V));
-}
-
-EON_PRIVATE
-void eon_Vector3CrossProduct(const EON_Vector3 *A, const EON_Vector3 *B,
-                             EON_Vector3 *D)
-{
-    D->X = A->Y * B->Z - A->Z * B->Y;
-    D->Y = A->Z * B->X - A->X * B->Z;
-    D->Z = A->X * B->Y - A->Y * B->X;
-}
-
-EON_PRIVATE
-EON_Float eon_Vector3Distance(const EON_Vector3 *A, const EON_Vector3 *B)
-{
-    EON_Vector3 D;
-    eon_Vector3Diff(A, B, &D);
-    return eon_Vector3Magnitude(&D);
-}
-#endif /* EON_FUTURE_VECTOR3 */
-
-
-/**************************************************************************
- * Internal functions: Matrix manipulation                                *
- **************************************************************************/
-/* NOTE: eon3D uses column vectors                                        */
-
-EON_PRIVATE
-EON_Float *eon_matrix4x4MakeRotation(EON_Float *matrix,
-                                     EON_Byte ax, EON_Float deg)
-{
-    EON_Byte m1, m2;
-    EON_Double d = deg * EON_PI / 180.0;
-    EON_Double c = cos(d), s = sin(d);
-
-    memset(matrix, 0, sizeof(EON_Float)* 4 * 4);
-    matrix[((ax - 1) << 2) + ax - 1] = 1.0;
-    matrix[15]                       = 1.0;
-    m1 = ( ax      % 3);
-    m2 = ((m1 + 1) % 3);
-
-    matrix[(m1 << 2) + m1] = (EON_Float)+c;
-    matrix[(m1 << 2) + m2] = (EON_Float)+s;
-    matrix[(m2 << 2) + m2] = (EON_Float)+c;
-    matrix[(m2 << 2) + m1] = (EON_Float)-s;
-
-    return matrix;
-}
-
-EON_PRIVATE
-EON_Float *eon_matrix4x4MakeTranslation(EON_Float *matrix,
-                                        EON_Float x,
-                                        EON_Float y,
-                                        EON_Float z)
-{
-     memset(matrix, 0, sizeof(EON_Float) * 4 * 4);
-     matrix[0     ] = 1.0;
-     matrix[4  + 1] = 1.0;
-     matrix[8  + 2] = 1.0;
-     matrix[12 + 3] = 1.0;
-     matrix[0  + 3] = x;
-     matrix[4  + 3] = y;
-     matrix[8  + 3] = z;
-     return matrix;
-}
-
-EON_PRIVATE
-EON_Float *eon_matrix4x4Multiply(EON_Float *dst, const EON_Float *src)
-{
-    EON_UInt i;
-    EON_Float tmp[4 * 4];
-    memcpy(tmp, dst, sizeof(EON_Float) * 4 * 4);
-
-    for (i = 0; i < (4 * 4); i += 4) {
-        *dst++ = src[i+0]*tmp[(0<<2)+0]+src[i+1]*tmp[(1<<2)+0]
-               + src[i+2]*tmp[(2<<2)+0]+src[i+3]*tmp[(3<<2)+0];
-        *dst++ = src[i+0]*tmp[(0<<2)+1]+src[i+1]*tmp[(1<<2)+1]
-               + src[i+2]*tmp[(2<<2)+1]+src[i+3]*tmp[(3<<2)+1];
-        *dst++ = src[i+0]*tmp[(0<<2)+2]+src[i+1]*tmp[(1<<2)+2]
-               + src[i+2]*tmp[(2<<2)+2]+src[i+3]*tmp[(3<<2)+2];
-        *dst++ = src[i+0]*tmp[(0<<2)+3]+src[i+1]*tmp[(1<<2)+3]
-               + src[i+2]*tmp[(2<<2)+3]+src[i+3]*tmp[(3<<2)+3];
-    }
-    return dst;
-}
-
-EON_PRIVATE
-void eon_matrix4x4Apply(EON_Float *m,
-                        EON_Float x, EON_Float y, EON_Float z,
-                        EON_Float *outx, EON_Float *outy, EON_Float *outz)
-{
-    *outx = x*m[0] + y*m[1] + z*m[2 ] + m[3 ];
-    *outy = x*m[4] + y*m[5] + z*m[6 ] + m[7 ];
-    *outz = x*m[8] + y*m[9] + z*m[10] + m[11];
-}
-
-
-/*************************************************************************/
-/* Faces (internal use only)                                             */
-/*************************************************************************/
-
-static void eon_faceInit(EON_Face *f)
-{
-    f->_processFlatLightining  = eon_processFaceNull;
-    f->_processFillEnvironment = eon_processFaceNull;
-    f->_processGouradShading   = eon_processFaceNull;
-    return;
-}
-
-static void eon_faceSetMaterial(EON_Face *f, EON_Material *m)
-{
-    if (m->_shadeMode & (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE)) {
-        f->_processFlatLightining = eon_processFaceFlatLightining;
-    }
-
-    if (m->_fillMode & EON_FILL_ENVIRONMENT) {
-        f->_processFillEnvironment = eon_processFaceFillEnvironment;
-    }
-
-    if (m->_shadeMode & (EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE)) {
-        f->_processGouradShading = eon_processFaceGouradShading;
-    }
-
-    return;
-}
-
-/*************************************************************************/
-/* Materials                                                             */
-/*************************************************************************/
-
-/* FIXME: magic numbers */
-EON_Material *EON_newMaterial(void)
-{
-    EON_Material *m = CX_zalloc(sizeof(EON_Material));
-    if (m) { /* FIXME magic numbers */
-        m->EnvScaling = 1.0f;
-        m->TexScaling = 1.0f;
-        EON_RGBSet(&m->Ambient,  0,   0,   0);
-        EON_RGBSet(&m->Diffuse,  128, 128, 128);
-        EON_RGBSet(&m->Specular, 128, 128, 128);
-        m->Shininess = 4;
-        m->NumGradients = 32;
-        m->FadeDist = 1000.0;
-        m->ZBufferable = EON_TRUE;
-    }
-    return m;
-}
-
-void EON_delMaterial(EON_Material *m)
-{
-    if (m) {
-        if (m->_reMapTable) {
-            CX_free(m->_reMapTable);
-        }
-        if (m->_requestedColors) {
-            CX_free(m->_requestedColors);
-        }
-        if (m->_addTable) {
-            CX_free(m->_addTable);
-        }
-        free(m);
-    }
-}
-
-static void eon_freePalette(EON_Material *m)
-{
-    /* single solid color special case */
-    if (m && m->_requestedColors != &m->_solidColor) {
-        CX_free(m->_requestedColors);
-    }
-    return;
-}
-
-static void eon_makeSinglePalette(EON_Material *m)
-{
-    eon_freePalette(m);
-    m->NumGradients = 1; /* enforce */
-    m->_colorsUsed = m->NumGradients;
-
-    m->_solidColor = m->Ambient;
-    m->_requestedColors = &m->_solidColor;
-}
-
-static void eon_makePhongPalette(EON_Material *m)
-{
-    EON_Double a = EON_PI/2.0, da = 0.0;
-    EON_UInt i;
-
-    eon_freePalette(m);
-    m->_colorsUsed = m->NumGradients;
-    m->_requestedColors = CX_malloc(m->_colorsUsed * sizeof(EON_RGB));
-
-    if (m->NumGradients > 1)
-        da = -EON_PI/((m->NumGradients-1)<<1);
-
-    for (i = 0; i < m->NumGradients; i++) {
-        EON_RGB *pal = &(m->_requestedColors[i]);
-        EON_Double ca = 1, cb = 0.0;
-        EON_Int c;
-
-        if (m->NumGradients > 1) {
-            ca = cos((EON_Double) a);
-            a += da;
-        }
-
-        cb = pow((EON_Double) ca, (EON_Double)m->Shininess);
-
-        c = (EON_Int)((cb * m->Specular.R) + (ca * m->Diffuse.R) + m->Ambient.R);
-        pal->R = EON_Clamp(c, 0, 255);
-        c = (EON_Int)((cb * m->Specular.G) + (ca * m->Diffuse.G) + m->Ambient.G);
-        pal->R = EON_Clamp(c, 0, 255);
-        c = (EON_Int)((cb * m->Specular.B) + (ca * m->Diffuse.B) + m->Ambient.B);
-        pal->R = EON_Clamp(c, 0, 255);
-    }
-}
-
-
-EON_Status EON_materialSeal(EON_Material *m)
-{
-    EON_Status ret = EON_OK;
-    if (!m) {
-        return EON_ERROR;
-    }
-
-    if (m->Shininess < 1)
-        m->Shininess = 1;
-
-    m->_shadeMode = m->Shade;
-    m->_fillMode = m->Fill;
-    if (m->_fillMode == EON_FILL_DEFAULT) {
-        m->_fillMode = EON_FILL_SOLID;
-    }
-
-    if (m->Shade != EON_SHADE_NONE
-     || m->Shade != EON_SHADE_FLAT) {
-        /* unsupported */
-        ret = EON_ERROR;
-    } else {
-        if (m->Shade == EON_SHADE_NONE) {
-            eon_makeSinglePalette(m);
-        } else {
-            eon_makePhongPalette(m);
-        }
-        m->_renderFace = eon_renderFaceNull;
-    }
-    return ret;
-}
-
-/*************************************************************************/
-/* Objects and primitives                                                */
-/*************************************************************************/
-
-static void eon_objectInitFaces(EON_Object *o, EON_Material *m)
-{
-    EON_UInt32 x = 0;
-
-    for (x = 0; x < o->NumFaces; x++) {
-        eon_faceInit(&(o->Faces[x]));
-        eon_faceSetMaterial(&(o->Faces[x]), m);
-    }
-
-    return;
-}
-
-static void *eon_delObjectData(EON_Object *obj)
-{
-    if (obj->Vertexes) {
-        CX_free(obj->Vertexes);
-    }
-    if (obj->Faces) {
-        CX_free(obj->Faces);
-    }
-    CX_free(obj);
-    return NULL;
-}
-
-EON_Object *eon_objectAllocItems(EON_Object *obj, void **p,
-                                 size_t size, EON_UInt32 num)
-{
-    if (obj && size && num) {
-        *p = CX_zalloc(size * num);
-        if (!(*p)) {
-            obj = eon_delObjectData(obj);
-        }
-    }
-    return obj;
-}
-
-EON_Object *EON_delObject(EON_Object *obj)
-{
-    if (obj) {
-        EON_UInt i;
-        for (i = 0; i < EON_MAX_CHILDREN; i++) {
-            EON_delObject(obj->Children[i]);
-        }
-        eon_delObjectData(obj);
-        obj = NULL;
-    }
-    return obj;
-}
-
-
-EON_Object *EON_newObject(EON_UInt32 vertices, EON_UInt32 faces,
-                          EON_Material *material)
-{
-    EON_Object *object = NULL;
-    
-    /* TODO sanity checks; material CANNOT be NULL */
-
-    object = CX_zalloc(sizeof(EON_Object));
-    if (object) {
-        object->GenMatrix    = EON_TRUE;
-        object->BackfaceCull = EON_TRUE;
-        object->NumVertexes  = vertices;
-        object->NumFaces     = faces;
-        object = eon_objectAllocItems(object, (void**)&(object->Vertexes),
-                                      sizeof(EON_Vertex), vertices);
-        object = eon_objectAllocItems(object, (void**)&(object->Faces),
-                                      sizeof(EON_Face), faces);
-        
-        eon_objectInitFaces(object, material);
+  EON_Float temp[16];
+  EON_uInt i;
+  memcpy(temp,dest,sizeof(EON_Float)*16);
+  for (i = 0; i < 16; i += 4) {
+    *dest++ = src[i+0]*temp[(0<<2)+0]+src[i+1]*temp[(1<<2)+0]+
+              src[i+2]*temp[(2<<2)+0]+src[i+3]*temp[(3<<2)+0];
+    *dest++ = src[i+0]*temp[(0<<2)+1]+src[i+1]*temp[(1<<2)+1]+
+              src[i+2]*temp[(2<<2)+1]+src[i+3]*temp[(3<<2)+1];
+    *dest++ = src[i+0]*temp[(0<<2)+2]+src[i+1]*temp[(1<<2)+2]+
+              src[i+2]*temp[(2<<2)+2]+src[i+3]*temp[(3<<2)+2];
+    *dest++ = src[i+0]*temp[(0<<2)+3]+src[i+1]*temp[(1<<2)+3]+
+              src[i+2]*temp[(2<<2)+3]+src[i+3]*temp[(3<<2)+3];
   }
-  return object;
 }
 
-static void eon_resetVertexesNormals(EON_Object *obj)
+void EON_MatrixApply(EON_Float *m, EON_Float x, EON_Float y, EON_Float z,
+                   EON_Float *outx, EON_Float *outy, EON_Float *outz)
 {
-    EON_UInt32 i;
-    for (i = 0; i < obj->NumVertexes; i++) {
-        EON_Vertex *v = &(obj->Vertexes[i]);
-        v->Norm.X = 0.0;
-        v->Norm.Y = 0.0;
-        v->Norm.Z = 0.0;
-    }
-    return;
+  *outx = x*m[0] + y*m[1] + z*m[2] + m[3];
+  *outy	= x*m[4] + y*m[5] + z*m[6] + m[7];
+  *outz = x*m[8] + y*m[9] + z*m[10] + m[11];
 }
 
-
-int EON_objectCalcNormals(EON_Object *object)
+EON_Float EON_DotProduct(EON_Float x1, EON_Float y1, EON_Float z1,
+                      EON_Float x2, EON_Float y2, EON_Float z2)
 {
-    EON_UInt32 i;
-
-    if (!object) {
-        return EON_ERROR;
-    }
-
-    for (i = 0; i < object->NumFaces; i++) {
-        EON_Face *f = &(object->Faces[i]);
-        EON_Vector3 d1, d2;
-
-        eon_Vector3Diff(&(f->Vertexes[0]->Coords),
-                        &(f->Vertexes[1]->Coords), &d1);
-        eon_Vector3Diff(&(f->Vertexes[0]->Coords),
-                      &(f->Vertexes[2]->Coords), &d2);
-
-        f->Norm.X = (EON_Float) (d1.Y * d2.Z - d1.Z * d2.Y);
-        f->Norm.Y = (EON_Float) (d1.Z * d2.X - d1.X * d2.Z);
-        f->Norm.Z = (EON_Float) (d1.X * d2.Y - d1.Y * d2.X);
-
-        eon_Vector3Normalize(&(f->Norm));
-
-        eon_Vector3RAdd(&(f->Vertexes[0]->Norm), &(f->Norm));
-        eon_Vector3RAdd(&(f->Vertexes[1]->Norm), &(f->Norm));
-        eon_Vector3RAdd(&(f->Vertexes[2]->Norm), &(f->Norm));
-    }
-
-    for (i = 0; i < object->NumVertexes; i++) {
-        EON_Vertex *v = &(object->Vertexes[i]);
-        eon_Vector3Normalize(&(v->Norm));
-    }
-
-    for (i = 0; i < EON_MAX_CHILDREN; i++) {
-        EON_objectCalcNormals(object->Children[i]);
-    }
-    return EON_OK;
+  return ((x1*x2)+(y1*y2)+(z1*z2));
 }
 
-EON_Status EON_objectSetMaterial(EON_Object *object,
-                                 EON_Material *material)
+void EON_NormalizeVector(EON_Float *x, EON_Float *y, EON_Float *z)
 {
-    EON_UInt32 x = 0;
-
-    /* TODO sanity checks; material CANNOT be NULL */
-
-    for (x = 0; x < object->NumFaces; x++) {
-        eon_faceSetMaterial(&(object->Faces[x]), material);
-    }
-
-    return EON_OK;
+  double length;
+  length = (*x)*(*x)+(*y)*(*y)+(*z)*(*z);
+  if (length > 0.0000000001) {
+    EON_Float t = (EON_Float)sqrt(length);
+    *x /= t;
+    *y /= t;
+    *z /= t;
+  } else *x = *y = *z = 0.0;
 }
 
-EON_Object *EON_newBox(EON_Float w, EON_Float d, EON_Float h,
-                       EON_Material *material)
+// obj.c
+//
+EON_Obj *EON_ObjScale(EON_Obj *o, EON_Float s)
 {
-    static const EON_Byte verts[6*6] = {
-        0,4,1, 1,4,5, 0,1,2, 3,2,1, 2,3,6, 3,7,6,
-        6,7,4, 4,7,5, 1,7,3, 7,1,5, 2,6,0, 4,0,6
-    };
-/*
-    static const EON_Byte map[24*2*3] = {
-        1,0, 1,1, 0,0, 0,0, 1,1, 0,1,
-        0,0, 1,0, 0,1, 1,1, 0,1, 1,0,
-        0,0, 1,0, 0,1, 1,0, 1,1, 0,1,
-        0,0, 1,0, 0,1, 0,1, 1,0, 1,1,
-        1,0, 0,1, 0,0, 0,1, 1,0, 1,1,
-        1,0, 1,1, 0,0, 0,1, 0,0, 1,1
-    };
-*/
-    const EON_Byte *vv = verts;
+  EON_uInt32 i = o->NumVertices;
+  EON_Vertex *v = o->Vertices;
+  while (i--) {
+    v->x *= s; v->y *= s; v->z *= s; v++;
+  }
+  for (i = 0; i < EON_MAX_CHILDREN; i ++)
+    if (o->Children[i]) EON_ObjScale(o->Children[i],s);
+  return o;
+}
 
-    EON_Object *o = EON_newObject(8, 12, material);
-    if (o) {
-        EON_Vertex *v = o->Vertexes;
-        EON_Face *f = o->Faces;
-        EON_UInt32 x;
+EON_Obj *EON_ObjStretch(EON_Obj *o, EON_Float x, EON_Float y, EON_Float z)
+{
+  EON_uInt32 i = o->NumVertices;
+  EON_Vertex *v = o->Vertices;
+  while (i--) {
+    v->x *= x; v->y *= y; v->z *= z; v++;
+  }
+  for (i = 0; i < EON_MAX_CHILDREN; i ++)
+    if (o->Children[i]) EON_ObjStretch(o->Children[i],x,y,z);
+  return o;
+}
 
-        w /= 2;
-        h /= 2;
-        d /= 2;
+EON_Obj *EON_ObjTranslate(EON_Obj *o, EON_Float x, EON_Float y, EON_Float z)
+{
+  EON_uInt32 i = o->NumVertices;
+  EON_Vertex *v = o->Vertices;
+  while (i--) {
+    v->x += x; v->y += y; v->z += z; v++;
+  }
+  return o;
+}
 
-        eon_Vector3Set(&(v[0].Coords), -w,  h,  d);
-        eon_Vector3Set(&(v[1].Coords),  w,  h,  d);
-        eon_Vector3Set(&(v[2].Coords), -w,  h, -d);
-        eon_Vector3Set(&(v[3].Coords),  w,  h, -d);
-        eon_Vector3Set(&(v[4].Coords), -w, -h,  d);
-        eon_Vector3Set(&(v[5].Coords),  w, -h,  d);
-        eon_Vector3Set(&(v[6].Coords), -w, -h, -d);
-        eon_Vector3Set(&(v[7].Coords),  w, -h, -d);
+EON_Obj *EON_ObjFlipNormals(EON_Obj *o)
+{
+  EON_uInt32 i = o->NumVertices;
+  EON_Vertex *v = o->Vertices;
+  EON_Face *f = o->Faces;
+  while (i--) {
+    v->nx = - v->nx; v->ny = - v->ny; v->nz = - v->nz; v++;
+  }
+  i = o->NumFaces;
+  while (i--) {
+    f->nx = - f->nx; f->ny = - f->ny; f->nz = - f->nz;
+    f++;
+  }
+  for (i = 0; i < EON_MAX_CHILDREN; i ++)
+    if (o->Children[i]) EON_ObjFlipNormals(o->Children[i]);
+  return o;
+}
 
-        for (x = 0; x < 12; x ++) {
-            f->Vertexes[0] = o->Vertexes + *vv++;
-            f->Vertexes[1] = o->Vertexes + *vv++;
-            f->Vertexes[2] = o->Vertexes + *vv++;
+void EON_ObjDelete(EON_Obj *o)
+{
+  EON_uInt i;
+  if (o) {
+    for (i = 0; i < EON_MAX_CHILDREN; i ++)
+      if (o->Children[i]) EON_ObjDelete(o->Children[i]);
+    if (o->Vertices) free(o->Vertices);
+    if (o->Faces) free(o->Faces);
+    free(o);
+  }
+}
 
-            f++;
+EON_Obj *EON_ObjCreate(EON_uInt32 nv, EON_uInt32 nf)
+{
+  EON_Obj *o;
+  if (!(o = (EON_Obj *) malloc(sizeof(EON_Obj)))) return 0;
+  memset(o,0,sizeof(EON_Obj));
+  o->GenMatrix = 1;
+  o->BackfaceCull = 1;
+  o->NumVertices = nv;
+  o->NumFaces = nf;
+  if (nv && !(o->Vertices=(EON_Vertex *) malloc(sizeof(EON_Vertex)*nv))) {
+    free(o);
+    return 0;
+  }
+  if (nf && !(o->Faces = (EON_Face *) malloc(sizeof(EON_Face)*nf))) {
+    free(o->Vertices);
+    free(o);
+    return 0;
+  }
+  memset(o->Vertices,0,sizeof(EON_Vertex)*nv);
+  memset(o->Faces,0,sizeof(EON_Face)*nf);
+  return o;
+}
+
+EON_Obj *EON_ObjClone(EON_Obj *o) 
+{
+  EON_Face *iff, *of;
+  EON_uInt32 i;
+  EON_Obj *out;
+  if (!(out = EON_ObjCreate(o->NumVertices,o->NumFaces))) return 0;
+  for (i = 0; i < EON_MAX_CHILDREN; i ++)
+    if (o->Children[i]) out->Children[i] = EON_ObjClone(o->Children[i]);
+  out->Xa = o->Xa; out->Ya = o->Ya; out->Za = o->Za;
+  out->Xp = o->Xp; out->Yp = o->Yp; out->Zp = o->Zp;
+  out->BackfaceCull = o->BackfaceCull;
+  out->BackfaceIllumination = o->BackfaceIllumination;
+  out->GenMatrix = o->GenMatrix;
+  memcpy(out->Vertices, o->Vertices, sizeof(EON_Vertex) * o->NumVertices);
+  iff = o->Faces;
+  of = out->Faces;
+  i = out->NumFaces;
+  while (i--) {
+    of->Vertices[0] = (EON_Vertex *)
+      out->Vertices + (iff->Vertices[0] - o->Vertices);
+    of->Vertices[1] = (EON_Vertex *)
+      out->Vertices + (iff->Vertices[1] - o->Vertices);
+    of->Vertices[2] = (EON_Vertex *)
+      out->Vertices + (iff->Vertices[2] - o->Vertices);
+    of->MappingU[0] = iff->MappingU[0];
+    of->MappingV[0] = iff->MappingV[0];
+    of->MappingU[1] = iff->MappingU[1];
+    of->MappingV[1] = iff->MappingV[1];
+    of->MappingU[2] = iff->MappingU[2];
+    of->MappingV[2] = iff->MappingV[2];
+    of->nx = iff->nx;
+    of->ny = iff->ny;
+    of->nz = iff->nz;
+    of->Material = iff->Material;
+    of++;
+    iff++;
+  }
+  return out;
+}
+
+void EON_ObjSetMat(EON_Obj *o, EON_Mat *m, EON_Bool th) 
+{
+  EON_sInt32 i = o->NumFaces;
+  EON_Face *f = o->Faces;
+  while (i--) (f++)->Material = m;
+  if (th) for (i = 0; i < EON_MAX_CHILDREN; i++)
+    if (o->Children[i]) EON_ObjSetMat(o->Children[i],m,th);
+}
+
+EON_Obj *EON_ObjCalcNormals(EON_Obj *obj) {
+  EON_uInt32 i;
+  EON_Vertex *v = obj->Vertices;
+  EON_Face *f = obj->Faces;
+  double x1, x2, y1, y2, z1, z2;
+  i = obj->NumVertices;
+  while (i--) {
+    v->nx = 0.0; v->ny = 0.0; v->nz = 0.0;
+    v++;
+  }
+  i = obj->NumFaces;
+  while (i--) {
+    x1 = f->Vertices[0]->x-f->Vertices[1]->x;
+    x2 = f->Vertices[0]->x-f->Vertices[2]->x;
+    y1 = f->Vertices[0]->y-f->Vertices[1]->y;
+    y2 = f->Vertices[0]->y-f->Vertices[2]->y;
+    z1 = f->Vertices[0]->z-f->Vertices[1]->z;
+    z2 = f->Vertices[0]->z-f->Vertices[2]->z;
+    f->nx = (EON_Float) (y1*z2 - z1*y2);
+    f->ny = (EON_Float) (z1*x2 - x1*z2);
+    f->nz = (EON_Float) (x1*y2 - y1*x2);
+    EON_NormalizeVector(&f->nx, &f->ny, &f->nz);
+    f->Vertices[0]->nx += f->nx;
+    f->Vertices[0]->ny += f->ny;
+    f->Vertices[0]->nz += f->nz;
+    f->Vertices[1]->nx += f->nx;
+    f->Vertices[1]->ny += f->ny;
+    f->Vertices[1]->nz += f->nz;
+    f->Vertices[2]->nx += f->nx;
+    f->Vertices[2]->ny += f->ny;
+    f->Vertices[2]->nz += f->nz;
+    f++;
+  }
+  v = obj->Vertices;
+  i = obj->NumVertices;
+  do {
+    EON_NormalizeVector(&v->nx, &v->ny, &v->nz);
+    v++;
+  } while (--i);
+  for (i = 0; i < EON_MAX_CHILDREN; i ++)
+    if (obj->Children[i]) EON_ObjCalcNormals(obj->Children[i]);
+  return obj;
+}
+
+// mat.c
+//
+
+static void eon_GenerateSinglePalette(EON_Mat *);
+static void eon_GeneratePhongPalette(EON_Mat *);
+static void eon_GenerateTextureEnvPalette(EON_Mat *);
+static void eon_GenerateTexturePalette(EON_Mat *, EON_Texture *);
+static void eon_GeneratePhongTexturePalette(EON_Mat *, EON_Texture *);
+static void eon_GeneratePhongTransparentPalette(EON_Mat *m);
+static void  eon_GenerateTransparentPalette(EON_Mat *);
+static void eon_SetMaterialPutFace(EON_Mat *m);
+static void eon_MatSetupTransparent(EON_Mat *m, EON_uChar *pal);
+
+EON_Mat *EON_MatCreate()
+{
+  EON_Mat *m;
+  m = (EON_Mat *) malloc(sizeof(EON_Mat));
+  if (!m) return 0;
+  memset(m,0,sizeof(EON_Mat));
+  m->EnvScaling = 1.0f;
+  m->TexScaling = 1.0f;
+  m->Ambient[0] = m->Ambient[1] = m->Ambient[2] = 0;
+  m->Diffuse[0] = m->Diffuse[1] = m->Diffuse[2] = 128;
+  m->Specular[0] = m->Specular[1] = m->Specular[2] = 128;
+  m->Shininess = 4;
+  m->NumGradients = 32;
+  m->FadeDist = 1000.0;
+  m->zBufferable = 1;
+  return m;
+}
+
+void EON_MatDelete(EON_Mat *m) {
+  if (m) {
+    if (m->_ReMapTable) free(m->_ReMapTable);
+    if (m->_RequestedColors) free(m->_RequestedColors);
+    if (m->_AddTable) free(m->_AddTable);
+    free(m);
+  }
+}
+
+void EON_MatInit(EON_Mat *m) {
+  if (m->Shininess < 1) m->Shininess = 1;
+  m->_ft = ((m->Environment ? EON_FILL_ENVIRONMENT : 0) |
+           (m->Texture ? EON_FILL_TEXTURE : 0));
+  m->_st = m->ShadeType;
+
+  if (m->Transparent) m->_ft = EON_FILL_TRANSPARENT;
+
+  if (m->_ft == (EON_FILL_TEXTURE|EON_FILL_ENVIRONMENT))
+    m->_st = EON_SHADE_NONE;
+
+  if (m->_ft == EON_FILL_SOLID) {
+    if (m->_st == EON_SHADE_NONE) eon_GenerateSinglePalette(m);
+    else eon_GeneratePhongPalette(m);
+  } else if (m->_ft == EON_FILL_TEXTURE) {
+    if (m->_st == EON_SHADE_NONE)
+      eon_GenerateTexturePalette(m,m->Texture);
+    else eon_GeneratePhongTexturePalette(m,m->Texture);
+  } else if (m->_ft == EON_FILL_ENVIRONMENT) {
+    if (m->_st == EON_SHADE_NONE)
+      eon_GenerateTexturePalette(m,m->Environment);
+    else eon_GeneratePhongTexturePalette(m,m->Environment);
+  } else if (m->_ft == (EON_FILL_ENVIRONMENT|EON_FILL_TEXTURE))
+    eon_GenerateTextureEnvPalette(m);
+  else if (m->_ft == EON_FILL_TRANSPARENT) {
+    if (m->_st == EON_SHADE_NONE) eon_GenerateTransparentPalette(m);
+    else eon_GeneratePhongTransparentPalette(m);
+  }
+  eon_SetMaterialPutFace(m);
+}
+
+static void eon_MatSetupTransparent(EON_Mat *m, EON_uChar *pal) {
+  EON_uInt x, intensity;
+  if (m->Transparent)
+  {
+    if (m->_AddTable) free(m->_AddTable);
+    m->_AddTable = (EON_uInt16 *) malloc(256*sizeof(EON_uInt16));
+    for (x = 0; x < 256; x ++) {
+      intensity = *pal++;
+      intensity += *pal++;
+      intensity += *pal++;
+      m->_AddTable[x] = ((intensity*(m->_ColorsUsed-m->_tsfact))/768);
+    }
+  }
+}
+
+void EON_MatMapToPal(EON_Mat *m, EON_uChar *pal, EON_sInt pstart, EON_sInt pend) {
+  EON_sInt32 j, r, g, b, bestdiff, r2, g2, b2;
+  EON_sInt bestpos,k;
+  EON_uInt32 i;
+  EON_uChar *p;
+  if (!m->_RequestedColors) EON_MatInit(m);
+  if (!m->_RequestedColors) return;
+  if (m->_ReMapTable) free(m->_ReMapTable);
+  m->_ReMapTable = (EON_uChar *) malloc(m->_ColorsUsed);
+  for (i = 0; i < m->_ColorsUsed; i ++) {
+    bestdiff = 1000000000;
+    bestpos = pstart;
+    r = m->_RequestedColors[i*3];
+    g = m->_RequestedColors[i*3+1];
+    b = m->_RequestedColors[i*3+2];
+    p = pal + pstart*3;
+    for (k = pstart; k <= (EON_sInt)pend; k ++) {
+      r2 = p[0] - r;
+      g2 = p[1] - g;
+      b2 = p[2] - b;
+      p += 3;
+      j = r2*r2+g2*g2+b2*b2;
+      if (j < bestdiff) {
+        bestdiff = j;
+        bestpos = k;
+      }
+    }
+    m->_ReMapTable[i] = bestpos;
+  }
+  eon_MatSetupTransparent(m,pal);
+}
+
+static void eon_GenerateSinglePalette(EON_Mat *m) {
+  m->_ColorsUsed = 1;
+  if (m->_RequestedColors) free(m->_RequestedColors);
+  m->_RequestedColors = (EON_uChar *) malloc(3);
+  m->_RequestedColors[0] = EON_Min(EON_Max(m->Ambient[0],0),255);
+  m->_RequestedColors[1] = EON_Min(EON_Max(m->Ambient[1],0),255);
+  m->_RequestedColors[2] = EON_Min(EON_Max(m->Ambient[2],0),255);
+}
+
+static void eon_GeneratePhongPalette(EON_Mat *m) {
+  EON_uInt i = m->NumGradients, x;
+  EON_sInt c;
+  EON_uChar *pal;
+  double a, da, ca, cb;
+  m->_ColorsUsed = m->NumGradients;
+  if (m->_RequestedColors) free(m->_RequestedColors);
+  pal =  m->_RequestedColors = (EON_uChar *) malloc(m->_ColorsUsed*3);
+  a = EON_PI/2.0;
+
+  if (m->NumGradients > 1) da = -EON_PI/((m->NumGradients-1)<<1);
+  else da=0.0;
+
+  do {
+    if (m->NumGradients == 1) ca = 1;
+    else {
+      ca = cos((double) a);
+      a += da;
+    }
+    cb = pow((double) ca, (double) m->Shininess);
+    for (x = 0; x < 3; x ++) {
+      c = (EON_sInt) ((cb*m->Specular[x])+(ca*m->Diffuse[x])+m->Ambient[x]);
+      *(pal++) = EON_Max(0,EON_Min(c,255));
+    }
+  } while (--i);
+}
+
+static void eon_GenerateTextureEnvPalette(EON_Mat *m) {
+  EON_sInt c;
+  EON_uInt whichlevel,whichindex;
+  EON_uChar *texpal, *envpal, *pal;
+  m->_ColorsUsed = m->Texture->NumColors*m->Environment->NumColors;
+  if (m->_RequestedColors) free(m->_RequestedColors);
+  pal = m->_RequestedColors = (EON_uChar *) malloc(m->_ColorsUsed*3);
+  envpal = m->Environment->PaletteData;
+  if (m->_AddTable) free(m->_AddTable);
+  m->_AddTable = (EON_uInt16 *) malloc(m->Environment->NumColors*sizeof(EON_uInt16));
+  for (whichlevel = 0; whichlevel < m->Environment->NumColors; whichlevel++) {
+    texpal = m->Texture->PaletteData;
+    switch (m->TexEnvMode)
+    {
+      case EON_TEXENV_MUL: // multiply
+        for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
+          *pal++ = (EON_uChar) (((EON_sInt) (*texpal++) * (EON_sInt) envpal[0])>>8);
+          *pal++ = (EON_uChar) (((EON_sInt) (*texpal++) * (EON_sInt) envpal[1])>>8);
+          *pal++ = (EON_uChar) (((EON_sInt) (*texpal++) * (EON_sInt) envpal[2])>>8);
         }
-
-        EON_objectCalcNormals(o);
+      break;
+      case EON_TEXENV_AVG: // average
+        for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
+          *pal++ = (EON_uChar) (((EON_sInt) (*texpal++) + (EON_sInt) envpal[0])>>1);
+          *pal++ = (EON_uChar) (((EON_sInt) (*texpal++) + (EON_sInt) envpal[1])>>1);
+          *pal++ = (EON_uChar) (((EON_sInt) (*texpal++) + (EON_sInt) envpal[2])>>1);
+        }
+      break;
+      case EON_TEXENV_TEXMINUSENV: // tex-env
+        for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
+          c = (EON_sInt) (*texpal++) - (EON_sInt) envpal[0]; *pal++ = EON_Max(0,EON_Min(255,c));
+          c = (EON_sInt) (*texpal++) - (EON_sInt) envpal[1]; *pal++ = EON_Max(0,EON_Min(255,c));
+          c = (EON_sInt) (*texpal++) - (EON_sInt) envpal[2]; *pal++ = EON_Max(0,EON_Min(255,c));
+        }
+      break;
+      case EON_TEXENV_ENVMINUSTEX: // env-tex
+        for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
+          c = -(EON_sInt) (*texpal++) - (EON_sInt) envpal[0]; *pal++ = EON_Max(0,EON_Min(255,c));
+          c = -(EON_sInt) (*texpal++) - (EON_sInt) envpal[1]; *pal++ = EON_Max(0,EON_Min(255,c));
+          c = -(EON_sInt) (*texpal++) - (EON_sInt) envpal[2]; *pal++ = EON_Max(0,EON_Min(255,c));
+        }
+      break;
+      case EON_TEXENV_MIN:
+        for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
+          *pal++ = EON_Min(texpal[0],envpal[0]);
+          *pal++ = EON_Min(texpal[1],envpal[1]);
+          *pal++ = EON_Min(texpal[2],envpal[2]);
+          texpal+=3;
+        }
+      break;
+      case EON_TEXENV_MAX:
+      break;
+        for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
+          *pal++ = EON_Max(texpal[0],envpal[0]);
+          *pal++ = EON_Max(texpal[1],envpal[1]);
+          *pal++ = EON_Max(texpal[2],envpal[2]);
+          texpal+=3;
+        }
+      default: // add
+        for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
+          c = (EON_sInt) (*texpal++) + (EON_sInt) envpal[0]; *pal++ = EON_Max(0,EON_Min(255,c));
+          c = (EON_sInt) (*texpal++) + (EON_sInt) envpal[1]; *pal++ = EON_Max(0,EON_Min(255,c));
+          c = (EON_sInt) (*texpal++) + (EON_sInt) envpal[2]; *pal++ = EON_Max(0,EON_Min(255,c));
+        }
+      break;
     }
-    return o;
+    envpal += 3;
+    m->_AddTable[whichlevel] = whichlevel*m->Texture->NumColors;
+  }
 }
 
-EON_Status EON_objectCenter(EON_Object *object)
-{
-    return EON_ERROR;
+static void eon_GenerateTexturePalette(EON_Mat *m, EON_Texture *t) {
+  EON_uChar *ppal, *pal;
+  EON_sInt c, i, x;
+  m->_ColorsUsed = t->NumColors;
+  if (m->_RequestedColors) free(m->_RequestedColors);
+  pal = m->_RequestedColors = (EON_uChar *) malloc(m->_ColorsUsed*3);
+  ppal = t->PaletteData;
+  i = t->NumColors;
+  do {
+    for (x = 0; x < 3; x ++) {
+      c = m->Ambient[x] + *ppal++;
+      *(pal++) = EON_Max(0,EON_Min(c,255));
+    }
+  } while (--i);
 }
 
-/*************************************************************************/
-/* Lights                                                                */
-/*************************************************************************/
+static void eon_GeneratePhongTexturePalette(EON_Mat *m, EON_Texture *t) {
+  double a, ca, da, cb;
+  EON_uInt16 *addtable;
+  EON_uChar *ppal, *pal;
+  EON_sInt c, i, i2, x;
+  EON_uInt num_shades;
 
-EON_Light *EON_newLight(EON_LightMode mode,
-                        EON_Float x, EON_Float y, EON_Float z,
-                        EON_Float intensity,
-                        EON_Float halfDist)
-{
-    EON_Light *light = CX_zalloc(sizeof(EON_Light));
-    if (light) {
-        EON_Float m[4 * 4], m2[4 * 4];
+  if (t->NumColors) num_shades = (m->NumGradients / t->NumColors);
+  else num_shades=1;
 
-        light->Type = mode;
-        light->Intensity = intensity;
-        light->HalfDistSquared = halfDist * halfDist;
-
-        if (mode == EON_LIGHT_VECTOR) {
-            eon_matrix4x4MakeRotation(m,  1, x);
-            eon_matrix4x4MakeRotation(m2, 2, y);
-            eon_matrix4x4Multiply(m,         m2);
-            eon_matrix4x4MakeRotation(m2, 3, z);
-            eon_matrix4x4Multiply(m,         m2);
-            eon_matrix4x4Apply(m, 0.0 ,0.0, -1.0, &x, &y, &z);
-            /* use only recycled bytes */
-        } /* else we're already set */
-
-        light->Coords.X = x;
-        light->Coords.Y = y;
-        light->Coords.Z = z;
-    }
-    return light;
+  if (!num_shades) num_shades = 1;
+  m->_ColorsUsed = num_shades*t->NumColors;
+  if (m->_RequestedColors) free(m->_RequestedColors);
+  pal = m->_RequestedColors = (EON_uChar *) malloc(m->_ColorsUsed*3);
+  a = EON_PI/2.0;
+  if (num_shades>1) da = (-EON_PI/2.0)/(num_shades-1);
+  else da=0.0;
+  i2 = num_shades;
+  do {
+    ppal = t->PaletteData;
+    ca = cos((double) a);
+    a += da;
+    cb = pow(ca, (double) m->Shininess);
+    i = t->NumColors;
+    do {
+      for (x = 0; x < 3; x ++) {
+        c = (EON_sInt) ((cb*m->Specular[x])+(ca*m->Diffuse[x])+m->Ambient[x] + *ppal++);
+        *(pal++) = EON_Max(0,EON_Min(c,255));
+      }
+    } while (--i);
+  } while (--i2);
+  ca = 0;
+  if (m->_AddTable) free(m->_AddTable);
+  m->_AddTable = (EON_uInt16 *) malloc(256*sizeof(EON_uInt16));
+  addtable = m->_AddTable;
+  i = 256;
+  do {
+    a = sin(ca) * num_shades;
+    ca += EON_PI/512.0;
+    *addtable++ = ((EON_sInt) a)*t->NumColors;
+  } while (--i);
 }
 
-void EON_delLight(EON_Light *light)
-{
-    if (light) {
-        CX_free(light);
+static void eon_GeneratePhongTransparentPalette(EON_Mat *m) {
+  m->_tsfact = (EON_sInt) (m->NumGradients*(1.0/(1+m->Transparent)));
+  eon_GeneratePhongPalette(m);
+}
+
+static void  eon_GenerateTransparentPalette(EON_Mat *m) {
+  m->_tsfact = 0;
+  eon_GeneratePhongPalette(m);
+}
+
+static void eon_SetMaterialPutFace(EON_Mat *m) {
+  m->_PutFace = 0;
+  switch (m->_ft) {
+    case EON_FILL_TRANSPARENT: switch(m->_st) {
+      case EON_SHADE_NONE: case EON_SHADE_FLAT:
+      case EON_SHADE_FLAT_DISTANCE: case EON_SHADE_FLAT_DISTANCE|EON_SHADE_FLAT:
+        m->_PutFace = EON_PF_TransF;
+      break;
+      case EON_SHADE_GOURAUD: case EON_SHADE_GOURAUD_DISTANCE:
+      case EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE:
+        m->_PutFace = EON_PF_TransG;
+      break;
     }
+    break;
+    case EON_FILL_SOLID: switch(m->_st) {
+      case EON_SHADE_NONE: case EON_SHADE_FLAT:
+      case EON_SHADE_FLAT_DISTANCE: case EON_SHADE_FLAT_DISTANCE|EON_SHADE_FLAT:
+        m->_PutFace = EON_PF_SolidF;
+      break;
+      case EON_SHADE_GOURAUD: case EON_SHADE_GOURAUD_DISTANCE:
+      case EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE:
+        m->_PutFace = EON_PF_SolidG;
+      break;
+    }
+    break;
+    case EON_FILL_ENVIRONMENT:
+    case EON_FILL_TEXTURE:
+      if (m->PerspectiveCorrect) switch (m->_st) {
+        case EON_SHADE_NONE: case EON_SHADE_FLAT:
+        case EON_SHADE_FLAT_DISTANCE: case EON_SHADE_FLAT_DISTANCE|EON_SHADE_FLAT:
+          m->_PutFace = EON_PF_PTexF;
+        break;
+        case EON_SHADE_GOURAUD: case EON_SHADE_GOURAUD_DISTANCE:
+        case EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE:
+          m->_PutFace = EON_PF_PTexG;
+        break;
+      }
+      else switch (m->_st) {
+        case EON_SHADE_NONE: case EON_SHADE_FLAT:
+        case EON_SHADE_FLAT_DISTANCE: case EON_SHADE_FLAT_DISTANCE|EON_SHADE_FLAT:
+          m->_PutFace = EON_PF_TexF;
+        break;
+        case EON_SHADE_GOURAUD: case EON_SHADE_GOURAUD_DISTANCE:
+        case EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE:
+          m->_PutFace = EON_PF_TexG;
+        break;
+      }
+    break;
+    case EON_FILL_TEXTURE|EON_FILL_ENVIRONMENT:
+      m->_PutFace = EON_PF_TexEnv;
+    break;
+  }
+}
+
+typedef struct __ct {
+  EON_uChar r,g,b;
+  EON_Bool visited;
+  struct __ct *next;
+} _ct;
+
+static int mdist(_ct *a, _ct *b) {
+  return ((a->r-b->r)*(a->r-b->r)+(a->g-b->g)*(a->g-b->g)+(a->b-b->b)*(a->b-b->b));
+}
+
+void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
+                     EON_sInt pend, EON_Mat **materials, EON_sInt nmats) {
+  EON_uChar *allColors = 0;
+  EON_sInt numColors = 0, nc, x;
+  EON_sInt len = pend + 1 - pstart;
+  EON_sInt32 current, newnext, bestdist, thisdist;
+  _ct *colorBlock, *best, *cp;
+
+  for (x = 0; x < nmats; x ++) {
+    if (materials[x]) {
+      if (!materials[x]->_RequestedColors) EON_MatInit(materials[x]);
+      if (materials[x]->_RequestedColors) numColors+=materials[x]->_ColorsUsed;
+    }
+  }
+  if (!numColors) return;
+
+  allColors=(EON_uChar*)malloc(numColors*3);
+  numColors=0;
+
+  for (x = 0; x < nmats; x ++) {
+    if (materials[x]) {
+      if (materials[x]->_RequestedColors)
+        memcpy(allColors + (numColors*3), materials[x]->_RequestedColors,
+             materials[x]->_ColorsUsed*3);
+      numColors += materials[x]->_ColorsUsed;
+    }
+  }
+
+  if (numColors <= len) {
+    memcpy(p+pstart*3,allColors,numColors*3);
+    free(allColors);
+    return;
+  }
+
+  colorBlock = (_ct *) malloc(sizeof(_ct)*numColors);
+  for (x = 0; x < numColors; x++) {
+    colorBlock[x].r = allColors[x*3];
+    colorBlock[x].g = allColors[x*3+1];
+    colorBlock[x].b = allColors[x*3+2];
+    colorBlock[x].visited = 0;
+    colorBlock[x].next = 0;
+  }
+  free(allColors);
+
+  /* Build a list, starting at color 0 */
+  current = 0;
+  nc = numColors;
+  do {
+    newnext = -1;
+    bestdist = 300000000;
+    colorBlock[current].visited = 1;
+    for (x = 0; x < nc; x ++) {
+      if (!colorBlock[x].visited) {
+        thisdist = mdist(colorBlock + x, colorBlock + current);
+        if (thisdist < 5) { colorBlock[x].visited = 1; numColors--; }
+        else if (thisdist < bestdist) { bestdist = thisdist; newnext = x; }
+      }
+    }
+    if (newnext != -1) {
+      colorBlock[current].next = colorBlock + newnext;
+      current = newnext;
+    }
+  } while (newnext != -1);
+  colorBlock[current].next = 0; /* terminate the list */
+
+  /* we now have a linked list starting at colorBlock, which is each one and
+     it's closest neighbor */
+
+  while (numColors > len) {
+    bestdist = mdist(colorBlock,colorBlock->next);
+    for (best = cp = colorBlock; cp->next; cp = cp->next) {
+      if (bestdist > (thisdist = mdist(cp,cp->next))) {
+        best = cp;
+        bestdist = thisdist;
+      }
+    }
+    best->r = ((int) best->r + (int) best->next->r)>>1;
+    best->g = ((int) best->g + (int) best->next->g)>>1;
+    best->b = ((int) best->b + (int) best->next->b)>>1;
+    best->next = best->next->next;
+    numColors--;
+  }
+  x = pstart*3;
+  for (cp = colorBlock; cp; cp = cp->next) {
+    p[x++] = cp->r;
+    p[x++] = cp->g;
+    p[x++] = cp->b;
+  }
+  free(colorBlock);
+}
+
+// light.c
+//
+
+EON_Light *EON_LightSet(EON_Light *light, EON_uChar mode, EON_Float x, EON_Float y,
+                     EON_Float z, EON_Float intensity, EON_Float halfDist) {
+  EON_Float m[16], m2[16];
+  light->Type = mode;
+  light->Intensity = intensity;
+  light->HalfDistSquared = halfDist*halfDist;
+  switch (mode) {
+    case EON_LIGHT_VECTOR:
+      EON_MatrixRotate(m,1,x);
+      EON_MatrixRotate(m2,2,y);
+      EON_MatrixMultiply(m,m2);
+      EON_MatrixRotate(m2,3,z);
+      EON_MatrixMultiply(m,m2);
+      EON_MatrixApply(m,0.0,0.0,-1.0,&light->Xp, &light->Yp, &light->Zp);
+    break;
+    case EON_LIGHT_POINT_ANGLE:
+    case EON_LIGHT_POINT_DISTANCE:
+    case EON_LIGHT_POINT:
+      light->Xp = x;
+      light->Yp = y;
+      light->Zp = z;
+    break;
+  }
+  return light;
+}
+
+EON_Light *EON_LightCreate() {
+  return calloc(1, sizeof(EON_Light));
+}
+
+void EON_LightDelete(EON_Light *l) {
+  free(l);
+}
+
+EON_Light *EON_LightNew(EON_uChar mode, EON_Float x, EON_Float y, EON_Float z,
+                     EON_Float intensity, EON_Float halfDist) {
+  EON_Light *l = EON_LightCreate();
+  if (l) {
+      l = EON_LightSet(l, mode, x, y, z, intensity, halfDist);
+  }
+  return l;
+}
+
+// cam.c
+//
+
+void EON_CamDelete(EON_Cam *c)
+{
+    free(c);
     return;
 }
 
-/*************************************************************************/
-/* Frames                                                                */
-/*************************************************************************/
-
-static EON_Status eon_FramePutPixel(EON_Frame *frame,
-                                    EON_Int x, EON_Int y, EON_UInt32 color)
+void EON_CamSetTarget(EON_Cam *c, EON_Float x, EON_Float y, EON_Float z)
 {
-    /* TODO */
-    return EON_ERROR;
+  double dx, dy, dz;
+  dx = x - c->X;
+  dy = y - c->Y;
+  dz = z - c->Z;
+  c->Roll = 0;
+  if (dz > 0.0001f) {
+    c->Pan = (EON_Float) (-atan(dx/dz)*(180.0/EON_PI));
+    dz /= cos(c->Pan*(EON_PI/180.0));
+    c->Pitch = (EON_Float) (atan(dy/dz)*(180.0/EON_PI));
+  } else if (dz < -0.0001f) {
+    c->Pan = (EON_Float) (180.0-atan(dx/dz)*(180.0/EON_PI));
+    dz /= cos((c->Pan-180.0f)*(EON_PI/180.0));
+    c->Pitch = (EON_Float) (-atan(dy/dz)*(180.0/EON_PI));
+  } else {
+    c->Pan = 0.0f;
+    c->Pitch = -90.0f;
+  }
+}
+
+EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov,
+                    EON_uChar *fb, EON_ZBuffer *zb) {
+  EON_Cam *c = calloc(1, sizeof(EON_Cam));
+  if (c) {
+    c->Fov = fov;
+    c->AspectRatio = ar;
+    c->ClipRight = c->ScreenWidth = sw;
+    c->ClipBottom = c->ScreenHeight = sh;
+    c->CenterX = sw>>1;
+    c->CenterY = sh>>1;
+    c->ClipBack = 8.0e30f;
+    c->frameBuffer = fb;
+    c->zBuffer = zb;
+    c->Sort = (zb != NULL);
+  }
+  return c;
+}
+
+// clip.c
+//
+
+#define NUM_CLIP_PLANES 5
+
+typedef struct
+{
+  EON_Vertex newVertices[8];
+  double Shades[8];
+  double MappingU[8];
+  double MappingV[8];
+  double eMappingU[8];
+  double eMappingV[8];
+} _clipInfo;
+
+
+static _clipInfo m_cl[2];
+
+
+static double m_clipPlanes[NUM_CLIP_PLANES][4];
+static EON_Cam *m_cam;
+static EON_sInt32 m_cx, m_cy;
+static double m_fov;
+static double m_adj_asp;
+
+static void _FindNormal(double x2, double x3,
+                        double y2, double y3,
+                        double zv,
+                        double *res);
+
+ /* Returns: 0 if nothing gets in,  1 or 2 if pout1 & pout2 get in */
+static EON_uInt _ClipToPlane(EON_uInt numVerts, double *plane);
+
+void EON_ClipSetFrustum(EON_Cam *cam)
+{
+  m_adj_asp = 1.0 / cam->AspectRatio;
+  m_fov = EON_Min(EON_Max(cam->Fov,1.0),179.0);
+  m_fov = (1.0/tan(m_fov*(EON_PI/360.0)))*(double) (cam->ClipRight-cam->ClipLeft);
+  m_cx = cam->CenterX<<20;
+  m_cy = cam->CenterY<<20;
+  m_cam = cam;
+  memset(m_clipPlanes,0,sizeof(m_clipPlanes));
+
+  /* Back */
+  m_clipPlanes[0][2] = -1.0;
+  m_clipPlanes[0][3] = -cam->ClipBack;
+
+  /* Left */
+  m_clipPlanes[1][3] = 0.00000001;
+  if (cam->ClipLeft == cam->CenterX) {
+    m_clipPlanes[1][0] = 1.0;
+  }
+  else _FindNormal(-100,-100,
+                100, -100,
+                m_fov*-100.0/(cam->ClipLeft-cam->CenterX),
+                m_clipPlanes[1]);
+  if (cam->ClipLeft > cam->CenterX) {
+    m_clipPlanes[1][0] = -m_clipPlanes[1][0];
+    m_clipPlanes[1][1] = -m_clipPlanes[1][1];
+    m_clipPlanes[1][2] = -m_clipPlanes[1][2];
+  }
+
+  /* Right */
+  m_clipPlanes[2][3] = 0.00000001;
+  if (cam->ClipRight == cam->CenterX) {
+    m_clipPlanes[2][0] = -1.0;
+  }
+  else _FindNormal(100,100,
+                -100, 100,
+                m_fov*100.0/(cam->ClipRight-cam->CenterX),
+                m_clipPlanes[2]);
+  if (cam->ClipRight < cam->CenterX) {
+    m_clipPlanes[2][0] = -m_clipPlanes[2][0];
+    m_clipPlanes[2][1] = -m_clipPlanes[2][1];
+    m_clipPlanes[2][2] = -m_clipPlanes[2][2];
+  }
+  /* Top */
+  m_clipPlanes[3][3] = 0.00000001;
+  if (cam->ClipTop == cam->CenterY) {
+    m_clipPlanes[3][1] = -1.0;
+  } else _FindNormal(100, -100,
+                100, 100,
+                m_fov*m_adj_asp*100.0/(cam->CenterY-cam->ClipTop),
+                m_clipPlanes[3]);
+  if (cam->ClipTop > cam->CenterY) {
+    m_clipPlanes[3][0] = -m_clipPlanes[3][0];
+    m_clipPlanes[3][1] = -m_clipPlanes[3][1];
+    m_clipPlanes[3][2] = -m_clipPlanes[3][2];
+  }
+
+  /* Bottom */
+  m_clipPlanes[4][3] = 0.00000001;
+  if (cam->ClipBottom == cam->CenterY) {
+    m_clipPlanes[4][1] = 1.0;
+  } else _FindNormal(-100, 100,
+                -100, -100,
+                m_fov*m_adj_asp*-100.0/(cam->CenterY-cam->ClipBottom),
+                m_clipPlanes[4]);
+  if (cam->ClipBottom < cam->CenterY) {
+    m_clipPlanes[4][0] = -m_clipPlanes[4][0];
+    m_clipPlanes[4][1] = -m_clipPlanes[4][1];
+    m_clipPlanes[4][2] = -m_clipPlanes[4][2];
+  }
 }
 
 
-static size_t eon_FrameRGBSize(EON_Int width, EON_Int height)
+void EON_ClipRenderFace(EON_Face *face)
 {
-    return (EON_RGB_BPP * width * height);
-}
+  EON_uInt k, a, w, numVerts = 3;
+  double tmp, tmp2;
+  EON_Face newface;
 
-EON_Frame *EON_newFrame(EON_Int width, EON_Int height)
-{
-    size_t size = eon_FrameRGBSize(width, height);
-    EON_Byte *data = CX_zalloc(sizeof(EON_Frame) + size);
-    EON_Frame *frame = NULL;
-    if (data) {
-        /* FIXME: Pixels alignment */
-        frame = (EON_Frame *)data;
-        frame->Pixels   = data + sizeof(EON_Frame);
-        frame->F.Width  = width;
-        frame->F.Height = height;
-        frame->Flags    = EON_FRAME_FLAG_NONE;
-        frame->PutPixel = eon_FramePutPixel;
-        frame->_private = NULL;
+  for (a = 0; a < 3; a ++) {
+    m_cl[0].newVertices[a] = *(face->Vertices[a]);
+    m_cl[0].Shades[a] = face->Shades[a];
+    m_cl[0].MappingU[a] = face->MappingU[a];
+    m_cl[0].MappingV[a] = face->MappingV[a];
+    m_cl[0].eMappingU[a] = face->eMappingU[a];
+    m_cl[0].eMappingV[a] = face->eMappingV[a];
+  }
+
+  a = (m_clipPlanes[0][3] < 0.0 ? 0 : 1);
+  while (a < NUM_CLIP_PLANES && numVerts > 2)
+  {
+    numVerts = _ClipToPlane(numVerts, m_clipPlanes[a]);
+    memcpy(&m_cl[0],&m_cl[1],sizeof(m_cl)/2);
+    a++;
+  }
+  if (numVerts > 2) {
+    memcpy(&newface,face,sizeof(EON_Face));
+    for (k = 2; k < numVerts; k ++) {
+      newface.fShade = EON_Max(0,EON_Min(face->fShade,1));
+      for (a = 0; a < 3; a ++) {
+        if (a == 0) w = 0;
+        else w = a+(k-2);
+        newface.Vertices[a] = m_cl[0].newVertices+w;
+        newface.Shades[a] = (EON_Float) m_cl[0].Shades[w];
+        newface.MappingU[a] = (EON_sInt32)m_cl[0].MappingU[w];
+        newface.MappingV[a] = (EON_sInt32)m_cl[0].MappingV[w];
+        newface.eMappingU[a] = (EON_sInt32)m_cl[0].eMappingU[w];
+        newface.eMappingV[a] = (EON_sInt32)m_cl[0].eMappingV[w];
+        newface.Scrz[a] = 1.0f/newface.Vertices[a]->xformedz;
+        tmp2 = m_fov * newface.Scrz[a];
+        tmp = tmp2*newface.Vertices[a]->xformedx;
+        tmp2 *= newface.Vertices[a]->xformedy;
+        newface.Scrx[a] = m_cx + ((EON_sInt32)((tmp*(float) (1<<20))));
+        newface.Scry[a] = m_cy - ((EON_sInt32)((tmp2*m_adj_asp*(float) (1<<20))));
+      }
+      newface.Material->_PutFace(m_cam,&newface);
+      EON_Render_TriStats[3] ++;
     }
-    return frame;
+    EON_Render_TriStats[2] ++;
+  }
 }
 
-void EON_delFrame(EON_Frame *frame)
+EON_sInt EON_ClipNeeded(EON_Face *face)
 {
-    CX_free(frame);
+  double dr,dl,db,dt;
+  double f;
+  dr = (m_cam->ClipRight-m_cam->CenterX);
+  dl = (m_cam->ClipLeft-m_cam->CenterX);
+  db = (m_cam->ClipBottom-m_cam->CenterY);
+  dt = (m_cam->ClipTop-m_cam->CenterY);
+  f = m_fov*m_adj_asp;
+  return ((m_cam->ClipBack <= 0.0 ||
+           face->Vertices[0]->xformedz <= m_cam->ClipBack ||
+           face->Vertices[1]->xformedz <= m_cam->ClipBack ||
+           face->Vertices[2]->xformedz <= m_cam->ClipBack) &&
+          (face->Vertices[0]->xformedz >= 0 ||
+           face->Vertices[1]->xformedz >= 0 ||
+           face->Vertices[2]->xformedz >= 0) &&
+          (face->Vertices[0]->xformedx*m_fov<=dr*face->Vertices[0]->xformedz ||
+           face->Vertices[1]->xformedx*m_fov<=dr*face->Vertices[1]->xformedz ||
+           face->Vertices[2]->xformedx*m_fov<=dr*face->Vertices[2]->xformedz) &&
+          (face->Vertices[0]->xformedx*m_fov>=dl*face->Vertices[0]->xformedz ||
+           face->Vertices[1]->xformedx*m_fov>=dl*face->Vertices[1]->xformedz ||
+           face->Vertices[2]->xformedx*m_fov>=dl*face->Vertices[2]->xformedz) &&
+          (face->Vertices[0]->xformedy*f<=db*face->Vertices[0]->xformedz ||
+           face->Vertices[1]->xformedy*f<=db*face->Vertices[1]->xformedz ||
+           face->Vertices[2]->xformedy*f<=db*face->Vertices[2]->xformedz) &&
+          (face->Vertices[0]->xformedy*f>=dt*face->Vertices[0]->xformedz ||
+           face->Vertices[1]->xformedy*f>=dt*face->Vertices[1]->xformedz ||
+           face->Vertices[2]->xformedy*f>=dt*face->Vertices[2]->xformedz));
 }
 
 
-void EON_frameClean(EON_Frame *frame)
+
+static void _FindNormal(double x2, double x3,double y2, double y3,
+                        double zv, double *res) {
+  res[0] = zv*(y2-y3);
+  res[1] = zv*(x3-x2);
+  res[2] = x2*y3 - y2*x3;
+}
+
+ /* Returns: 0 if nothing gets in,  1 or 2 if pout1 & pout2 get in */
+static EON_uInt _ClipToPlane(EON_uInt numVerts, double *plane)
 {
-    if (frame && frame->Pixels) {
-        size_t size = eon_FrameRGBSize(frame->F.Width, frame->F.Height);
-        memset(frame->Pixels, EON_RGB_BLACK, size);
+  EON_uInt i, nextvert, curin, nextin;
+  double curdot, nextdot, scale;
+  EON_uInt invert, outvert;
+  invert = 0;
+  outvert = 0;
+  curdot = m_cl[0].newVertices[0].xformedx*plane[0] +
+           m_cl[0].newVertices[0].xformedy*plane[1] +
+           m_cl[0].newVertices[0].xformedz*plane[2];
+  curin = (curdot >= plane[3]);
+
+  for (i=0 ; i < numVerts; i++) {
+    nextvert = (i + 1) % numVerts;
+    if (curin) {
+      m_cl[1].Shades[outvert] = m_cl[0].Shades[invert];
+      m_cl[1].MappingU[outvert] = m_cl[0].MappingU[invert];
+      m_cl[1].MappingV[outvert] = m_cl[0].MappingV[invert];
+      m_cl[1].eMappingU[outvert] = m_cl[0].eMappingU[invert];
+      m_cl[1].eMappingV[outvert] = m_cl[0].eMappingV[invert];
+      m_cl[1].newVertices[outvert++] = m_cl[0].newVertices[invert];
     }
-    return;
-}
-
-EON_Status	EON_framePutPixel(EON_Frame *frame,
-                              EON_Int x, EON_Int y, EON_UInt32 color)
-{
-    if (!frame || !frame->PutPixel) {
-        /* FIXME: log */
-        return EON_ERROR;
+    nextdot = m_cl[0].newVertices[nextvert].xformedx*plane[0] +
+              m_cl[0].newVertices[nextvert].xformedy*plane[1] +
+              m_cl[0].newVertices[nextvert].xformedz*plane[2];
+    nextin = (nextdot >= plane[3]);
+    if (curin != nextin) {
+      scale = (plane[3] - curdot) / (nextdot - curdot);
+      m_cl[1].newVertices[outvert].xformedx = (EON_Float) (m_cl[0].newVertices[invert].xformedx +
+           (m_cl[0].newVertices[nextvert].xformedx - m_cl[0].newVertices[invert].xformedx)
+             * scale);
+      m_cl[1].newVertices[outvert].xformedy = (EON_Float) (m_cl[0].newVertices[invert].xformedy +
+           (m_cl[0].newVertices[nextvert].xformedy - m_cl[0].newVertices[invert].xformedy)
+             * scale);
+      m_cl[1].newVertices[outvert].xformedz = (EON_Float) (m_cl[0].newVertices[invert].xformedz +
+           (m_cl[0].newVertices[nextvert].xformedz - m_cl[0].newVertices[invert].xformedz)
+             * scale);
+      m_cl[1].Shades[outvert] = m_cl[0].Shades[invert] +
+                        (m_cl[0].Shades[nextvert] - m_cl[0].Shades[invert]) * scale;
+      m_cl[1].MappingU[outvert] = m_cl[0].MappingU[invert] +
+           (m_cl[0].MappingU[nextvert] - m_cl[0].MappingU[invert]) * scale;
+      m_cl[1].MappingV[outvert] = m_cl[0].MappingV[invert] +
+           (m_cl[0].MappingV[nextvert] - m_cl[0].MappingV[invert]) * scale;
+      m_cl[1].eMappingU[outvert] = m_cl[0].eMappingU[invert] +
+           (m_cl[0].eMappingU[nextvert] - m_cl[0].eMappingU[invert]) * scale;
+      m_cl[1].eMappingV[outvert] = m_cl[0].eMappingV[invert] +
+           (m_cl[0].eMappingV[nextvert] - m_cl[0].eMappingV[invert]) * scale;
+      outvert++;
     }
-
-    return frame->PutPixel(frame, x, y, color);
+    curdot = nextdot;
+    curin = nextin;
+    invert++;
+  }
+  return outvert;
 }
 
+// spline.c
+//
 
-/*************************************************************************/
-/* Camera                                                                */
-/*************************************************************************/
-
-EON_Camera *EON_newCamera(EON_Int width, EON_Int height,
-                          EON_Float aspectRatio,
-                          EON_Float fieldOfView)
+void EON_SplineGetPoint(EON_Spline *s, EON_Float frame, EON_Float *out)
 {
-    EON_Camera *cam = CX_zalloc(sizeof(EON_Camera));
-    if (cam) {
-        cam->FieldOfView    = fieldOfView;
-        cam->AspectRatio    = aspectRatio;
-        cam->Sort           = EON_SORT_BACK_TO_FRONT;
-        /* FIXME: if ZBuffer Sort=0 */
-        cam->ClipBack       = 8.0e30f;
-        cam->Screen.Width   = width;
-        cam->Screen.Height  = height;
-        cam->Clip.Right     = width;
-        cam->Clip.Bottom    = height;
-        cam->Center.Width   = width / 2;
-        cam->Center.Height  = height / 2;
-    }
-    return cam;
+  EON_sInt32 i, i_1, i0, i1, i2;
+  EON_Float time1,time2,time3;
+  EON_Float t1,t2,t3,t4,u1,u2,u3,u4,v1,v2,v3;
+  EON_Float a,b,c,d;
+
+  EON_Float *keys = s->keys;
+
+  a = (1-s->tens)*(1+s->cont)*(1+s->bias);
+  b = (1-s->tens)*(1-s->cont)*(1-s->bias);
+  c = (1-s->tens)*(1-s->cont)*(1+s->bias);
+  d = (1-s->tens)*(1+s->cont)*(1-s->bias);
+  v1 = t1 = -a / 2.0; u1 = a;
+  u2 = (-6-2*a+2*b+c)/2.0; v2 = (a-b)/2.0; t2 = (4+a-b-c) / 2.0;
+  t3 = (-4+b+c-d) / 2.0;
+  u3 = (6-2*b-c+d)/2.0;
+  v3 = b/2.0;
+  t4 = d/2.0; u4 = -t4;
+
+  i0 = (EON_uInt) frame;
+  i_1 = i0 - 1;
+  while (i_1 < 0) i_1 += s->numKeys;
+  i1 = i0 + 1;
+  while (i1 >= s->numKeys) i1 -= s->numKeys;
+  i2 = i0 + 2;
+  while (i2 >= s->numKeys) i2 -= s->numKeys;
+  time1 = frame - (EON_Float) ((EON_uInt) frame);
+  time2 = time1*time1;
+  time3 = time2*time1;
+  i0 *= s->keyWidth;
+  i1 *= s->keyWidth;
+  i2 *= s->keyWidth;
+  i_1 *= s->keyWidth;
+  for (i = 0; i < s->keyWidth; i ++) {
+    a = t1*keys[i+i_1]+t2*keys[i+i0]+t3*keys[i+i1]+t4*keys[i+i2];
+    b = u1*keys[i+i_1]+u2*keys[i+i0]+u3*keys[i+i1]+u4*keys[i+i2];
+    c = v1*keys[i+i_1]+v2*keys[i+i0]+v3*keys[i+i1];
+    *out++ = a*time3 + b*time2 + c*time1 + keys[i+i0];
+  }
 }
 
-void EON_delCamera(EON_Camera *camera)
-{
-    if (camera) {
-        CX_free(camera);
-    }
-    return;
-}
+// plush.c
+//
 
-/*************************************************************************/
-/* Rendering                                                             */
-/*************************************************************************/
-
-enum {
-    EON_TRIANGLES_START = 1024,
-    EON_LIGHTS_START    = 32
+EON_uChar EON_Text_DefaultFont[256*16] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 60, 66, 129, 231, 165, 153, 129, 153, 66, 60, 0, 0, 0, 0,
+  0, 0, 60, 126, 255, 153, 219, 231, 255, 231, 126, 60, 0, 0, 0, 0,
+  0, 0, 0, 0, 102, 255, 255, 255, 255, 126, 60, 24, 0, 0, 0, 0,
+  0, 0, 0, 0, 24, 60, 126, 255, 126, 60, 24, 0, 0, 0, 0, 0,
+  0, 0, 0, 24, 60, 60, 90, 255, 255, 90, 24, 60, 0, 0, 0, 0,
+  0, 0, 0, 24, 60, 126, 255, 255, 255, 90, 24, 60, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 24, 60, 60, 24, 0, 0, 0, 0, 0, 0,
+  255,255,255, 255, 255, 255, 231, 195, 195, 231, 255, 255, 255, 255, 255, 255,
+  0, 0, 0, 0, 0, 60, 102, 66, 66, 102, 60, 0, 0, 0, 0, 0,
+  255,255,255, 255, 255, 195, 153, 189, 189, 153, 195, 255, 255, 255, 255, 255,
+  0, 0, 15, 7, 13, 24, 62, 99, 195, 195, 198, 124, 0, 0, 0, 0,
+  0, 0, 126, 195, 195, 195, 126, 24, 24, 30, 120, 24, 0, 0, 0, 0,
+  0, 0, 8, 12, 14, 11, 8, 8, 8, 120, 248, 112, 0, 0, 0, 0,
+  0, 16, 24, 28, 22, 26, 22, 18, 114, 242, 98, 14, 30, 12, 0, 0,
+  0, 0, 24, 24, 219, 126, 60, 255, 60, 126, 219, 24, 24, 0, 0, 0,
+  0, 0, 96, 112, 120, 124, 126, 126, 124, 120, 112, 96, 0, 0, 0, 0,
+  0, 0, 6, 14, 30, 62, 126, 126, 62, 30, 14, 6, 0, 0, 0, 0,
+  0, 0, 16, 56, 124, 254, 56, 56, 56, 56, 254, 124, 56, 16, 0, 0,
+  0, 0, 102, 102, 102, 102, 102, 102, 102, 0, 102, 102, 0, 0, 0, 0,
+  0, 0, 63, 123, 219, 219, 219, 127, 59, 27, 27, 27, 0, 0, 0, 0,
+  0, 31, 48, 120, 220, 206, 231, 115, 59, 30, 12, 24, 48, 224, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 126, 126, 126, 126, 0, 0, 0, 0,
+  0, 0, 16, 56, 124, 254, 56, 56, 56, 254, 124, 56, 16, 0, 254, 0,
+  0, 0, 16, 56, 124, 254, 56, 56, 56, 56, 56, 56, 56, 56, 0, 0,
+  0, 0, 56, 56, 56, 56, 56, 56, 56, 56, 254, 124, 56, 16, 0, 0,
+  0, 0, 0, 0, 0, 8, 12, 254, 255, 254, 12, 8, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 16, 48, 127, 255, 127, 48, 16, 0, 0, 0, 0,
+  0, 0, 204, 102, 51, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 36, 102, 255, 255, 102, 36, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 24, 60, 60, 126, 126, 255, 255, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 255, 255, 126, 126, 60, 60, 24, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 24, 24, 24, 24, 24, 24, 24, 0, 24, 24, 0, 0, 0, 0,
+  0, 0, 51, 102, 204, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 51, 51, 255, 102, 102, 102, 102, 255, 204, 204, 0, 0, 0, 0,
+  0, 24, 126, 219, 216, 120, 28, 30, 27, 219, 219, 126, 24, 0, 0, 0,
+  0, 0, 96, 209, 179, 102, 12, 24, 54, 109, 203, 6, 0, 0, 0, 0,
+  0, 0, 28, 54, 102, 60, 56, 108, 199, 198, 110, 59, 0, 0, 0, 0,
+  0, 0, 12, 24, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 12, 24, 48, 48, 96, 96, 96, 96, 48, 48, 24, 12, 0, 0, 0,
+  0, 48, 24, 12, 12, 6, 6, 6, 6, 12, 12, 24, 48, 0, 0, 0,
+  0, 0, 102, 60, 255, 60, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 24, 24, 126, 24, 24, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 24, 48, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 126, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 24, 0, 0, 0, 0,
+  0, 0, 6, 4, 12, 8, 24, 16, 48, 32, 96, 64, 192, 0, 0, 0,
+  0, 0, 62, 99, 195, 195, 195, 207, 219, 243, 198, 124, 0, 0, 0, 0,
+  0, 0, 12, 28, 60, 108, 12, 12, 12, 12, 12, 12, 0, 0, 0, 0,
+  0, 0, 62, 99, 195, 3, 6, 12, 24, 48, 99, 255, 0, 0, 0, 0,
+  0, 0, 255, 198, 12, 24, 62, 3, 3, 195, 198, 124, 0, 0, 0, 0,
+  0, 0, 6, 14, 30, 54, 102, 199, 222, 246, 6, 6, 0, 0, 0, 0,
+  0, 0, 31, 240, 192, 220, 246, 3, 3, 195, 198, 124, 0, 0, 0, 0,
+  0, 0, 60, 102, 198, 192, 220, 246, 198, 198, 204, 120, 0, 0, 0, 0,
+  0, 0, 255, 195, 6, 12, 12, 24, 24, 48, 48, 48, 0, 0, 0, 0,
+  0, 0, 60, 102, 198, 108, 62, 99, 195, 195, 198, 124, 0, 0, 0, 0,
+  0, 0, 60, 102, 198, 198, 222, 118, 6, 198, 204, 120, 0, 0, 0, 0,
+  0, 0, 0, 0, 24, 24, 0, 0, 0, 24, 24, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 24, 24, 0, 0, 0, 24, 24, 48, 0, 0, 0, 0,
+  0, 0, 6, 12, 24, 48, 96, 96, 48, 24, 12, 6, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 255, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 96, 48, 24, 12, 6, 6, 12, 24, 48, 96, 0, 0, 0, 0,
+  0, 0, 62, 99, 198, 12, 24, 48, 48, 0, 48, 48, 0, 0, 0, 0,
+  0, 0, 30, 51, 111, 219, 219, 219, 222, 216, 198, 220, 112, 0, 0, 0,
+  0, 0, 24, 24, 60, 36, 102, 110, 122, 227, 195, 195, 0, 0, 0, 0,
+  0, 0, 30, 51, 227, 198, 220, 247, 195, 198, 220, 240, 0, 0, 0, 0,
+  0, 0, 30, 51, 96, 192, 192, 192, 192, 192, 99, 62, 0, 0, 0, 0,
+  0, 0, 252, 198, 195, 195, 195, 195, 195, 198, 220, 240, 0, 0, 0, 0,
+  0, 0, 30, 240, 192, 192, 220, 240, 192, 192, 222, 240, 0, 0, 0, 0,
+  0, 0, 30, 240, 192, 192, 220, 240, 192, 192, 192, 192, 0, 0, 0, 0,
+  0, 0, 62, 99, 192, 192, 192, 207, 195, 195, 102, 60, 0, 0, 0, 0,
+  0, 0, 195, 195, 195, 195, 207, 251, 195, 195, 195, 195, 0, 0, 0, 0,
+  0, 0, 28, 56, 24, 24, 24, 24, 24, 24, 28, 56, 0, 0, 0, 0,
+  0, 0, 3, 3, 3, 3, 3, 3, 195, 195, 99, 62, 0, 0, 0, 0,
+  0, 0, 195, 198, 220, 240, 224, 240, 216, 204, 198, 195, 0, 0, 0, 0,
+  0, 0, 192, 192, 192, 192, 192, 192, 192, 192, 222, 240, 0, 0, 0, 0,
+  0, 0, 195, 195, 231, 239, 251, 211, 195, 195, 195, 195, 0, 0, 0, 0,
+  0, 0, 195, 195, 227, 243, 211, 219, 207, 199, 195, 195, 0, 0, 0, 0,
+  0, 0, 62, 99, 195, 195, 195, 195, 195, 195, 198, 124, 0, 0, 0, 0,
+  0, 0, 30, 51, 227, 195, 198, 220, 240, 192, 192, 192, 0, 0, 0, 0,
+  0, 0, 62, 99, 195, 195, 195, 195, 243, 222, 204, 124, 6, 3, 0, 0,
+  0, 0, 30, 51, 227, 195, 198, 252, 216, 204, 198, 195, 0, 0, 0, 0,
+  0, 0, 126, 195, 192, 112, 28, 6, 3, 195, 195, 126, 0, 0, 0, 0,
+  0, 0, 15, 248, 24, 24, 24, 24, 24, 24, 24, 24, 0, 0, 0, 0,
+  0, 0, 195, 195, 195, 195, 195, 195, 198, 198, 204, 120, 0, 0, 0, 0,
+  0, 0, 195, 195, 195, 195, 102, 102, 124, 56, 48, 48, 0, 0, 0, 0,
+  0, 0, 195, 195, 195, 195, 219, 219, 219, 255, 231, 195, 0, 0, 0, 0,
+  0, 0, 195, 195, 102, 102, 60, 60, 102, 102, 195, 195, 0, 0, 0, 0,
+  0, 0, 195, 195, 102, 102, 60, 24, 24, 24, 24, 24, 0, 0, 0, 0,
+  0, 0, 31, 246, 4, 12, 24, 16, 48, 32, 111, 248, 0, 0, 0, 0,
+  0, 62, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 62, 0, 0, 0,
+  0, 0, 192, 64, 96, 32, 48, 16, 24, 8, 12, 4, 6, 0, 0, 0,
+  0, 124, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 124, 0, 0, 0,
+  0, 24, 60, 102, 192, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0,
+  0, 0, 48, 24, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 62, 99, 31, 115, 195, 207, 123, 0, 0, 0, 0,
+  0, 0, 192, 192, 192, 220, 246, 195, 195, 198, 220, 240, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 30, 51, 96, 192, 192, 195, 126, 0, 0, 0, 0,
+  0, 0, 3, 3, 3, 31, 115, 195, 199, 207, 219, 115, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 62, 99, 206, 248, 192, 195, 126, 0, 0, 0, 0,
+  0, 0, 30, 51, 48, 48, 60, 240, 48, 48, 48, 48, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 63, 99, 195, 199, 207, 219, 115, 3, 195, 126, 0,
+  0, 0, 192, 192, 192, 206, 219, 243, 227, 195, 195, 195, 0, 0, 0, 0,
+  0, 0, 24, 24, 0, 24, 24, 24, 24, 24, 24, 24, 0, 0, 0, 0,
+  0, 0, 12, 12, 0, 12, 12, 12, 12, 12, 12, 12, 204, 204, 120, 0,
+  0, 0, 192, 192, 192, 198, 204, 216, 248, 236, 198, 195, 0, 0, 0, 0,
+  0, 0, 56, 24, 24, 24, 24, 24, 24, 24, 24, 24, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 230, 219, 219, 219, 195, 195, 195, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 206, 219, 243, 227, 195, 195, 195, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 62, 99, 195, 195, 195, 198, 124, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 206, 219, 243, 227, 195, 198, 252, 192, 192, 192, 0,
+  0, 0, 0, 0, 0, 115, 219, 207, 199, 195, 99, 63, 3, 3, 3, 0,
+  0, 0, 0, 0, 0, 206, 219, 243, 224, 192, 192, 192, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 126, 195, 112, 30, 3, 195, 126, 0, 0, 0, 0,
+  0, 0, 16, 48, 48, 60, 240, 48, 48, 54, 60, 24, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 195, 195, 195, 199, 207, 219, 115, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 195, 195, 195, 102, 108, 56, 24, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 195, 195, 195, 219, 219, 255, 195, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 195, 102, 60, 24, 60, 102, 195, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 195, 195, 195, 195, 195, 102, 62, 12, 216, 112, 0,
+  0, 0, 0, 0, 0, 255, 6, 12, 24, 48, 96, 255, 0, 0, 0, 0,
+  0, 14, 24, 24, 24, 24, 112, 112, 24, 24, 24, 24, 14, 0, 0, 0,
+  0, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 0, 0, 0,
+  0, 112, 24, 24, 24, 24, 14, 14, 24, 24, 24, 24, 112, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 118, 220, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 16, 56, 108, 198, 198, 198, 254, 0, 0, 0, 0, 0,
+  0, 0, 30, 51, 96, 192, 192, 192, 192, 192, 99, 62, 12, 24, 240, 0,
+  0, 0, 102, 102, 0, 195, 195, 195, 199, 207, 219, 115, 0, 0, 0, 0,
+  0, 6, 12, 24, 0, 62, 99, 206, 248, 192, 195, 126, 0, 0, 0, 0,
+  12, 30, 51, 96, 0, 62, 99, 31, 115, 195, 207, 123, 0, 0, 0, 0,
+  0, 0, 54, 54, 0, 62, 99, 31, 115, 195, 207, 123, 0, 0, 0, 0,
+  0, 48, 24, 12, 0, 62, 99, 31, 115, 195, 207, 123, 0, 0, 0, 0,
+  28, 54, 54, 28, 0, 62, 99, 31, 115, 195, 207, 123, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 30, 51, 96, 192, 192, 195, 126, 12, 24, 240, 0,
+  24, 60, 102, 192, 0, 62, 99, 206, 248, 192, 195, 126, 0, 0, 0, 0,
+  0, 0, 102, 102, 0, 62, 99, 206, 248, 192, 195, 126, 0, 0, 0, 0,
+  0, 96, 48, 24, 0, 62, 99, 206, 248, 192, 195, 126, 0, 0, 0, 0,
+  0, 0, 102, 102, 0, 24, 24, 24, 24, 24, 24, 24, 0, 0, 0, 0,
+  24, 60, 102, 192, 0, 24, 24, 24, 24, 24, 24, 24, 0, 0, 0, 0,
+  0, 96, 48, 24, 0, 24, 24, 24, 24, 24, 24, 24, 0, 0, 0, 0,
+  102, 102, 24, 24, 60, 36, 102, 102, 126, 195, 195, 195, 0, 0, 0, 0,
+  24, 36, 36, 24, 60, 36, 102, 102, 126, 195, 195, 195, 0, 0, 0, 0,
+  24, 48, 96, 30, 240, 192, 222, 240, 192, 192, 222, 240, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 126, 219, 59, 126, 220, 219, 110, 0, 0, 0, 0,
+  0, 0, 63, 62, 60, 108, 111, 110, 124, 204, 207, 206, 0, 0, 0, 0,
+  24, 60, 102, 192, 0, 62, 99, 195, 195, 195, 198, 124, 0, 0, 0, 0,
+  0, 0, 102, 102, 0, 62, 99, 195, 195, 195, 198, 124, 0, 0, 0, 0,
+  0, 96, 48, 24, 0, 62, 99, 195, 195, 195, 198, 124, 0, 0, 0, 0,
+  24, 60, 102, 192, 0, 195, 195, 195, 199, 207, 219, 115, 0, 0, 0, 0,
+  0, 96, 48, 24, 0, 195, 195, 195, 199, 207, 219, 115, 0, 0, 0, 0,
+  0, 0, 102, 102, 0, 195, 195, 195, 195, 195, 102, 62, 12, 216, 112, 0,
+  102, 0, 62, 99, 195, 195, 195, 195, 195, 195, 198, 124, 0, 0, 0, 0,
+  102, 0, 195, 195, 195, 195, 195, 195, 198, 198, 204, 120, 0, 0, 0, 0,
+  0, 0, 0, 8, 8, 30, 59, 104, 200, 200, 203, 126, 8, 8, 0, 0,
+  0, 0, 60, 102, 96, 248, 96, 248, 96, 96, 99, 126, 0, 0, 0, 0,
+  0, 0, 195, 195, 102, 102, 60, 24, 126, 24, 126, 24, 24, 0, 0, 0,
+  0, 0, 30, 51, 227, 195, 198, 220, 248, 204, 222, 204, 15, 14, 4, 0,
+  0, 0, 30, 51, 48, 48, 60, 240, 48, 48, 48, 48, 224, 0, 0, 0,
+  0, 6, 12, 24, 0, 62, 99, 31, 115, 195, 207, 123, 0, 0, 0, 0,
+  0, 6, 12, 24, 0, 24, 24, 24, 24, 24, 24, 24, 0, 0, 0, 0,
+  0, 6, 12, 24, 0, 62, 99, 195, 195, 195, 198, 124, 0, 0, 0, 0,
+  0, 12, 24, 48, 0, 195, 195, 195, 199, 207, 219, 115, 0, 0, 0, 0,
+  0, 3, 118, 220, 0, 206, 219, 243, 227, 195, 195, 195, 0, 0, 0, 0,
+  3, 118, 220, 0, 195, 227, 243, 211, 219, 207, 199, 195, 0, 0, 0, 0,
+  0, 0, 62, 99, 31, 115, 195, 207, 123, 0, 0, 255, 0, 0, 0, 0,
+  0, 0, 62, 99, 195, 195, 195, 198, 124, 0, 0, 255, 0, 0, 0, 0,
+  0, 0, 12, 12, 0, 12, 12, 24, 48, 99, 198, 124, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 254, 192, 192, 192, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 254, 6, 6, 6, 0, 0, 0, 0, 0, 0,
+  0, 96, 225, 99, 102, 108, 24, 48, 96, 206, 155, 6, 13, 31, 0, 0,
+  0, 96, 225, 99, 102, 108, 24, 48, 102, 206, 151, 62, 6, 6, 0, 0,
+  0, 0, 24, 24, 0, 24, 24, 24, 24, 24, 24, 24, 0, 0, 0, 0,
+  0, 0, 0, 0, 3, 54, 108, 216, 216, 108, 54, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 108, 54, 27, 27, 54, 108, 192, 0, 0, 0, 0,
+  130, 16, 130, 16, 130, 16, 130, 16, 130, 16, 130, 16, 130, 16, 130, 16,
+  0, 149, 0, 169, 0, 149, 0, 169, 0, 149, 0, 169, 0, 149, 0, 169,
+  146, 73, 146, 73, 146, 73, 146, 73, 146, 73, 146, 73, 146, 73, 146, 73,
+  24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+  24, 24, 24, 24, 24, 24, 24, 24, 248, 24, 24, 24, 24, 24, 24, 24,
+  24, 24, 24, 24, 24, 24, 248, 248, 248, 24, 24, 24, 24, 24, 24, 24,
+  60, 60, 60, 60, 60, 60, 60, 60, 252, 60, 60, 60, 60, 60, 60, 60,
+  0, 0, 0, 0, 0, 0, 0, 0, 252, 60, 60, 60, 60, 60, 60, 60,
+  0, 0, 0, 0, 0, 0, 248, 248, 248, 24, 24, 24, 24, 24, 24, 24,
+  60, 60, 60, 60, 60, 60, 252, 252, 252, 60, 60, 60, 60, 60, 60, 60,
+  60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60,
+  0, 0, 0, 0, 0, 0, 252, 252, 252, 60, 60, 60, 60, 60, 60, 60,
+  60, 60, 60, 60, 60, 60, 252, 252, 252, 0, 0, 0, 0, 0, 0, 0,
+  60, 60, 60, 60, 60, 60, 60, 60, 252, 0, 0, 0, 0, 0, 0, 0,
+  24, 24, 24, 24, 24, 24, 248, 248, 248, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 248, 24, 24, 24, 24, 24, 24, 24,
+  24, 24, 24, 24, 24, 24, 24, 24, 31, 0, 0, 0, 0, 0, 0, 0,
+  24, 24, 24, 24, 24, 24, 24, 24, 255, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 255, 24, 24, 24, 24, 24, 24, 24,
+  24, 24, 24, 24, 24, 24, 24, 24, 31, 24, 24, 24, 24, 24, 24, 24,
+  0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0,
+  24, 24, 24, 24, 24, 24, 24, 24, 255, 24, 24, 24, 24, 24, 24, 24,
+  24, 24, 24, 24, 24, 24, 31, 31, 31, 24, 24, 24, 24, 24, 24, 24,
+  60, 60, 60, 60, 60, 60, 60, 60, 63, 60, 60, 60, 60, 60, 60, 60,
+  60, 60, 60, 60, 60, 60, 63, 63, 63, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 63, 63, 63, 60, 60, 60, 60, 60, 60, 60,
+  60, 60, 60, 60, 60, 60, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 255, 255, 255, 60, 60, 60, 60, 60, 60, 60,
+  60, 60, 60, 60, 60, 60, 63, 63, 63, 60, 60, 60, 60, 60, 60, 60,
+  0, 0, 0, 0, 0, 0, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0,
+  60, 60, 60, 60, 60, 60, 255, 255, 255, 60, 60, 60, 60, 60, 60, 60,
+  24, 24, 24, 24, 24, 24, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0,
+  60, 60, 60, 60, 60, 60, 60, 60, 255, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 255, 255, 255, 24, 24, 24, 24, 24, 24, 24,
+  0, 0, 0, 0, 0, 0, 0, 0, 255, 60, 60, 60, 60, 60, 60, 60,
+  60, 60, 60, 60, 60, 60, 60, 60, 63, 0, 0, 0, 0, 0, 0, 0,
+  24, 24, 24, 24, 24, 24, 31, 31, 31, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 31, 31, 31, 24, 24, 24, 24, 24, 24, 24,
+  0, 0, 0, 0, 0, 0, 0, 0, 63, 60, 60, 60, 60, 60, 60, 60,
+  60, 60, 60, 60, 60, 60, 60, 60, 255, 60, 60, 60, 60, 60, 60, 60,
+  24, 24, 24, 24, 24, 24, 255, 255, 255, 24, 24, 24, 24, 24, 24, 24,
+  24, 24, 24, 24, 24, 24, 24, 24, 248, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 31, 24, 24, 24, 24, 24, 24, 24,
+  255, 255, 255,255,255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+  240, 240, 240, 240,240,240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240,
+  15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+  255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 3, 118, 204, 204, 204, 222, 115, 0, 0, 0, 0,
+  0, 0, 30, 51, 227, 194, 204, 194, 195, 195, 206, 216, 192, 192, 0, 0,
+  0, 0, 31, 243, 195, 192, 192, 192, 192, 192, 192, 192, 0, 0, 0, 0,
+  0, 0, 0, 0, 3, 126, 230, 102, 102, 102, 102, 68, 0, 0, 0, 0,
+  0, 0, 31, 240, 96, 48, 24, 48, 96, 192, 223, 240, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 127, 240, 216, 216, 216, 216, 112, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 99, 99, 99, 99, 103, 111, 123, 96, 96, 192, 0,
+  0, 0, 0, 0, 111, 184, 48, 48, 48, 48, 48, 48, 0, 0, 0, 0,
+  0, 0, 24, 24, 126, 219, 219, 219, 219, 126, 24, 24, 0, 0, 0, 0,
+  0, 0, 0, 60, 102, 195, 195, 255, 195, 195, 102, 60, 0, 0, 0, 0,
+  0, 0, 60, 102, 195, 195, 195, 195, 102, 36, 165, 231, 0, 0, 0, 0,
+  0, 7, 28, 48, 24, 12, 62, 102, 198, 198, 204, 120, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 110, 219, 219, 219, 118, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 2, 4, 124, 206, 214, 230, 124, 64, 128, 0, 0, 0, 0,
+  0, 0, 30, 48, 96, 96, 126, 96, 96, 96, 48, 30, 0, 0, 0, 0,
+  0, 0, 0, 126, 195, 195, 195, 195, 195, 195, 195, 195, 0, 0, 0, 0,
+  0, 0, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 24, 24, 126, 24, 24, 0, 0, 126, 0, 0, 0, 0,
+  0, 0, 0, 48, 24, 12, 6, 12, 24, 48, 0, 126, 0, 0, 0, 0,
+  0, 0, 0, 12, 24, 48, 96, 48, 24, 12, 0, 126, 0, 0, 0, 0,
+  0, 0, 0, 14, 27, 27, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+  24, 24, 24, 24, 24, 24, 24, 24, 24, 216, 216, 112, 0, 0, 0, 0,
+  0, 0, 0, 0, 24, 24, 0, 255, 0, 24, 24, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 118, 220, 0, 118, 220, 0, 0, 0, 0, 0, 0,
+  0, 0, 60, 102, 102, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 24, 24, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 3, 2, 6, 4, 12, 8, 216, 80, 112, 32, 0, 0, 0, 0,
+  0, 0, 220, 246, 230, 198, 198, 198, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 120, 204, 24, 48, 100, 252, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 126, 126, 126, 126, 126, 126, 126, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
+/* Can't find another place to put this... */
+void EON_TexDelete(EON_Texture *t) {
+  if (t) {
+    if (t->Data) free(t->Data);
+    if (t->PaletteData) free(t->PaletteData);
+    free(t);
+  }
+}
+
+// text.c
+//
+
+static EON_uChar font_height = 16;
+
+static EON_uChar *current_font = EON_Text_DefaultFont;
+
+void EON_TextSetFont(EON_uChar *font, EON_uChar height)
+{
+  current_font = font;
+  font_height = height;
+}
+
+void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+                   EON_uChar color, EON_uChar c) {
+  EON_uChar *font = current_font + (c*font_height);
+  EON_sInt offset = x+(y*cam->ScreenWidth);
+  EON_ZBuffer zz = (EON_ZBuffer) (1.0/z);
+  EON_sInt xx = x, a;
+  EON_uChar len = font_height;
+  EON_uChar ch;
+  EON_uChar *outmem;
+  EON_ZBuffer *zbuffer;
+  if (y+font_height < cam->ClipTop || y >= cam->ClipBottom) return;
+  if (y < cam->ClipTop) {
+    font += (cam->ClipTop-y);
+    offset += (cam->ClipTop-y)*cam->ScreenWidth;
+    len -= (cam->ClipTop-y);
+    y = cam->ClipTop;
+  }
+  if (y+font_height >= cam->ClipBottom) {
+    len = cam->ClipBottom-y;
+  }
+  if (len > 0) {
+    if (cam->zBuffer && z != 0.0) do {
+      outmem = cam->frameBuffer + offset;
+      zbuffer = cam->zBuffer + offset;
+      offset += cam->ScreenWidth;
+      xx = x;
+      ch = *font++;
+      a = 128;
+      while (a) {
+        if (xx >= cam->ClipRight) break;
+        if (xx++ >= cam->ClipLeft)
+          if (ch & a)
+            if (zz > *zbuffer) {
+              *zbuffer = zz;
+              *outmem = color;
+            }
+        zbuffer++;
+        outmem++;
+        a >>= 1;
+      }
+      if (a) break;
+    } while (--len);
+    else do {
+      outmem = cam->frameBuffer + offset;
+      offset += cam->ScreenWidth;
+      xx = x;
+      ch = *font++;
+      a = 128;
+      while (a) {
+        if (xx >= cam->ClipRight) break;
+        if (xx++ >= cam->ClipLeft) if (ch & a) *outmem = color;
+        outmem++;
+        a >>= 1;
+      }
+      if (a) break;
+    } while (--len);
+  }
+}
+
+void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+                  EON_uChar color, EON_sChar *string) {
+  EON_sInt xx = x;
+  while (*string) {
+    switch (*string) {
+      case '\n': y += font_height; xx = x; break;
+      case ' ': xx += 8; break;
+      case '\r': break;
+      case '\t': xx += 8*5; break;
+      default:
+        EON_TextPutChar(cam,xx,y,z,color,(EON_uChar) *string);
+        xx += 8;
+      break;
+    }
+    string++;
+  }
+}
+
+void EON_TextPrintf(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+                  EON_uChar color, EON_sChar *format, ...) {
+  va_list arglist;
+  EON_sChar str[256];
+  va_start(arglist, format);
+  vsprintf((char *)str, (char *) format,arglist);
+  va_end(arglist);
+  EON_TextPutStr(cam,x,y,z,color,str);
+}
+
+// putface.h
+//
+
+#define PUTFACE_SORT() \
+  i0 = 0; i1 = 1; i2 = 2; \
+  if (TriFace->Scry[0] > TriFace->Scry[1]) { \
+     i0 = 1; i1 = 0; \
+  } \
+  if (TriFace->Scry[i0] > TriFace->Scry[2]) { \
+     i2 ^= i0; i0 ^= i2; i2 ^= i0; \
+  } \
+  if (TriFace->Scry[i1] > TriFace->Scry[i2]) { \
+     i2 ^= i1; i1 ^= i2; i2 ^= i1; \
+  }
+
+
+#define PUTFACE_SORT_ENV() \
+  PUTFACE_SORT(); \
+  MappingU1=TriFace->eMappingU[i0]*Texture->uScale*\
+            TriFace->Material->EnvScaling;\
+  MappingV1=TriFace->eMappingV[i0]*Texture->vScale*\
+            TriFace->Material->EnvScaling;\
+  MappingU2=TriFace->eMappingU[i1]*Texture->uScale*\
+            TriFace->Material->EnvScaling;\
+  MappingV2=TriFace->eMappingV[i1]*Texture->vScale*\
+            TriFace->Material->EnvScaling;\
+  MappingU3=TriFace->eMappingU[i2]*Texture->uScale*\
+            TriFace->Material->EnvScaling;\
+  MappingV3=TriFace->eMappingV[i2]*Texture->vScale*\
+            TriFace->Material->EnvScaling;
+
+#define PUTFACE_SORT_TEX() \
+  PUTFACE_SORT(); \
+  MappingU1=TriFace->MappingU[i0]*Texture->uScale*\
+            TriFace->Material->TexScaling;\
+  MappingV1=TriFace->MappingV[i0]*Texture->vScale*\
+            TriFace->Material->TexScaling;\
+  MappingU2=TriFace->MappingU[i1]*Texture->uScale*\
+            TriFace->Material->TexScaling;\
+  MappingV2=TriFace->MappingV[i1]*Texture->vScale*\
+            TriFace->Material->TexScaling;\
+  MappingU3=TriFace->MappingU[i2]*Texture->uScale*\
+            TriFace->Material->TexScaling;\
+  MappingV3=TriFace->MappingV[i2]*Texture->vScale*\
+            TriFace->Material->TexScaling;
+
+// pf_solid.c
+//
+
+void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
+{
+  EON_uChar i0, i1, i2;
+
+  EON_uChar *gmem = cam->frameBuffer;
+  EON_ZBuffer *zbuf = cam->zBuffer;
+
+  EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
+  EON_ZBuffer dZL=0, dZ1=0, dZ2=0, Z1, ZL, Z2, Z3;
+  EON_sInt32 Y1, Y2, Y0, dY;
+  EON_uChar stat;
+  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_uChar bc;
+  EON_sInt32 shade;
+
+  PUTFACE_SORT();
+
+  shade=(EON_sInt32) (TriFace->fShade*(TriFace->Material->_ColorsUsed-1));
+  if (shade < 0) shade=0;
+  if (shade > (EON_sInt32) TriFace->Material->_ColorsUsed-1) shade=TriFace->Material->_ColorsUsed-1;
+  bc=TriFace->Material->_ReMapTable[shade];
+
+  X2 = X1 = TriFace->Scrx[i0];
+  Z1 = TriFace->Scrz[i0];
+  Z2 = TriFace->Scrz[i1];
+  Z3 = TriFace->Scrz[i2];
+  Y0 = (TriFace->Scry[i0]+(1<<19)) >> 20;
+  Y1 = (TriFace->Scry[i1]+(1<<19)) >> 20;
+  Y2 = (TriFace->Scry[i2]+(1<<19)) >> 20;
+
+  dY = Y2-Y0;
+  if (dY) {
+    dX2 = (TriFace->Scrx[i2] - X1) / dY;
+    dZ2 = (Z3 - Z1) / dY;
+  }
+  dY = Y1-Y0;
+  if (dY) {
+    dX1 = (TriFace->Scrx[i1] - X1) / dY;
+    dZ1 = (Z2 - Z1) / dY;
+    if (dX2 < dX1) {
+      dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
+      dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
+      stat = 2;
+    } else stat = 1;
+    Z2 = Z1;
+  } else {
+    if (TriFace->Scrx[i1] > X1) {
+      X2 = TriFace->Scrx[i1];
+      stat = 2|4;
+    } else {
+      X1 = TriFace->Scrx[i1];
+      ZL = Z1; Z1 = Z2; Z2 = ZL;
+      stat = 1|8;
+    }
+  }
+
+  if (zb) {
+    XL1 = ((dX1-dX2)*dY+(1<<19))>>20;
+    if (XL1) dZL = ((dZ1-dZ2)*dY)/XL1;
+    else {
+      XL1 = (X2-X1+(1<<19))>>20;
+      if (zb && XL1) dZL = (Z2-Z1)/XL1;
+      else dZL = 0.0;
+    }
+  }
+
+  gmem += (Y0 * cam->ScreenWidth);
+  zbuf += (Y0 * cam->ScreenWidth);
+
+  while (Y0 < Y2) {
+    if (Y0 == Y1) {
+      dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
+      if (dY) {
+        if (stat & 1) {
+          X1 = TriFace->Scrx[i1];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 2) {
+          X2 = TriFace->Scrx[i1];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 4) {
+          X1 = TriFace->Scrx[i0];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        if (stat & 8) {
+          X2 = TriFace->Scrx[i0];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        dZ1 = (Z3-Z1)/dY;
+      }
+    }
+    XL1 = (X1+(1<<19))>>20;
+    XL2 = (X2+(1<<19))>>20;
+    ZL = Z1;
+    XL2 -= XL1;
+    if (XL2 > 0) {
+      zbuf += XL1;
+      gmem += XL1;
+      XL1 += XL2;
+      if (zb) do {
+          if (*zbuf < ZL) {
+            *zbuf = ZL;
+            *gmem = bc;
+          }
+          gmem++;
+          zbuf++;
+          ZL += dZL;
+        } while (--XL2);
+      else do *gmem++ = bc; while (--XL2);
+      gmem -= XL1;
+      zbuf -= XL1;
+    }
+    gmem += cam->ScreenWidth;
+    zbuf += cam->ScreenWidth;
+    Z1 += dZ1;
+    X1 += dX1;
+    X2 += dX2;
+    Y0++;
+  }
+}
+
+void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace)
+{
+  EON_uChar i0, i1, i2;
+  EON_uChar *gmem = cam->frameBuffer;
+  EON_uChar *remap = TriFace->Material->_ReMapTable;
+  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_ZBuffer dZL=0, dZ1=0, dZ2=0, Z1, Z2, ZL, Z3;
+  EON_sInt32 dX1=0, dX2=0, X1, X2, XL1, XL2;
+  EON_sInt32 C1, C2, dC1=0, dC2=0, dCL=0, CL, C3;
+  EON_sInt32 Y1, Y2, Y0, dY;
+  EON_uChar stat;
+  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+
+  EON_Float nc = (TriFace->Material->_ColorsUsed-1)*65536.0f;
+  EON_sInt32 maxColor=((TriFace->Material->_ColorsUsed-1)<<16);
+  EON_sInt32 maxColorNonShift=TriFace->Material->_ColorsUsed-1;
+
+  PUTFACE_SORT();
+
+
+  C1 = (EON_sInt32) (TriFace->Shades[i0]*nc);
+  C2 = (EON_sInt32) (TriFace->Shades[i1]*nc);
+  C3 = (EON_sInt32) (TriFace->Shades[i2]*nc);
+  X2 = X1 = TriFace->Scrx[i0];
+  Z1 = TriFace->Scrz[i0];
+  Z2 = TriFace->Scrz[i1];
+  Z3 = TriFace->Scrz[i2];
+
+  Y0 = (TriFace->Scry[i0]+(1<<19))>>20;
+  Y1 = (TriFace->Scry[i1]+(1<<19))>>20;
+  Y2 = (TriFace->Scry[i2]+(1<<19))>>20;
+
+  dY = Y2 - Y0;
+  if (dY) {
+    dX2 = (TriFace->Scrx[i2] - X1) / dY;
+    dC2 = (C3 - C1) / dY;
+    dZ2 = (Z3 - Z1) / dY;
+  }
+  dY = Y1 - Y0;
+  if (dY) {
+    dX1 = (TriFace->Scrx[i1] - X1) / dY;
+    dC1 = (C2 - C1) / dY;
+    dZ1 = (Z2 - Z1) / dY;
+    if (dX2 < dX1) {
+      dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
+      dC2 ^= dC1; dC1 ^= dC2; dC2 ^= dC1;
+      dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
+      stat = 2;
+    } else stat = 1;
+    Z2 = Z1;
+    C2 = C1;
+  } else {
+    if (TriFace->Scrx[i1] > X1) {
+      X2 = TriFace->Scrx[i1];
+      stat = 2|4;
+    } else {
+      X1 = C1; C1 = C2; C2 = X1;
+      ZL = Z1; Z1 = Z2; Z2 = ZL;
+      X1 = TriFace->Scrx[i1];
+      stat = 1|8;
+    }
+  }
+
+  gmem += (Y0 * cam->ScreenWidth);
+  zbuf += (Y0 * cam->ScreenWidth);
+
+  XL1 = (((dX1-dX2)*dY+(1<<19))>>20);
+  if (XL1) {
+    dCL = ((dC1-dC2)*dY)/XL1;
+    dZL = ((dZ1-dZ2)*dY)/XL1;
+  } else {
+    XL1 = ((X2-X1+(1<<19))>>20);
+    if (XL1) {
+      dCL = (C2-C1)/XL1;
+      dZL = (Z2-Z1)/XL1;
+    }
+  }
+
+  while (Y0 < Y2) {
+    if (Y0 == Y1) {
+      dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
+      if (dY) {
+        dZ1 = (Z3-Z1)/dY;
+        dC1 = (C3-C1) / dY;
+        if (stat & 1) {
+          X1 = TriFace->Scrx[i1];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 2) {
+          X2 = TriFace->Scrx[i1];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 4) {
+          X1 = TriFace->Scrx[i0];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        if (stat & 8) {
+          X2 = TriFace->Scrx[i0];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+      }
+    }
+    CL = C1;
+    XL1 = (X1+(1<<19))>>20;
+    XL2 = (X2+(1<<19))>>20;
+    ZL = Z1;
+    XL2 -= XL1;
+    if (XL2 > 0) {
+      gmem += XL1;
+      zbuf += XL1;
+      XL1 += XL2;
+      if (zb) do {
+          if (*zbuf < ZL) {
+            *zbuf = ZL;
+            if (CL >= maxColor) *gmem=remap[maxColorNonShift];
+            else if (CL > 0) *gmem = remap[CL>>16];
+            else *gmem = remap[0];
+          }
+          gmem++;
+          zbuf++;
+          ZL += dZL;
+          CL += dCL;
+        } while (--XL2);
+      else do {
+          if (CL >= maxColor) *gmem++=remap[maxColorNonShift];
+          else if (CL > 0) *gmem++ = remap[CL>>16];
+          else *gmem++ = remap[0];
+          CL += dCL;
+        } while (--XL2);
+      gmem -= XL1;
+      zbuf -= XL1;
+    }
+    gmem += cam->ScreenWidth;
+    zbuf += cam->ScreenWidth;
+    X1 += dX1;
+    X2 += dX2;
+    C1 += dC1;
+    Z1 += dZ1;
+    Y0++;
+  }
+}
+
+// pf_tex.c
+//
+
+void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace)
+{
+  EON_uChar i0, i1, i2;
+  EON_uChar *gmem = cam->frameBuffer;
+  EON_uChar *remap;
+  EON_ZBuffer *zbuf = cam->zBuffer;
+
+  EON_sInt32 MappingU1, MappingU2, MappingU3;
+  EON_sInt32 MappingV1, MappingV2, MappingV3;
+  EON_sInt32 MappingU_AND, MappingV_AND;
+  EON_sInt32 eMappingU1, eMappingU2, eMappingU3;
+  EON_sInt32 eMappingV1, eMappingV2, eMappingV3;
+  EON_sInt32 eMappingU_AND, eMappingV_AND;
+
+  EON_uChar *texture, *environment;
+  EON_uChar vshift;
+  EON_uChar evshift;
+  EON_uInt16 *addtable;
+  EON_Texture *Texture, *Environment;
+  EON_uChar stat;
+  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+
+  EON_sInt32 U1, V1, U2, V2, dU1=0, dU2=0, dV1=0, dV2=0, dUL=0, dVL=0, UL, VL;
+  EON_sInt32 eU1, eV1, eU2, eV2, edU1=0, edU2=0, edV1=0,
+            edV2=0, edUL=0, edVL=0, eUL, eVL;
+  EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
+  EON_Float Z1, ZL, dZ1=0, dZ2=0, dZL=0, Z2;
+  EON_sInt32 Y1, Y2, Y0, dY;
+
+  Environment = TriFace->Material->Environment;
+  Texture = TriFace->Material->Texture;
+
+  if (!Texture || !Environment) return;
+  texture = Texture->Data;
+  environment = Environment->Data;
+  addtable = TriFace->Material->_AddTable;
+  remap = TriFace->Material->_ReMapTable;
+
+  MappingV_AND = ((1<<Texture->Height)-1)<<Texture->Width;
+  MappingU_AND = (1<<Texture->Width)-1;
+  vshift = 16 - Texture->Width;
+  eMappingV_AND = ((1<<Environment->Height)-1)<<Environment->Width;
+  eMappingU_AND = (1<<Environment->Width)-1;
+  evshift = 16 - Environment->Width;
+
+  PUTFACE_SORT_TEX();
+
+  eMappingU1=(EON_sInt32) (TriFace->eMappingU[i0]*Environment->uScale*TriFace->Material->EnvScaling);
+  eMappingV1=(EON_sInt32) (TriFace->eMappingV[i0]*Environment->vScale*TriFace->Material->EnvScaling);
+  eMappingU2=(EON_sInt32) (TriFace->eMappingU[i1]*Environment->uScale*TriFace->Material->EnvScaling);
+  eMappingV2=(EON_sInt32) (TriFace->eMappingV[i1]*Environment->vScale*TriFace->Material->EnvScaling);
+  eMappingU3=(EON_sInt32) (TriFace->eMappingU[i2]*Environment->uScale*TriFace->Material->EnvScaling);
+  eMappingV3=(EON_sInt32) (TriFace->eMappingV[i2]*Environment->vScale*TriFace->Material->EnvScaling);
+
+  U1 = U2 = MappingU1;
+  V1 = V2 = MappingV1;
+  eU1 = eU2 = eMappingU1;
+  eV1 = eV2 = eMappingV1;
+  X2 = X1 = TriFace->Scrx[i0];
+  Z2 = Z1 = TriFace->Scrz[i0];
+  Y0 = (TriFace->Scry[i0]+(1<<19))>>20;
+  Y1 = (TriFace->Scry[i1]+(1<<19))>>20;
+  Y2 = (TriFace->Scry[i2]+(1<<19))>>20;
+
+  dY = Y2 - Y0;
+  if (dY) {
+    dU2 = (MappingU3 - U1) / dY;
+    dV2 = (MappingV3 - V1) / dY;
+    edU2 = (eMappingU3 - eU1) / dY;
+    edV2 = (eMappingV3 - eV1) / dY;
+    dX2 = (TriFace->Scrx[i2] - X1) / dY;
+    dZ2 = (TriFace->Scrz[i2] - Z1) / dY;
+  }
+  dY = Y1-Y0;
+  if (dY) {
+    dX1 = (TriFace->Scrx[i1] - X1) / dY;
+    dU1 = (MappingU2 - U1) / dY;
+    dV1 = (MappingV2 - V1) / dY;
+    edU1 = (eMappingU2 - eU1) / dY;
+    edV1 = (eMappingV2 - eV1) / dY;
+    dZ1 = (TriFace->Scrz[i1] - Z1) / dY;
+    if (dX2 < dX1) {
+      dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
+      dU2 ^= dU1; dU1 ^= dU2; dU2 ^= dU1;
+      dV2 ^= dV1; dV1 ^= dV2; dV2 ^= dV1;
+      edU2 ^= edU1; edU1 ^= edU2; edU2 ^= edU1;
+      edV2 ^= edV1; edV1 ^= edV2; edV2 ^= edV1;
+      dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
+      stat = 2;
+    } else stat = 1;
+  } else {
+    if (TriFace->Scrx[i1] > X1) {
+      X2 = TriFace->Scrx[i1];
+      Z2 = TriFace->Scrz[i1];
+      U2 = MappingU2;
+      V2 = MappingV2;
+      eU2 = eMappingU2;
+      eV2 = eMappingV2;
+      stat = 2|4;
+    } else {
+      X1 = TriFace->Scrx[i1];
+      Z1 = TriFace->Scrz[i1];
+      U1 = MappingU2;
+      V1 = MappingV2;
+      eU1 = eMappingU2;
+      eV1 = eMappingV2;
+      stat = 1|8;
+    }
+  }
+
+  gmem += (Y0 * cam->ScreenWidth);
+  zbuf += (Y0 * cam->ScreenWidth);
+
+  XL1 = (((dX1-dX2)*dY+(1<<19))>>20);
+  if (XL1) {
+    dUL = ((dU1-dU2)*dY)/XL1;
+    dVL = ((dV1-dV2)*dY)/XL1;
+    edUL = ((edU1-edU2)*dY)/XL1;
+    edVL = ((edV1-edV2)*dY)/XL1;
+    dZL = ((dZ1-dZ2)*dY)/XL1;
+  } else {
+    XL1 = ((X2-X1+(1<<19))>>20);
+    if (XL1) {
+      edUL = (eU2-eU1)/XL1;
+      edVL = (eV2-eV1)/XL1;
+      dUL = (U2-U1)/XL1;
+      dVL = (V2-V1)/XL1;
+      dZL = (Z2-Z1)/XL1;
+    }
+  }
+
+  while (Y0 < Y2) {
+    if (Y0 == Y1) {
+      dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
+      if (dY) {
+        if (stat & 1) {
+          X1 = TriFace->Scrx[i1];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 2) {
+          X2 = TriFace->Scrx[i1];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 4) {
+          X1 = TriFace->Scrx[i0];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        if (stat & 8) {
+          X2 = TriFace->Scrx[i0];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        dZ1 = (TriFace->Scrz[i2]-Z1)/dY;
+        dV1 = (MappingV3 - V1) / dY;
+        dU1 = (MappingU3 - U1) / dY;
+        edV1 = (eMappingV3 - eV1) / dY;
+        edU1 = (eMappingU3 - eU1) / dY;
+      }
+    }
+    XL1 = (X1+(1<<19))>>20;
+    XL2 = (X2+(1<<19))>>20;
+    ZL = Z1;
+    UL = U1;
+    VL = V1;
+    eUL = eU1;
+    eVL = eV1;
+    if ((XL2-XL1) > 0) {
+      XL2 -= XL1;
+      gmem += XL1;
+      zbuf += XL1;
+      XL1 += XL2;
+      if (zb) do {
+          if (*zbuf < ZL) {
+            *zbuf = ZL;
+            *gmem = remap[addtable[environment[
+                ((eUL>>16)&eMappingU_AND)+((eVL>>evshift)&eMappingV_AND)]] +
+                            texture[((UL>>16)&MappingU_AND) +
+                                    ((VL>>vshift)&MappingV_AND)]];
+          }
+          zbuf++;
+          gmem++;
+          ZL += dZL;
+          UL += dUL;
+          VL += dVL;
+          eUL += edUL;
+          eVL += edVL;
+        } while (--XL2);
+      else do {
+          *gmem++ = remap[addtable[environment[
+              ((eUL>>16)&eMappingU_AND)+((eVL>>evshift)&eMappingV_AND)]] +
+                          texture[((UL>>16)&MappingU_AND) +
+                                  ((VL>>vshift)&MappingV_AND)]];
+          UL += dUL;
+          VL += dVL;
+          eUL += edUL;
+          eVL += edVL;
+        } while (--XL2);
+      gmem -= XL1;
+      zbuf -= XL1;
+    }
+    zbuf += cam->ScreenWidth;
+    gmem += cam->ScreenWidth;
+    Z1 += dZ1;
+    X1 += dX1;
+    X2 += dX2;
+    U1 += dU1;
+    V1 += dV1;
+    eU1 += edU1;
+    eV1 += edV1;
+    Y0++;
+  }
+}
+
+void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace) {
+  EON_uChar i0, i1, i2;
+  EON_uChar *gmem = cam->frameBuffer;
+  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_sInt32 MappingU1, MappingU2, MappingU3;
+  EON_sInt32 MappingV1, MappingV2, MappingV3;
+  EON_sInt32 MappingU_AND, MappingV_AND;
+  EON_uChar *texture;
+  EON_uChar vshift;
+  EON_uInt bc;
+  EON_uChar *remap;
+  EON_Texture *Texture;
+  EON_uChar stat;
+
+  EON_ZBuffer Z1, ZL, dZ1=0, dZL=0, Z2, dZ2=0;
+  EON_sInt32 dU1=0, dV1=0, dU2=0, dV2=0, U1, V1, U2, V2;
+  EON_sInt32 dUL=0, dVL=0, UL, VL;
+  EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
+  EON_sInt32 Y1, Y2, Y0, dY;
+  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_sInt shade;
+
+  if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
+  else Texture = TriFace->Material->Texture;
+
+  if (!Texture) return;
+  remap = TriFace->Material->_ReMapTable;
+  if (TriFace->Material->_AddTable)
+  {
+    shade=(EON_sInt)(TriFace->fShade*255.0f);
+    if (shade < 0) shade=0;
+    if (shade > 255) shade=255;
+    bc = TriFace->Material->_AddTable[shade];
+  }
+  else bc=0;
+  texture = Texture->Data;
+  vshift = 16 - Texture->Width;
+  MappingV_AND = ((1<<Texture->Height)-1)<<Texture->Width;
+  MappingU_AND = (1<<Texture->Width)-1;
+
+  if (TriFace->Material->Environment) {
+    PUTFACE_SORT_ENV();
+  } else {
+    PUTFACE_SORT_TEX();
+  }
+
+  U1 = U2 = MappingU1;
+  V1 = V2 = MappingV1;
+  X2 = X1 = TriFace->Scrx[i0];
+  Z2 = Z1 = TriFace->Scrz[i0];
+  Y0 = (TriFace->Scry[i0]+(1<<19))>>20;
+  Y1 = (TriFace->Scry[i1]+(1<<19))>>20;
+  Y2 = (TriFace->Scry[i2]+(1<<19))>>20;
+
+  dY = Y2 - Y0;
+  if (dY) {
+    dX2 = (TriFace->Scrx[i2] - X1) / dY;
+    dV2 = (MappingV3 - V1) / dY;
+    dU2 = (MappingU3 - U1) / dY;
+    dZ2 = (TriFace->Scrz[i2] - Z1) / dY;
+  }
+  dY = Y1-Y0;
+  if (dY) {
+    dX1 = (TriFace->Scrx[i1] - X1) / dY;
+    dZ1 = (TriFace->Scrz[i1] - Z1) / dY;
+    dU1 = (MappingU2 - U1) / dY;
+    dV1 = (MappingV2 - V1) / dY;
+    if (dX2 < dX1) {
+      dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
+      dU2 ^= dU1; dU1 ^= dU2; dU2 ^= dU1;
+      dV2 ^= dV1; dV1 ^= dV2; dV2 ^= dV1;
+      dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
+      stat = 2;
+    } else stat = 1;
+  } else {
+    if (TriFace->Scrx[i1] > X1) {
+      X2 = TriFace->Scrx[i1];
+      Z2 = TriFace->Scrz[i1];
+      U2 = MappingU2;
+      V2 = MappingV2;
+      stat = 2|4;
+    } else {
+      X1 = TriFace->Scrx[i1];
+      Z1 = TriFace->Scrz[i1];
+      U1 = MappingU2;
+      V1 = MappingV2;
+      stat = 1|8;
+    }
+  }
+
+  gmem += (Y0 * cam->ScreenWidth);
+  zbuf += (Y0 * cam->ScreenWidth);
+
+  XL1 = (((dX1-dX2)*dY+(1<<19))>>20);
+  if (XL1) {
+    dUL = ((dU1-dU2)*dY)/XL1;
+    dVL = ((dV1-dV2)*dY)/XL1;
+    dZL = ((dZ1-dZ2)*dY)/XL1;
+  } else {
+    XL1 = ((X2-X1+(1<<19))>>20);
+    if (XL1) {
+      dUL = (U2-U1)/XL1;
+      dVL = (V2-V1)/XL1;
+      dZL = (Z2-Z1)/XL1;
+    }
+  }
+
+  while (Y0 < Y2) {
+    if (Y0 == Y1) {
+      dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
+      if (dY) {
+        if (stat & 1) {
+          X1 = TriFace->Scrx[i1];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 2) {
+          X2 = TriFace->Scrx[i1];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 4) {
+          X1 = TriFace->Scrx[i0];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        if (stat & 8) {
+          X2 = TriFace->Scrx[i0];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        dZ1 = (TriFace->Scrz[i2]-Z1) / dY;
+        dV1 = (MappingV3 - V1) / dY;
+        dU1 = (MappingU3 - U1) / dY;
+      }
+    }
+    XL1 = (X1+(1<<19))>>20;
+    XL2 = (X2+(1<<19))>>20;
+    ZL = Z1;
+    UL = U1;
+    VL = V1;
+    if ((XL2-XL1) > 0) {
+      XL2 -= XL1;
+      gmem += XL1;
+      zbuf += XL1;
+      XL1 += XL2;
+      if (zb) do {
+          if (*zbuf < ZL) {
+            *zbuf = ZL;
+            *gmem = remap[bc + texture[((UL >> 16)&MappingU_AND) +
+                                ((VL>>vshift)&MappingV_AND)]];
+          }
+          zbuf++;
+          gmem++;
+          ZL += dZL;
+          UL += dUL;
+          VL += dVL;
+        } while (--XL2);
+      else do {
+          *gmem++ = remap[bc + texture[((UL >> 16)&MappingU_AND) +
+                                ((VL>>vshift)&MappingV_AND)]];
+          UL += dUL;
+          VL += dVL;
+        } while (--XL2);
+      gmem -= XL1;
+      zbuf -= XL1;
+    }
+    zbuf += cam->ScreenWidth;
+    gmem += cam->ScreenWidth;
+    X1 += dX1;
+    X2 += dX2;
+    U1 += dU1;
+    V1 += dV1;
+    Z1 += dZ1;
+    Y0++;
+  }
+}
+
+void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace) {
+  EON_uChar i0, i1, i2;
+  EON_uChar *gmem = cam->frameBuffer;
+  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_sInt32 MappingU1, MappingU2, MappingU3;
+  EON_sInt32 MappingV1, MappingV2, MappingV3;
+  EON_sInt32 MappingU_AND, MappingV_AND;
+  EON_uChar *texture;
+  EON_uChar *remap;
+  EON_uChar vshift;
+  EON_uInt16 *addtable;
+  EON_Texture *Texture;
+
+  EON_sInt32 U1, V1, U2, V2, dU1=0, dU2=0, dV1=0, dV2=0, dUL=0, dVL=0, UL, VL;
+  EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
+  EON_sInt32 C1, C2, dC1=0, dC2=0, CL, dCL=0;
+  EON_ZBuffer Z1, ZL, dZ1=0, dZ2=0, dZL=0, Z2;
+  EON_sInt32 Y1, Y2, Y0, dY;
+  EON_uChar stat;
+
+  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+
+  if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
+  else Texture = TriFace->Material->Texture;
+
+  if (!Texture) return;
+  remap = TriFace->Material->_ReMapTable;
+  texture = Texture->Data;
+  addtable = TriFace->Material->_AddTable;
+  vshift = 16 - Texture->Width;
+  MappingV_AND = ((1<<Texture->Height)-1)<<Texture->Width;
+  MappingU_AND = (1<<Texture->Width)-1;
+
+  if (TriFace->Material->Environment) {
+    PUTFACE_SORT_ENV();
+  } else {
+    PUTFACE_SORT_TEX();
+  }
+
+  C1 = C2 = TriFace->Shades[i0]*65535.0f;
+  U1 = U2 = MappingU1;
+  V1 = V2 = MappingV1;
+  X2 = X1 = TriFace->Scrx[i0];
+  Z2 = Z1 = TriFace->Scrz[i0];
+  Y0 = (TriFace->Scry[i0]+(1<<19))>>20;
+  Y1 = (TriFace->Scry[i1]+(1<<19))>>20;
+  Y2 = (TriFace->Scry[i2]+(1<<19))>>20;
+
+  dY = Y2 - Y0;
+  if (dY) {
+    dX2 = (TriFace->Scrx[i2] - X1) / dY;
+    dZ2 = (TriFace->Scrz[i2] - Z1) / dY;
+    dC2 = (TriFace->Shades[i2]*65535.0f - C1) / dY;
+    dU2 = (MappingU3 - U1) / dY;
+    dV2 = (MappingV3 - V1) / dY;
+  }
+  dY = Y1-Y0;
+  if (dY) {
+    dX1 = (TriFace->Scrx[i1] - X1) / dY;
+    dZ1 = (TriFace->Scrz[i1] - Z1) / dY;
+    dC1 = (TriFace->Shades[i1]*65535.0f - C1) / dY;
+    dU1 = (MappingU2 - U1) / dY;
+    dV1 = (MappingV2 - V1) / dY;
+    if (dX2 < dX1) {
+      dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
+      dU2 ^= dU1; dU1 ^= dU2; dU2 ^= dU1;
+      dV2 ^= dV1; dV1 ^= dV2; dV2 ^= dV1;
+      dC2 ^= dC1; dC1 ^= dC2; dC2 ^= dC1;
+      dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
+      stat = 2;
+    } else stat = 1;
+  } else {
+    if (TriFace->Scrx[i1] > X1) {
+      X2 = TriFace->Scrx[i1];
+      Z2 = TriFace->Scrz[i1];
+      C2 = TriFace->Shades[i1]*65535.0f;
+      U2 = MappingU2;
+      V2 = MappingV2;
+      stat = 2|4;
+    } else {
+      X1 = TriFace->Scrx[i1];
+      Z1 = TriFace->Scrz[i1];
+      C1 = TriFace->Shades[i1]*65535.0f;
+      U1 = MappingU2;
+      V1 = MappingV2;
+      stat = 1|8;
+    }
+  }
+
+  gmem += (Y0 * cam->ScreenWidth);
+  zbuf += (Y0 * cam->ScreenWidth);
+
+  XL1 = (((dX1-dX2)*dY+(1<<19))>>20);
+  if (XL1) {
+    dUL = ((dU1-dU2)*dY)/XL1;
+    dVL = ((dV1-dV2)*dY)/XL1;
+    if (zb) dZL = ((dZ1-dZ2)*dY)/XL1;
+    dCL = ((dC1-dC2)*dY)/XL1;
+  } else {
+    XL1 = ((X2-X1+(1<<19))>>20);
+    if (XL1) {
+      dUL = (U2-U1)/XL1;
+      dVL = (V2-V1)/XL1;
+      if (zb) dZL = (Z2-Z1)/XL1;
+      dCL = (C2-C1)/(XL1);
+    }
+  }
+  while (Y0 < Y2) {
+    if (Y0 == Y1) {
+      dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
+      if (dY) {
+        if (stat & 1) {
+          X1 = TriFace->Scrx[i1];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 2) {
+          X2 = TriFace->Scrx[i1];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 4) {
+          X1 = TriFace->Scrx[i0];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        if (stat & 8) {
+          X2 = TriFace->Scrx[i0];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        dZ1 = (TriFace->Scrz[i2]-Z1)/dY;
+        dV1 = (MappingV3 - V1) / dY;
+        dU1 = (MappingU3 - U1) / dY;
+        dC1 = (TriFace->Shades[i2]*65535.0f-C1)/dY;
+      }
+    }
+    XL1 = (X1+(1<<19))>>20;
+    XL2 = (X2+(1<<19))>>20;
+    CL = C1;
+    ZL = Z1;
+    UL = U1;
+    VL = V1;
+    if ((XL2-XL1) > 0) {
+      XL2 -= XL1;
+      gmem += XL1;
+      zbuf += XL1;
+      XL1 += XL2;
+      if (zb) do {
+          if (*zbuf < ZL) {
+            int av;
+            if (CL < 0) av=addtable[0];
+            else if (CL > (255<<8)) av=addtable[255];
+            else av=addtable[CL>>8];
+            *zbuf = ZL;
+            *gmem = remap[av +
+                            texture[((UL>>16)&MappingU_AND) +
+                                    ((VL>>vshift)&MappingV_AND)]];
+          }
+          zbuf++;
+          gmem++;
+          ZL += dZL;
+          CL += dCL;
+          UL += dUL;
+          VL += dVL;
+        } while (--XL2);
+      else do {
+          int av;
+          if (CL < 0) av=addtable[0];
+          else if (CL > (255<<8)) av=addtable[255];
+          else av=addtable[CL>>8];
+          *gmem++ = remap[av +
+                          texture[((UL>>16)&MappingU_AND) +
+                                  ((VL>>vshift)&MappingV_AND)]];
+          CL += dCL;
+          UL += dUL;
+          VL += dVL;
+        } while (--XL2);
+      gmem -= XL1;
+      zbuf -= XL1;
+    }
+    zbuf += cam->ScreenWidth;
+    gmem += cam->ScreenWidth;
+    Z1 += dZ1;
+    X1 += dX1;
+    X2 += dX2;
+    C1 += dC1;
+    U1 += dU1;
+    V1 += dV1;
+    Y0++;
+  }
+}
+
+// pf_ptex.c
+//
+
+void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace)
+{
+  EON_uChar i0, i1, i2;
+  EON_uChar *gmem = cam->frameBuffer;
+  EON_uChar *remap = TriFace->Material->_ReMapTable;
+  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_Float MappingU1, MappingU2, MappingU3;
+  EON_Float MappingV1, MappingV2, MappingV3;
+  EON_sInt32 MappingU_AND, MappingV_AND;
+  EON_uChar *texture;
+  EON_uChar vshift;
+  EON_uInt16 bc;
+  EON_Texture *Texture;
+  EON_sInt32 iShade;
+
+  EON_uChar nm, nmb;
+  EON_sInt n;
+  EON_Float U1,V1,U2,V2,dU1=0,dU2=0,dV1=0,dV2=0,dUL=0,dVL=0,UL,VL;
+  EON_sInt32 iUL, iVL, idUL=0, idVL=0, iULnext, iVLnext;
+
+  EON_sInt32 scrwidth = cam->ScreenWidth;
+  EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, Xlen;
+  EON_ZBuffer Z1, dZ1=0, dZ2=0, Z2, dZL=0, ZL, pZL, pdZL;
+  EON_sInt32 Y1, Y2, Y0, dY;
+  EON_uChar stat;
+
+  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+
+  if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
+  else Texture = TriFace->Material->Texture;
+
+  if (!Texture) return;
+  texture = Texture->Data;
+  iShade = (EON_sInt32)(TriFace->fShade*256.0);
+  if (iShade < 0) iShade=0;
+  if (iShade > 255) iShade=255;
+
+  if (!TriFace->Material->_AddTable) bc=0;
+  else bc = TriFace->Material->_AddTable[iShade];
+  nm = TriFace->Material->PerspectiveCorrect;
+  nmb = 0; while (nm) { nmb++; nm >>= 1; }
+  nmb = EON_Min(6,nmb);
+  nm = 1<<nmb;
+  MappingV_AND = ((1<<Texture->Height)-1)<<Texture->Width;
+  MappingU_AND = (1<<Texture->Width)-1;
+  vshift = 16 - Texture->Width;
+
+  if (TriFace->Material->Environment) {
+    PUTFACE_SORT_ENV();
+  } else {
+    PUTFACE_SORT_TEX();
+  }
+
+  MappingU1 *= TriFace->Scrz[i0]/65536.0f;
+  MappingV1 *= TriFace->Scrz[i0]/65536.0f;
+  MappingU2 *= TriFace->Scrz[i1]/65536.0f;
+  MappingV2 *= TriFace->Scrz[i1]/65536.0f;
+  MappingU3 *= TriFace->Scrz[i2]/65536.0f;
+  MappingV3 *= TriFace->Scrz[i2]/65536.0f;
+
+  U1 = U2 = MappingU1;
+  V1 = V2 = MappingV1;
+  X2 = X1 = TriFace->Scrx[i0];
+  Z2 = Z1 = TriFace->Scrz[i0];
+  Y0 = (TriFace->Scry[i0]+(1<<19))>>20;
+  Y1 = (TriFace->Scry[i1]+(1<<19))>>20;
+  Y2 = (TriFace->Scry[i2]+(1<<19))>>20;
+
+  dY = Y2-Y0;
+  if (dY) {
+    dX2 = (TriFace->Scrx[i2] - X1) / dY;
+    dZ2 = (TriFace->Scrz[i2] - Z1) / dY;
+    dU2 = (MappingU3 - U1) / dY;
+    dV2 = (MappingV3 - V1) / dY;
+  }
+  dY = Y1-Y0;
+  if (dY) {
+    dX1 = (TriFace->Scrx[i1] - X1) / dY;
+    dZ1 = (TriFace->Scrz[i1] - Z1) / dY;
+    dU1 = (MappingU2 - U1) / dY;
+    dV1 = (MappingV2 - V1) / dY;
+    if (dX2 < dX1) {
+      XL1 = dX2; dX2 = dX1; dX1 = XL1;
+      dUL = dU1; dU1 = dU2; dU2 = dUL;
+      dVL = dV1; dV1 = dV2; dV2 = dVL;
+      dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
+      stat = 2;
+    } else stat = 1;
+  } else {
+    if (TriFace->Scrx[i1] > X1) {
+      X2 = TriFace->Scrx[i1];
+      Z2 = TriFace->Scrz[i1];
+      U2 = MappingU2;
+      V2 = MappingV2;
+      stat = 2|4;
+    } else {
+      X1 = TriFace->Scrx[i1];
+      Z1 = TriFace->Scrz[i1];
+      U1 = MappingU2;
+      V1 = MappingV2;
+      stat = 1|8;
+    }
+  }
+
+  gmem += (Y0 * cam->ScreenWidth);
+  zbuf += (Y0 * cam->ScreenWidth);
+
+  XL1 = ((dX1-dX2)*dY+(1<<19))>>20;
+  if (XL1) {
+    dUL = ((dU1-dU2)*dY)/XL1;
+    dVL = ((dV1-dV2)*dY)/XL1;
+    dZL = ((dZ1-dZ2)*dY)/XL1;
+  } else {
+    XL1 = ((X2-X1+(1<<19))>>20);
+    if (XL1) {
+      dUL = (U2-U1)/XL1;
+      dVL = (V2-V1)/XL1;
+      dZL = (Z2-Z1)/XL1;
+    }
+  }
+
+  pdZL = dZL * nm;
+  dUL *= nm;
+  dVL *= nm;
+
+  while (Y0 < Y2) {
+    if (Y0 == Y1) {
+      dY = Y2-((TriFace->Scry[i1]+(1<<19))>>20);
+      if (dY) {
+        if (stat & 1) {
+          X1 = TriFace->Scrx[i1];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 2) {
+          X2 = TriFace->Scrx[i1];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 4) {
+          X1 = TriFace->Scrx[i0];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        if (stat & 8) {
+          X2 = TriFace->Scrx[i0];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        dZ1 = (TriFace->Scrz[i2]-Z1)/dY;
+        dV1 = (MappingV3 - V1) / dY;
+        dU1 = (MappingU3 - U1) / dY;
+      }
+    }
+    XL1 = (X1+(1<<19))>>20;
+    Xlen = ((X2+(1<<19))>>20) - XL1;
+    if (Xlen > 0) {
+      register EON_Float t;
+      pZL = ZL = Z1;
+      UL = U1;
+      VL = V1;
+      gmem += XL1;
+      zbuf += XL1;
+      XL1 += Xlen-scrwidth;
+      t = 65536.0f/ZL;
+      iUL = iULnext = ((EON_sInt32) (UL*t));
+      iVL = iVLnext = ((EON_sInt32) (VL*t));
+      do {
+        UL += dUL;
+        VL += dVL;
+        iUL = iULnext;
+        iVL = iVLnext;
+        pZL += pdZL;
+        t = 65536.0f/pZL;
+        iULnext = ((EON_sInt32) (UL*t));
+        iVLnext = ((EON_sInt32) (VL*t));
+        idUL = (iULnext - iUL)>>nmb;
+        idVL = (iVLnext - iVL)>>nmb;
+        n = nm;
+        Xlen -= n;
+        if (Xlen < 0) n += Xlen;
+        if (zb) do {
+            if (*zbuf < ZL) {
+              *zbuf = ZL;
+              *gmem = remap[bc + texture[((iUL>>16)&MappingU_AND) +
+                                   ((iVL>>vshift)&MappingV_AND)]];
+            }
+            zbuf++;
+            gmem++;
+            ZL += dZL;
+            iUL += idUL;
+            iVL += idVL;
+          } while (--n);
+        else do {
+            *gmem++ = remap[bc + texture[((iUL>>16)&MappingU_AND) +
+                                   ((iVL>>vshift)&MappingV_AND)]];
+            iUL += idUL;
+            iVL += idVL;
+          } while (--n);
+      } while (Xlen > 0);
+      gmem -= XL1;
+      zbuf -= XL1;
+    } else {
+      zbuf += cam->ScreenWidth;
+      gmem += cam->ScreenWidth;
+    }
+    Z1 += dZ1;
+    U1 += dU1;
+    V1 += dV1;
+    X1 += dX1;
+    X2 += dX2;
+    Y0++;
+  }
+}
+
+void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace) {
+  EON_uChar i0, i1, i2;
+  EON_Float MappingU1, MappingU2, MappingU3;
+  EON_Float MappingV1, MappingV2, MappingV3;
+
+  EON_Texture *Texture;
+  EON_Bool zb = (cam->zBuffer&&TriFace->Material->zBufferable) ? 1 : 0;
+
+  EON_uChar nm, nmb;
+  EON_uInt n;
+  EON_sInt32 MappingU_AND, MappingV_AND;
+  EON_uChar vshift;
+  EON_uChar *texture;
+  EON_uInt16 *addtable;
+  EON_uChar *remap = TriFace->Material->_ReMapTable;
+  EON_sInt32 iUL, iVL, idUL, idVL, iULnext, iVLnext;
+  EON_Float U2,V2,dU2=0,dV2=0,dUL=0,dVL=0,UL,VL;
+  EON_sInt32 XL1, Xlen;
+  EON_sInt32 C2, dC2=0, CL, dCL=0;
+  EON_Float ZL, Z2, dZ2=0, dZL=0, pdZL, pZL;
+
+  EON_sInt32 Y2, dY;
+  EON_uChar stat;
+
+  /* Cache line */
+  EON_sInt32 Y0,Y1;
+  EON_sInt32 C1, dC1=0, X2, dX2=0, X1, dX1=0;
+
+  /* Cache line */
+  EON_Float dU1=0, U1, dZ1=0, Z1, V1, dV1=0;
+  EON_sInt32 scrwidth = cam->ScreenWidth;
+  EON_uChar *gmem = cam->frameBuffer;
+  EON_ZBuffer *zbuf = cam->zBuffer;
+
+  if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
+  else Texture = TriFace->Material->Texture;
+
+  if (!Texture) return;
+  texture = Texture->Data;
+  addtable = TriFace->Material->_AddTable;
+  if (!addtable) return;
+
+  nm = TriFace->Material->PerspectiveCorrect;
+  nmb = 0; while (nm) { nmb++; nm >>= 1; }
+  nmb = EON_Min(6,nmb);
+  nm = 1<<nmb;
+  MappingV_AND = ((1<<Texture->Height)-1)<<Texture->Width;
+  MappingU_AND = (1<<Texture->Width)-1;
+  vshift = 16 - Texture->Width;
+
+  if (TriFace->Material->Environment) {
+    PUTFACE_SORT_ENV();
+  } else {
+    PUTFACE_SORT_TEX();
+  }
+
+  MappingU1 *= TriFace->Scrz[i0]/65536.0f;
+  MappingV1 *= TriFace->Scrz[i0]/65536.0f;
+  MappingU2 *= TriFace->Scrz[i1]/65536.0f;
+  MappingV2 *= TriFace->Scrz[i1]/65536.0f;
+  MappingU3 *= TriFace->Scrz[i2]/65536.0f;
+  MappingV3 *= TriFace->Scrz[i2]/65536.0f;
+  TriFace->Shades[0] *= 65536.0f;
+  TriFace->Shades[1] *= 65536.0f;
+  TriFace->Shades[2] *= 65536.0f;
+
+  C1 = C2 = (EON_sInt32) TriFace->Shades[i0];
+  U1 = U2 = MappingU1;
+  V1 = V2 = MappingV1;
+  X2 = X1 = TriFace->Scrx[i0];
+  Z2 = Z1 = TriFace->Scrz[i0];
+  Y0 = (TriFace->Scry[i0]+(1<<19))>>20;
+  Y1 = (TriFace->Scry[i1]+(1<<19))>>20;
+  Y2 = (TriFace->Scry[i2]+(1<<19))>>20;
+
+  dY = Y2-Y0;
+  if (dY) {
+    dX2 = (TriFace->Scrx[i2] - X1) / dY;
+    dZ2 = (TriFace->Scrz[i2] - Z1) / dY;
+    dC2 = (EON_sInt32) ((TriFace->Shades[i2] - C1) / dY);
+    dU2 = (MappingU3 - U1) / dY;
+    dV2 = (MappingV3 - V1) / dY;
+  }
+  dY = Y1-Y0;
+  if (dY) {
+    dX1 = (TriFace->Scrx[i1] - X1) / dY;
+    dZ1 = (TriFace->Scrz[i1] - Z1) / dY;
+    dC1 = (EON_sInt32) ((TriFace->Shades[i1] - C1) / dY);
+    dU1 = (MappingU2 - U1) / dY;
+    dV1 = (MappingV2 - V1) / dY;
+    if (dX2 < dX1) {
+      dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
+      dUL = dU1; dU1 = dU2; dU2 = dUL;
+      dVL = dV1; dV1 = dV2; dV2 = dVL;
+      dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
+      dCL = dC1; dC1 = dC2; dC2 = dCL;
+      stat = 2;
+    } else stat = 1;
+  } else {
+    if (TriFace->Scrx[i1] > X1) {
+      X2 = TriFace->Scrx[i1];
+      Z2 = TriFace->Scrz[i1];
+      C2 = (EON_sInt32)TriFace->Shades[i1];
+      U2 = MappingU2;
+      V2 = MappingV2;
+      stat = 2|4;
+    } else {
+      X1 = TriFace->Scrx[i1];
+      Z1 = TriFace->Scrz[i1];
+      C1 = (EON_sInt32)TriFace->Shades[i1];
+      U1 = MappingU2;
+      V1 = MappingV2;
+      stat = 1|8;
+    }
+  }
+
+  gmem += (Y0 * scrwidth);
+  zbuf += (Y0 * scrwidth);
+
+  XL1 = (((dX1-dX2)*dY+(1<<19))>>20);
+  if (XL1) {
+    dUL = ((dU1-dU2)*dY)/XL1;
+    dVL = ((dV1-dV2)*dY)/XL1;
+    dZL = ((dZ1-dZ2)*dY)/XL1;
+    dCL = ((dC1-dC2)*dY)/XL1;
+  } else {
+    XL1 = ((X2-X1+(1<<19))>>20);
+    if (XL1) {
+      dUL = (U2-U1)/XL1;
+      dVL = (V2-V1)/XL1;
+      dZL = (Z2-Z1)/XL1;
+      dCL = (C2-C1)/XL1;
+    }
+  }
+
+  pdZL = dZL * nm;
+  dUL *= nm;
+  dVL *= nm;
+  Y1 -= Y0;
+  Y0 = Y2-Y0;
+  while (Y0--) {
+    if (!Y1--) {
+      dY = Y2-((TriFace->Scry[i1]+(1<<19))>>20);
+      if (dY) {
+        if (stat & 1) {
+          X1 = TriFace->Scrx[i1];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 2) {
+          X2 = TriFace->Scrx[i1];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 4) {
+          X1 = TriFace->Scrx[i0];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        if (stat & 8) {
+          X2 = TriFace->Scrx[i0];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        dZ1 = (TriFace->Scrz[i2]-Z1)/dY;
+        dC1 = (EON_sInt32)((TriFace->Shades[i2]-C1)/dY);
+        dV1 = (MappingV3 - V1) / dY;
+        dU1 = (MappingU3 - U1) / dY;
+      }
+    }
+    XL1 = (X1+(1<<19))>>20;
+    Xlen = ((X2+(1<<19))>>20) - XL1;
+    if (Xlen > 0) {
+      register EON_Float t;
+      CL = C1;
+      pZL = ZL = Z1;
+      UL = U1;
+      VL = V1;
+      gmem += XL1;
+      zbuf += XL1;
+      XL1 += Xlen-scrwidth;
+      t = 65536.0f / ZL;
+      iUL = iULnext = ((EON_sInt32) (UL*t));
+      iVL = iVLnext = ((EON_sInt32) (VL*t));
+      do {
+        UL += dUL;
+        VL += dVL;
+        iUL = iULnext;
+        iVL = iVLnext;
+        pZL += pdZL;
+        t = 65536.0f/pZL;
+        iULnext = ((EON_sInt32) (UL*t));
+        iVLnext = ((EON_sInt32) (VL*t));
+        idUL = (iULnext - iUL)>>nmb;
+        idVL = (iVLnext - iVL)>>nmb;
+        n = nm;
+        Xlen -= n;
+        if (Xlen < 0) n += Xlen;
+        if (zb) do {
+            if (*zbuf < ZL) {
+              int av;
+              if (CL < 0) av=addtable[0];
+              else if (CL > (255<<8)) av=addtable[255];
+              else av=addtable[CL>>8];
+              *zbuf = ZL;
+              *gmem = remap[av +
+                      texture[((iUL>>16)&MappingU_AND) +
+                              ((iVL>>vshift)&MappingV_AND)]];
+            }
+            zbuf++;
+            gmem++;
+            ZL += dZL;
+            CL += dCL;
+            iUL += idUL;
+            iVL += idVL;
+          } while (--n);
+        else do {
+            int av;
+            if (CL < 0) av=addtable[0];
+            else if (CL > (255<<8)) av=addtable[255];
+            else av=addtable[CL>>8];
+            *gmem++ = remap[av +
+                      texture[((iUL>>16)&MappingU_AND) +
+                              ((iVL>>vshift)&MappingV_AND)]];
+            CL += dCL;
+            iUL += idUL;
+            iVL += idVL;
+          } while (--n);
+      } while (Xlen > 0);
+      gmem -= XL1;
+      zbuf -= XL1;
+    } else {
+      zbuf += scrwidth;
+      gmem += scrwidth;
+    }
+    Z1 += dZ1;
+    U1 += dU1;
+    V1 += dV1;
+    X1 += dX1;
+    X2 += dX2;
+    C1 += dC1;
+  }
+}
+
+
+// pf_trans.c
+//
+
+void EON_PF_TransF(EON_Cam *cam, EON_Face *TriFace)
+{
+  EON_uChar i0, i1, i2;
+  EON_uChar *gmem = cam->frameBuffer;
+  EON_uChar *remap = TriFace->Material->_ReMapTable;
+  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
+  EON_ZBuffer Z1, ZL, dZ1=0, dZL=0, dZ2=0, Z2;
+  EON_sInt32 Y1, Y2, Y0, dY;
+  EON_uInt16 *lookuptable = TriFace->Material->_AddTable;
+  EON_uChar stat;
+  EON_sInt32 bc = (EON_sInt32) TriFace->fShade*TriFace->Material->_tsfact;
+  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+
+  PUTFACE_SORT();
+
+  if (bc < 0) bc=0;
+  if (bc > (EON_sInt32) TriFace->Material->_tsfact-1) bc=TriFace->Material->_tsfact-1;
+  remap+=bc;
+
+  X2 = X1 = TriFace->Scrx[i0];
+  Z2 = Z1 = TriFace->Scrz[i0];
+  Y0 = (TriFace->Scry[i0]+(1<<19))>>20;
+  Y1 = (TriFace->Scry[i1]+(1<<19))>>20;
+  Y2 = (TriFace->Scry[i2]+(1<<19))>>20;
+
+  dY = Y2 - Y0;
+  if (dY) {
+    dX2 = (TriFace->Scrx[i2] - X1) / dY;
+    dZ2 = (TriFace->Scrz[i2] - Z1) / dY;
+  }
+  dY = Y1-Y0;
+  if (dY) {
+    dX1 = (TriFace->Scrx[i1] - X1) / dY;
+    dZ1 = (TriFace->Scrz[i1] - Z1) / dY;
+    if (dX2 < dX1) {
+      dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
+      dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
+      stat = 2;
+    } else stat = 1;
+  } else {
+    if (TriFace->Scrx[i1] > X1) {
+      X2 = TriFace->Scrx[i1];
+      Z2 = TriFace->Scrz[i1];
+      stat= 2|4;
+    } else {
+      X1 = TriFace->Scrx[i1];
+      Z1 = TriFace->Scrz[i1];
+      stat= 1|8;
+    }
+  }
+
+  gmem += (Y0 * cam->ScreenWidth);
+  zbuf += (Y0 * cam->ScreenWidth);
+  if (zb) {
+    XL1 = (((dX1-dX2)*dY+(1<<19))>>20);
+    if (XL1) dZL = ((dZ1-dZ2)*dY)/XL1;
+    else {
+      XL1 = ((X2-X1+(1<<19))>>20);
+      if (XL1) dZL = (Z2-Z1)/XL1;
+    }
+  }
+
+  while (Y0 < Y2) {
+    if (Y0 == Y1) {
+      dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
+      if (dY) {
+        if (stat & 1) {
+          X1 = TriFace->Scrx[i1];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 2) {
+          X2 = TriFace->Scrx[i1];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 4) {
+          X1 = TriFace->Scrx[i0];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        if (stat & 8) {
+          X2 = TriFace->Scrx[i0];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        dZ1 = (TriFace->Scrz[i2]- Z1)/dY;
+      }
+    }
+    XL1 = (X1+(1<<19))>>20;
+    XL2 = (X2+(1<<19))>>20;
+    ZL = Z1;
+    if ((XL2-XL1) > 0) {
+      XL2 -= XL1;
+      zbuf += XL1;
+      gmem += XL1;
+      XL1 += XL2;
+      if (zb) {
+        do {
+          if (*zbuf < ZL) {
+            *zbuf = ZL;
+            *gmem = remap[lookuptable[*gmem]];
+          }
+          gmem++;
+          zbuf++;
+          ZL += dZL;
+        } while (--XL2);
+      } else do {
+          EON_uChar value = remap[lookuptable[*gmem]];
+          *gmem++ = value;
+      } while (--XL2);
+      gmem -= XL1;
+      zbuf -= XL1;
+    }
+    gmem += cam->ScreenWidth;
+    zbuf += cam->ScreenWidth;
+    Z1 += dZ1;
+    X1 += dX1;
+    X2 += dX2;
+    Y0 ++;
+  }
+}
+
+void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace) {
+  EON_uChar i0, i1, i2;
+  EON_uChar *gmem = cam->frameBuffer;
+  EON_uChar *remap = TriFace->Material->_ReMapTable;
+  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
+  EON_ZBuffer Z1, ZL, dZ1=0, dZL=0, dZ2=0, Z2;
+  EON_sInt32 dC1=0, dCL=0, CL, C1, C2, dC2=0;
+  EON_sInt32 Y1, Y2, Y0, dY;
+  EON_Float nc = (TriFace->Material->_tsfact*65536.0f);
+  EON_uInt16 *lookuptable = TriFace->Material->_AddTable;
+  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_uChar stat;
+
+  EON_sInt32 maxColor=((TriFace->Material->_tsfact-1)<<16);
+  EON_sInt32 maxColorNonShift=TriFace->Material->_tsfact-1;
+
+  PUTFACE_SORT();
+
+  C1 = C2 = (EON_sInt32) (TriFace->Shades[i0]*nc);
+  X2 = X1 = TriFace->Scrx[i0];
+  Z2 = Z1 = TriFace->Scrz[i0];
+  Y0 = (TriFace->Scry[i0]+(1<<19))>>20;
+  Y1 = (TriFace->Scry[i1]+(1<<19))>>20;
+  Y2 = (TriFace->Scry[i2]+(1<<19))>>20;
+
+  dY = Y2 - Y0;
+  if (dY) {
+    dX2 = (TriFace->Scrx[i2] - X1) / dY;
+    dC2 = (EON_sInt32) ((TriFace->Shades[i2]*nc - C1) / dY);
+    dZ2 = (TriFace->Scrz[i2] - Z1) / dY;
+  }
+  dY = Y1-Y0;
+  if (dY) {
+    dX1 = (TriFace->Scrx[i1] - X1) / dY;
+    dZ1 = (TriFace->Scrz[i1] - Z1) / dY;
+    dC1 = (EON_sInt32) ((TriFace->Shades[i1]*nc - C1) / dY);
+    if (dX2 < dX1) {
+      dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
+      dC2 ^= dC1; dC1 ^= dC2; dC2 ^= dC1;
+      dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
+      stat = 2;
+    } else stat = 1;
+  } else {
+    if (TriFace->Scrx[i1] > X1) {
+      X2 = TriFace->Scrx[i1];
+      Z2 = TriFace->Scrz[i1];
+      C2 = (EON_sInt32) (TriFace->Shades[i1]*nc);
+      stat = 2|4;
+    } else {
+      X1 = TriFace->Scrx[i1];
+      Z1 = TriFace->Scrz[i1];
+      C1 = (EON_sInt32) (TriFace->Shades[i1]*nc);
+      stat = 1|8;
+    }
+  }
+
+  gmem += (Y0 * cam->ScreenWidth);
+  zbuf += (Y0 * cam->ScreenWidth);
+  XL1 = (((dX1-dX2)*dY+(1<<19))>>20);
+  if (XL1) {
+    dCL = ((dC1-dC2)*dY)/XL1;
+    dZL = ((dZ1-dZ2)*dY)/XL1;
+  } else {
+    XL1 = ((X2-X1+(1<<19))>>20);
+    if (XL1) {
+      dCL = (C2-C1)/XL1;
+      dZL = (Z2-Z1)/XL1;
+    }
+  }
+
+  while (Y0 < Y2) {
+    if (Y0 == Y1) {
+      dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
+      if (dY) {
+        if (stat & 1) {
+          X1 = TriFace->Scrx[i1];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 2) {
+          X2 = TriFace->Scrx[i1];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        }
+        if (stat & 4) {
+          X1 = TriFace->Scrx[i0];
+          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        if (stat & 8) {
+          X2 = TriFace->Scrx[i0];
+          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+        }
+        dZ1 = (TriFace->Scrz[i2]-Z1)/dY;
+        dC1 = (EON_sInt32) ((TriFace->Shades[i2]*nc - C1) / dY);
+      }
+    }
+    CL = C1;
+    XL1 = (X1+(1<<19))>>20;
+    XL2 = (X2+(1<<19))>>20;
+    ZL = Z1;
+    if ((XL2-XL1) > 0) {
+      XL2 -= XL1;
+      zbuf += XL1;
+      gmem += XL1;
+      XL1 += XL2;
+      if (zb) do {
+          if (*zbuf < ZL) {
+            EON_sInt av;
+            if (CL >= maxColor) av=maxColorNonShift;
+            else if (CL > 0) av=CL>>16;
+            else av=0;
+            *zbuf = ZL;
+            *gmem = remap[av + lookuptable[*gmem]];
+          }
+          gmem++;
+          CL += dCL;
+          zbuf++;
+          ZL += dZL;
+        } while (--XL2);
+      else do {
+          EON_sInt av;
+          EON_uChar value;
+          if (CL >= maxColor) av=maxColorNonShift;
+          else if (CL > 0) av=CL>>16;
+          else av=0;
+          value = remap[av + lookuptable[*gmem]];
+          *gmem++ = value;
+          CL += dCL;
+        } while (--XL2);
+      gmem -= XL1;
+      zbuf -= XL1;
+    }
+    gmem += cam->ScreenWidth;
+    zbuf += cam->ScreenWidth;
+    Z1 += dZ1;
+    X1 += dX1;
+    X2 += dX2;
+    C1 += dC1;
+    Y0++;
+  }
+}
+
+// render.c
+//
+
 typedef struct {
-    EON_Face    *Face;
-    EON_Float   ZD;
-} eon_faceInfo;
+  EON_Float zd;
+  EON_Face *face;
+} _faceInfo;
 
 typedef struct {
-  EON_Light     *Light;
-  EON_Vector3   Pos;
-} eon_lightInfo;
+  EON_Light *light;
+  EON_Float l[3];
+} _lightInfo;
 
-/*************************************************************************/
-/* Rendering utilities: clipping support                                 */
-/*************************************************************************/
+#define MACRO_eon_MatrixApply(m,x,y,z,outx,outy,outz) \
+      ( outx ) = ( x )*( m )[0] + ( y )*( m )[1] + ( z )*( m )[2] + ( m )[3];\
+      ( outy ) = ( x )*( m )[4] + ( y )*( m )[5] + ( z )*( m )[6] + ( m )[7];\
+      ( outz ) = ( x )*( m )[8] + ( y )*( m )[9] + ( z )*( m )[10] + ( m )[11]
 
-typedef enum eon_clipdirection_ {
-    EON_CLIP_BACK   = 0,
-    EON_CLIP_LEFT   = 1,
-    EON_CLIP_RIGHT  = 2,
-    EON_CLIP_TOP    = 3,
-    EON_CLIP_BOTTOM = 4
-} eon_clipDirection;
+#define MACRO_eon_DotProduct(x1,y1,z1,x2,y2,z2) \
+      ((( x1 )*( x2 ))+(( y1 )*( y2 ))+(( z1 )*( z2 )))
 
-static void eon_findNormal(EON_Double x2, EON_Double x3,
-                           EON_Double y2, EON_Double y3,
-                           EON_Double zv, EON_Double *res)
-{
-    res[0] = zv * (y2 - y3);
-    res[1] = zv * (x3 - x2);
-    res[2] = x2 * y3 - y2 * x3;
+#define MACRO_eon_NormalizeVector(x,y,z) { \
+  register double length; \
+  length = ( x )*( x )+( y )*( y )+( z )*( z ); \
+  if (length > 0.0000000001) { \
+    EON_Float l = (EON_Float) sqrt(length); \
+    ( x ) /= l; \
+    ( y ) /= l; \
+    ( z ) /= l; \
+  } \
 }
 
+EON_uInt32 EON_Render_TriStats[4];
 
-static EON_Double eon_clipCalcDot(eon_clipInfo *CI,
-                                  EON_UInt vIdx, EON_Double *plane)
+static EON_uInt32 _numfaces;
+static _faceInfo _faces[EON_MAX_TRIANGLES];
+
+static EON_Float _cMatrix[16];
+static EON_uInt32 _numlights;
+static _lightInfo _lights[EON_MAX_LIGHTS];
+static EON_Cam *_cam;
+static void _RenderObj(EON_Obj *, EON_Float *, EON_Float *);
+static void _sift_down(int L, int U, int dir);
+static void _hsort(_faceInfo *base, int nel, int dir);
+
+void EON_RenderBegin(EON_Cam *Camera)
 {
-    EON_Double dot = 0.0;
-    dot = CI[0].newVertexes[vIdx].Formed.X * plane[0] +
-          CI[0].newVertexes[vIdx].Formed.Y * plane[1] +
-          CI[0].newVertexes[vIdx].Formed.Z * plane[2];
-    return dot;
+  EON_Float tempMatrix[16];
+  memset(EON_Render_TriStats,0,sizeof(EON_Render_TriStats));
+  _cam = Camera;
+  _numlights = 0;
+  _numfaces = 0;
+  EON_MatrixRotate(_cMatrix,2,-Camera->Pan);
+  EON_MatrixRotate(tempMatrix,1,-Camera->Pitch);
+  EON_MatrixMultiply(_cMatrix,tempMatrix);
+  EON_MatrixRotate(tempMatrix,3,-Camera->Roll);
+  EON_MatrixMultiply(_cMatrix,tempMatrix);
+  EON_ClipSetFrustum(_cam);
 }
 
-typedef struct eon_clipplanedata {
-    EON_UInt   In;
-    EON_Double Dot;
-} eon_clipPlaneData;
+void EON_RenderLight(EON_Light *light) {
+  EON_Float *pl, xp, yp, zp;
+  if (light->Type == EON_LIGHT_NONE || _numlights >= EON_MAX_LIGHTS) return;
+  pl = _lights[_numlights].l;
+  if (light->Type == EON_LIGHT_VECTOR) {
+    xp = light->Xp;
+    yp = light->Yp;
+    zp = light->Zp;
+    MACRO_eon_MatrixApply(_cMatrix,xp,yp,zp,pl[0],pl[1],pl[2]);
+  } else if (light->Type & EON_LIGHT_POINT) {
+    xp = light->Xp-_cam->X;
+    yp = light->Yp-_cam->Y;
+    zp = light->Zp-_cam->Z;
+    MACRO_eon_MatrixApply(_cMatrix,xp,yp,zp,pl[0],pl[1],pl[2]);
+  }
+  _lights[_numlights++].light = light;
+}
 
-static void eon_clipCalcPlaneData(eon_clipPlaneData *PD,
-                                  eon_clipInfo *CI,
-                                  EON_UInt vIdx, EON_Double *plane)
-{
-    PD->Dot = eon_clipCalcDot(CI, vIdx, plane);
-    PD->In  = (PD->Dot >= plane[3]);
+static void _RenderObj(EON_Obj *obj, EON_Float *bmatrix, EON_Float *bnmatrix) {
+  EON_uInt32 i, x, facepos;
+  EON_Float nx = 0.0, ny = 0.0, nz = 0.0;
+  double tmp, tmp2;
+  EON_Float oMatrix[16], nMatrix[16], tempMatrix[16];
+
+  EON_Vertex *vertex;
+  EON_Face *face;
+  EON_Light *light;
+
+  if (obj->GenMatrix) {
+    EON_MatrixRotate(nMatrix,1,obj->Xa);
+    EON_MatrixRotate(tempMatrix,2,obj->Ya);
+    EON_MatrixMultiply(nMatrix,tempMatrix);
+    EON_MatrixRotate(tempMatrix,3,obj->Za);
+    EON_MatrixMultiply(nMatrix,tempMatrix);
+    memcpy(oMatrix,nMatrix,sizeof(EON_Float)*16);
+  } else memcpy(nMatrix,obj->RotMatrix,sizeof(EON_Float)*16);
+
+  if (bnmatrix) EON_MatrixMultiply(nMatrix,bnmatrix);
+
+  if (obj->GenMatrix) {
+    EON_MatrixTranslate(tempMatrix, obj->Xp, obj->Yp, obj->Zp);
+    EON_MatrixMultiply(oMatrix,tempMatrix);
+  } else memcpy(oMatrix,obj->Matrix,sizeof(EON_Float)*16);
+  if (bmatrix) EON_MatrixMultiply(oMatrix,bmatrix);
+
+  for (i = 0; i < EON_MAX_CHILDREN; i ++)
+    if (obj->Children[i]) _RenderObj(obj->Children[i],oMatrix,nMatrix);
+  if (!obj->NumFaces || !obj->NumVertices) return;
+
+  EON_MatrixTranslate(tempMatrix, -_cam->X, -_cam->Y, -_cam->Z);
+  EON_MatrixMultiply(oMatrix,tempMatrix);
+  EON_MatrixMultiply(oMatrix,_cMatrix);
+  EON_MatrixMultiply(nMatrix,_cMatrix);
+
+  x = obj->NumVertices;
+  vertex = obj->Vertices;
+
+  do {
+    MACRO_eon_MatrixApply(oMatrix,vertex->x,vertex->y,vertex->z,
+                  vertex->xformedx, vertex->xformedy, vertex->xformedz);
+    MACRO_eon_MatrixApply(nMatrix,vertex->nx,vertex->ny,vertex->nz,
+                  vertex->xformednx,vertex->xformedny,vertex->xformednz);
+    vertex++;
+  } while (--x);
+
+  face = obj->Faces;
+  facepos = _numfaces;
+
+  if (_numfaces + obj->NumFaces >= EON_MAX_TRIANGLES) // exceeded maximum face coutn
+  {
     return;
-}
+  }
 
-static void eon_clipCopyInfo(eon_clipInfo *CI, EON_UInt inV, EON_UInt outV)
-{
-    CI[1].Shades[outV]      = CI[0].Shades[inV];
-    CI[1].newVertexes[outV] = CI[0].newVertexes[inV];
-    return;
-}
+  EON_Render_TriStats[0] += obj->NumFaces;
+  _numfaces += obj->NumFaces;
+  x = obj->NumFaces;
 
-/* yes, this is one of the ugliest names I ever gave to a function */
-static EON_Float eon_clipCalcScaled(EON_Float aX, EON_Float bX, EON_Double scale)
-{
-    EON_Float f = (EON_Float) (aX + (bX - aX) * scale);
-    return f;
-}
-
-static EON_Vector3 *eon_clipGetVertexFormed(eon_clipInfo *CI, int j, int vi)
-{
-    return &(CI[j].newVertexes[vi].Formed);
-}
-
-/* FIXME: massive rephrasing, and I'm not that good.
- * Many bugs are lurking here.
- */
- /* Returns: 0 if nothing gets in,  1 or 2 if pout1 & pout2 get in */
-static EON_UInt eon_clipToPlane(eon_clipContext *clip,
-                                EON_UInt numVerts, EON_Double *plane)
-{
-    eon_clipPlaneData cur, next;
-    eon_clipInfo *CI = NULL;
-    EON_UInt i = 0;
-    EON_UInt iV = 0; /* In  Vertex */
-    EON_UInt oV = 0; /* Out Vertex */
-
-    CI = clip->ClipInfo;
-
-    eon_clipCalcPlaneData(&cur, CI, 0, plane);
-
-    for (i = 0 ; i < numVerts; i++) {
-        EON_UInt nV = (i + 1) % numVerts; /* Next Vertex */
-        if (cur.In) {
-            eon_clipCopyInfo(CI, iV, oV);
-            oV++;
-        }
-        eon_clipCalcPlaneData(&next, CI, nV, plane);
-        if (cur.In != next.In) {
-            EON_Double scale = (plane[3] - cur.Dot) / (next.Dot - cur.Dot);
-
-            /* Points corresponding to Vertexes */
-            EON_Vector3 *iP = eon_clipGetVertexFormed(CI, 0, iV);
-            EON_Vector3 *nP = eon_clipGetVertexFormed(CI, 0, nV);
-            EON_Vector3 *oP = eon_clipGetVertexFormed(CI, 1, oV); /* careful! */
-
-            oP->X = eon_clipCalcScaled(iP->X, nP->X, scale);
-            oP->Y = eon_clipCalcScaled(iP->Y, nP->Y, scale);
-            oP->Z = eon_clipCalcScaled(iP->Z, nP->Z, scale);
-
-            /* XXX */
-            CI[1].Shades[oV]      = eon_clipCalcScaled(CI[0].Shades[iV],      CI[0].Shades[nV],      scale);
-
-            oV++;
-        }
-        cur = next; /* XXX */
-        iV++;
+  do {
+    if (obj->BackfaceCull || face->Material->_st & EON_SHADE_FLAT)
+    {
+      MACRO_eon_MatrixApply(nMatrix,face->nx,face->ny,face->nz,nx,ny,nz);
     }
-    return oV;
+    if (!obj->BackfaceCull || (MACRO_eon_DotProduct(nx,ny,nz,
+        face->Vertices[0]->xformedx, face->Vertices[0]->xformedy,
+        face->Vertices[0]->xformedz) < 0.0000001)) {
+      if (EON_ClipNeeded(face)) {
+        if (face->Material->_st & (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE)) {
+          tmp = face->sLighting;
+          if (face->Material->_st & EON_SHADE_FLAT) {
+            for (i = 0; i < _numlights; i ++) {
+              tmp2 = 0.0;
+              light = _lights[i].light;
+              if (light->Type & EON_LIGHT_POINT_ANGLE) {
+                double nx2 = _lights[i].l[0] - face->Vertices[0]->xformedx;
+                double ny2 = _lights[i].l[1] - face->Vertices[0]->xformedy;
+                double nz2 = _lights[i].l[2] - face->Vertices[0]->xformedz;
+                MACRO_eon_NormalizeVector(nx2,ny2,nz2);
+                tmp2 = MACRO_eon_DotProduct(nx,ny,nz,nx2,ny2,nz2)*light->Intensity;
+              }
+              if (light->Type & EON_LIGHT_POINT_DISTANCE) {
+                double nx2 = _lights[i].l[0] - face->Vertices[0]->xformedx;
+                double ny2 = _lights[i].l[1] - face->Vertices[0]->xformedy;
+                double nz2 = _lights[i].l[2] - face->Vertices[0]->xformedz;
+                if (light->Type & EON_LIGHT_POINT_ANGLE) {
+                   nx2 = (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/
+                           light->HalfDistSquared));
+                  tmp2 *= EON_Max(0,EON_Min(1.0,nx2))*light->Intensity;
+                } else {
+                  tmp2 = (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/
+                    light->HalfDistSquared));
+                  tmp2 = EON_Max(0,EON_Min(1.0,tmp2))*light->Intensity;
+                }
+              }
+              if (light->Type == EON_LIGHT_VECTOR)
+                tmp2 = MACRO_eon_DotProduct(nx,ny,nz,_lights[i].l[0],_lights[i].l[1],_lights[i].l[2])
+                  * light->Intensity;
+              if (tmp2 > 0.0) tmp += tmp2;
+              else if (obj->BackfaceIllumination) tmp -= tmp2;
+            } /* End of light loop */
+          } /* End of flat shading if */
+          if (face->Material->_st & EON_SHADE_FLAT_DISTANCE)
+            tmp += 1.0-(face->Vertices[0]->xformedz+face->Vertices[1]->xformedz+
+                        face->Vertices[2]->xformedz) /
+                       (face->Material->FadeDist*3.0);
+          face->fShade = (EON_Float) tmp;
+        } else face->fShade = 0.0; /* End of flatmask lighting if */
+        if (face->Material->_ft & EON_FILL_ENVIRONMENT) {
+          face->eMappingU[0] = 32768 + (EON_sInt32) (face->Vertices[0]->xformednx*32768.0);
+          face->eMappingV[0] = 32768 - (EON_sInt32) (face->Vertices[0]->xformedny*32768.0);
+          face->eMappingU[1] = 32768 + (EON_sInt32) (face->Vertices[1]->xformednx*32768.0);
+          face->eMappingV[1] = 32768 - (EON_sInt32) (face->Vertices[1]->xformedny*32768.0);
+          face->eMappingU[2] = 32768 + (EON_sInt32) (face->Vertices[2]->xformednx*32768.0);
+          face->eMappingV[2] = 32768 - (EON_sInt32) (face->Vertices[2]->xformedny*32768.0);
+        }
+        if (face->Material->_st &(EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE)) {
+          register EON_uChar a;
+          for (a = 0; a < 3; a ++) {
+            tmp = face->vsLighting[a];
+            if (face->Material->_st & EON_SHADE_GOURAUD) {
+              for (i = 0; i < _numlights ; i++) {
+                tmp2 = 0.0;
+                light = _lights[i].light;
+                if (light->Type & EON_LIGHT_POINT_ANGLE) {
+                  nx = _lights[i].l[0] - face->Vertices[a]->xformedx;
+                  ny = _lights[i].l[1] - face->Vertices[a]->xformedy;
+                  nz = _lights[i].l[2] - face->Vertices[a]->xformedz;
+                  MACRO_eon_NormalizeVector(nx,ny,nz);
+                  tmp2 = MACRO_eon_DotProduct(face->Vertices[a]->xformednx,
+                                      face->Vertices[a]->xformedny,
+                                      face->Vertices[a]->xformednz,
+                                      nx,ny,nz) * light->Intensity;
+                }
+                if (light->Type & EON_LIGHT_POINT_DISTANCE) {
+                  double nx2 = _lights[i].l[0] - face->Vertices[a]->xformedx;
+                  double ny2 = _lights[i].l[1] - face->Vertices[a]->xformedy;
+                  double nz2 = _lights[i].l[2] - face->Vertices[a]->xformedz;
+                  if (light->Type & EON_LIGHT_POINT_ANGLE) {
+                     double t= (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/light->HalfDistSquared));
+                     tmp2 *= EON_Max(0,EON_Min(1.0,t))*light->Intensity;
+                  } else {
+                    tmp2 = (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/light->HalfDistSquared));
+                    tmp2 = EON_Max(0,EON_Min(1.0,tmp2))*light->Intensity;
+                  }
+                }
+                if (light->Type == EON_LIGHT_VECTOR)
+                  tmp2 = MACRO_eon_DotProduct(face->Vertices[a]->xformednx,
+                                      face->Vertices[a]->xformedny,
+                                      face->Vertices[a]->xformednz,
+                                      _lights[i].l[0],_lights[i].l[1],_lights[i].l[2])
+                                        * light->Intensity;
+                if (tmp2 > 0.0) tmp += tmp2;
+                else if (obj->BackfaceIllumination) tmp -= tmp2;
+              } /* End of light loop */
+            } /* End of gouraud shading if */
+            if (face->Material->_st & EON_SHADE_GOURAUD_DISTANCE)
+              tmp += 1.0-face->Vertices[a]->xformedz/face->Material->FadeDist;
+            face->Shades[a] = (EON_Float) tmp;
+          } /* End of vertex loop for */
+        } /* End of gouraud shading mask if */
+        _faces[facepos].zd = face->Vertices[0]->xformedz+
+        face->Vertices[1]->xformedz+face->Vertices[2]->xformedz;
+        _faces[facepos++].face = face;
+        EON_Render_TriStats[1] ++;
+      } /* Is it in our area Check */
+    } /* Backface Check */
+    _numfaces = facepos;
+    face++;
+  } while (--x); /* Face loop */
 }
 
-
-static void eon_clipSetFrustumPlane(eon_clipContext *clip,
-                                    eon_clipDirection dir,
-                                    EON_Int ref, EON_Int limit)
+void EON_RenderObj(EON_Obj *obj)
 {
-    /* FIXME: ok, those here really smell.
-     * Can't yet figure out a better way.
-     */
-    static const EON_Int nVector[EON_NUM_CLIP_PLANES][4] = {
-        {    0,    0,    0,    0 },
-        { -100, -100,  100, -100 },
-        {  100,  100, -100,  100 },
-        {  100, -100,  100,  100 },
-        { -100,  100, -100, -100 }
-    };
-    static const EON_Double orient[EON_NUM_CLIP_PLANES] = {
-        0.0, 1.0, -1.0, -1.0, 1.0
-    };
-    static const EON_Double fovFact[EON_NUM_CLIP_PLANES] = {
-        0.0, -100.0, 100.0, 100.0, -100.0
-    };
+  _RenderObj(obj,0,0);
+}
 
-    EON_Double *clipPlane = clip->ClipPlanes[dir];
-    const int *nVec = nVector[dir];
+void EON_RenderEnd()
+{
+  _faceInfo *f;
+  if (_cam->Sort > 0) _hsort(_faces,_numfaces,0);
+  else if (_cam->Sort < 0) _hsort(_faces,_numfaces,1);
+  f = _faces;
+  while (_numfaces--) {
+    if (f->face->Material && f->face->Material->_PutFace)
+    {
+      EON_ClipRenderFace(f->face);
+    }
+    f++;
+  }
+  _numfaces=0;
+  _numlights = 0;
+}
 
-    clipPlane[3] = EON_ZEROF;
-    if (ref == limit) {
-        clipPlane[0] = orient[dir];
+static _faceInfo *Base, tmp;
+
+static void _hsort(_faceInfo *base, int nel, int dir) {
+  static int i;
+  Base=base-1;
+  for (i=nel/2; i>0; i--) _sift_down(i,nel,dir);
+  for (i=nel; i>1; ) {
+    tmp = base[0]; base[0] = Base[i]; Base[i] = tmp;
+    _sift_down(1,i-=1,dir);
+  }
+}
+
+#define Comp(x,y) (( x ).zd < ( y ).zd ? 1 : 0)
+
+static void _sift_down(int L, int U, int dir) {
+  static int c;
+  while (1) {
+    c=L+L;
+    if (c>U) break;
+    if ( (c < U) && dir^Comp(Base[c+1],Base[c])) c++;
+    if (dir^Comp(Base[L],Base[c])) return;
+    tmp = Base[L]; Base[L] = Base[c]; Base[c] = tmp;
+    L=c;
+  }
+}
+#undef Comp
+
+/*************************************************************************/
+
+// make.c
+//
+
+EON_Obj *EON_MakeTorus(EON_Float r1, EON_Float r2, EON_uInt divrot, EON_uInt divrad,
+                    EON_Mat *m)
+{
+  EON_Obj *o;
+  EON_Vertex *v;
+  EON_Face *f;
+  EON_uInt x, y;
+  double ravg, rt, a, da, al, dal;
+  EON_sInt32 U,V,dU,dV;
+  if (divrot < 3) divrot = 3;
+  if (divrad < 3) divrad = 3;
+  ravg = (r1+r2)*0.5;
+  rt = (r2-r1)*0.5;
+  o = EON_ObjCreate(divrad*divrot,divrad*divrot*2);
+  if (!o) return 0;
+  v = o->Vertices;
+  a = 0.0;
+  da = 2*EON_PI/divrot;
+  for (y = 0; y < divrot; y ++) {
+    al = 0.0;
+    dal = 2*EON_PI/divrad;
+    for (x = 0; x < divrad; x ++) {
+      v->x = (EON_Float) (cos((double) a)*(ravg + cos((double) al)*rt));
+      v->z = (EON_Float) (sin((double) a)*(ravg + cos((double) al)*rt));
+      v->y = (EON_Float) (sin((double) al)*rt);
+      v++;
+      al += dal;
+    }
+    a += da;
+  }
+  v = o->Vertices;
+  f = o->Faces;
+  dV = 65535/divrad;
+  dU = 65535/divrot;
+  U = 0;
+  for (y = 0; y < divrot; y ++) {
+    V = -32768;
+    for (x = 0; x < divrad; x ++) {
+      f->Vertices[0] = v+x+y*divrad;
+      f->MappingU[0] = U;
+      f->MappingV[0] = V;
+      f->Vertices[1] = v+(x+1==divrad?0:x+1)+y*divrad;
+      f->MappingU[1] = U;
+      f->MappingV[1] = V+dV;
+      f->Vertices[2] = v+x+(y+1==divrot?0:(y+1)*divrad);
+      f->MappingU[2] = U+dU;
+      f->MappingV[2] = V;
+      f->Material = m;
+      f++;
+      f->Vertices[0] = v+x+(y+1==divrot?0:(y+1)*divrad);
+      f->MappingU[0] = U+dU;
+      f->MappingV[0] = V;
+      f->Vertices[1] = v+(x+1==divrad?0:x+1)+y*divrad;
+      f->MappingU[1] = U;
+      f->MappingV[1] = V+dV;
+      f->Vertices[2] = v+(x+1==divrad?0:x+1)+(y+1==divrot?0:(y+1)*divrad);
+      f->MappingU[2] = U+dU;
+      f->MappingV[2] = V+dV;
+      f->Material = m;
+      f++;
+      V += dV;
+    }
+    U += dU;
+  }
+  EON_ObjCalcNormals(o);
+  return (o);
+}
+
+EON_Obj *EON_MakeSphere(EON_Float r, EON_uInt divr, EON_uInt divh, EON_Mat *m) {
+  EON_Obj *o;
+  EON_Vertex *v;
+  EON_Face *f;
+  EON_uInt x, y;
+  double a, da, yp, ya, yda, yf;
+  EON_sInt32 U,V,dU,dV;
+  if (divh < 3) divh = 3;
+  if (divr < 3) divr = 3;
+  o = EON_ObjCreate(2+(divh-2)*(divr),2*divr+(divh-3)*divr*2);
+  if (!o) return 0;
+  v = o->Vertices;
+  v->x = v->z = 0.0; v->y = r; v++;
+  v->x = v->z = 0.0; v->y = -r; v++;
+  ya = 0.0;
+  yda = EON_PI/(divh-1);
+  da = (EON_PI*2.0)/divr;
+  for (y = 0; y < divh - 2; y ++) {
+    ya += yda;
+    yp = cos((double) ya)*r;
+    yf = sin((double) ya)*r;
+    a = 0.0;
+    for (x = 0; x < divr; x ++) {
+      v->y = (EON_Float) yp;
+      v->x = (EON_Float) (cos((double) a)*yf);
+      v->z = (EON_Float) (sin((double) a)*yf);
+      v++;
+      a += da;
+    }
+  }
+  f = o->Faces;
+  v = o->Vertices + 2;
+  a = 0.0;
+  U = 0;
+  dU = 65535/divr;
+  dV = V = 65535/divh;
+  for (x = 0; x < divr; x ++) {
+    f->Vertices[0] = o->Vertices;
+    f->Vertices[1] = v + (x+1==divr ? 0 : x+1);
+    f->Vertices[2] = v + x;
+    f->MappingU[0] = U;
+    f->MappingV[0] = 0;
+    f->MappingU[1] = U+dU;
+    f->MappingV[1] = V;
+    f->MappingU[2] = U;
+    f->MappingV[2] = V;
+    f->Material = m;
+    f++;
+    U += dU;
+  }
+  da = 1.0/(divr+1);
+  v = o->Vertices + 2;
+  for (x = 0; x < (divh-3); x ++) {
+    U = 0;
+    for (y = 0; y < divr; y ++) {
+      f->Vertices[0] = v+y;
+      f->Vertices[1] = v+divr+(y+1==divr?0:y+1);
+      f->Vertices[2] = v+y+divr;
+      f->MappingU[0] = U;
+      f->MappingV[0] = V;
+      f->MappingU[1] = U+dU;
+      f->MappingV[1] = V+dV;
+      f->MappingU[2] = U;
+      f->MappingV[2] = V+dV;
+      f->Material = m; f++;
+      f->Vertices[0] = v+y;
+      f->Vertices[1] = v+(y+1==divr?0:y+1);
+      f->Vertices[2] = v+(y+1==divr?0:y+1)+divr;
+      f->MappingU[0] = U;
+      f->MappingV[0] = V;
+      f->MappingU[1] = U+dU;
+      f->MappingV[1] = V;
+      f->MappingU[2] = U+dU;
+      f->MappingV[2] = V+dV;
+      f->Material = m; f++;
+      U += dU;
+    }
+    V += dV;
+    v += divr;
+  }
+  v = o->Vertices + o->NumVertices - divr;
+  U = 0;
+  for (x = 0; x < divr; x ++) {
+    f->Vertices[0] = o->Vertices + 1;
+    f->Vertices[1] = v + x;
+    f->Vertices[2] = v + (x+1==divr ? 0 : x+1);
+    f->MappingU[0] = U;
+    f->MappingV[0] = 65535;
+    f->MappingU[1] = U;
+    f->MappingV[1] = V;
+    f->MappingU[2] = U+dU;
+    f->MappingV[2] = V;
+    f->Material = m;
+    f++;
+    U += dU;
+  }
+  EON_ObjCalcNormals(o);
+  return (o);
+}
+
+EON_Obj *EON_MakeCylinder(EON_Float r, EON_Float h, EON_uInt divr, EON_Bool captop,
+                       EON_Bool capbottom, EON_Mat *m) {
+  EON_Obj *o;
+  EON_Vertex *v, *topverts, *bottomverts, *topcapvert=0, *bottomcapvert=0;
+  EON_Face *f;
+  EON_uInt32 i;
+  double a, da;
+  if (divr < 3) divr = 3;
+  o = EON_ObjCreate(divr*2+((divr==3)?0:(captop?1:0)+(capbottom?1:0)),
+                  divr*2+(divr==3 ? (captop ? 1 : 0) + (capbottom ? 1 : 0) :
+                  (captop ? divr : 0) + (capbottom ? divr : 0)));
+  if (!o) return 0;
+  a = 0.0;
+  da = (2.0*EON_PI)/divr;
+  v = o->Vertices;
+  topverts = v;
+  for (i = 0; i < divr; i ++) {
+    v->y = h/2.0f;
+    v->x = (EON_Float) (r*cos((double) a));
+    v->z = (EON_Float)(r*sin(a));
+    v->xformedx = (EON_Float) (32768.0 + (32768.0*cos((double) a))); // temp
+    v->xformedy = (EON_Float) (32768.0 + (32768.0*sin((double) a))); // use xf
+    v++;
+    a += da;
+  }
+  bottomverts = v;
+  a = 0.0;
+  for (i = 0; i < divr; i ++) {
+    v->y = -h/2.0f;
+    v->x = (EON_Float) (r*cos((double) a));
+    v->z = (EON_Float) (r*sin(a));
+    v->xformedx = (EON_Float) (32768.0 + (32768.0*cos((double) a)));
+    v->xformedy = (EON_Float) (32768.0 + (32768.0*sin((double) a)));
+    v++; a += da;
+  }
+  if (captop && divr != 3) {
+    topcapvert = v;
+    v->y = h / 2.0f;
+    v->x = v->z = 0.0f;
+    v++;
+  }
+  if (capbottom && divr != 3) {
+    bottomcapvert = v;
+    v->y = -h / 2.0f;
+    v->x = v->z = 0.0f;
+    v++;
+  }
+  f = o->Faces;
+  for (i = 0; i < divr; i ++) {
+    f->Vertices[0] = bottomverts + i;
+    f->Vertices[1] = topverts + i;
+    f->Vertices[2] = bottomverts + (i == divr-1 ? 0 : i+1);
+    f->MappingV[0] = f->MappingV[2] = 65535; f->MappingV[1] = 0;
+    f->MappingU[0] = f->MappingU[1] = (i<<16)/divr;
+    f->MappingU[2] = ((i+1)<<16)/divr;
+    f->Material = m; f++;
+    f->Vertices[0] = bottomverts + (i == divr-1 ? 0 : i+1);
+    f->Vertices[1] = topverts + i;
+    f->Vertices[2] = topverts + (i == divr-1 ? 0 : i+1);
+    f->MappingV[1] = f->MappingV[2] = 0; f->MappingV[0] = 65535;
+    f->MappingU[0] = f->MappingU[2] = ((i+1)<<16)/divr;
+    f->MappingU[1] = (i<<16)/divr;
+    f->Material = m; f++;
+  }
+  if (captop) {
+    if (divr == 3) {
+      f->Vertices[0] = topverts + 0;
+      f->Vertices[1] = topverts + 2;
+      f->Vertices[2] = topverts + 1;
+      f->MappingU[0] = (EON_sInt32) topverts[0].xformedx;
+      f->MappingV[0] = (EON_sInt32) topverts[0].xformedy;
+      f->MappingU[1] = (EON_sInt32) topverts[1].xformedx;
+      f->MappingV[1] = (EON_sInt32) topverts[1].xformedy;
+      f->MappingU[2] = (EON_sInt32) topverts[2].xformedx;
+      f->MappingV[2] = (EON_sInt32) topverts[2].xformedy;
+      f->Material = m; f++;
     } else {
-        eon_findNormal(nVec[0], nVec[1], nVec[2], nVec[3],
-                       clip->Fov * fovFact[dir] / (ref - limit),
-                       clipPlane);
+      for (i = 0; i < divr; i ++) {
+        f->Vertices[0] = topverts + (i == divr-1 ? 0 : i + 1);
+        f->Vertices[1] = topverts + i;
+        f->Vertices[2] = topcapvert;
+        f->MappingU[0] = (EON_sInt32) topverts[(i==divr-1?0:i+1)].xformedx;
+        f->MappingV[0] = (EON_sInt32) topverts[(i==divr-1?0:i+1)].xformedy;
+        f->MappingU[1] = (EON_sInt32) topverts[i].xformedx;
+        f->MappingV[1] = (EON_sInt32) topverts[i].xformedy;
+        f->MappingU[2] = f->MappingV[2] = 32768;
+        f->Material = m; f++;
+      }
     }
-    if (ref > limit) {
-        clipPlane[0] = -clipPlane[0];
-        clipPlane[1] = -clipPlane[1];
-        clipPlane[2] = -clipPlane[2];
-    }
-
-    return;
-}
-
-static void eon_clipInit(eon_clipContext *clip)
-{
-    if (clip) {
-        memset(clip, 0, sizeof(eon_clipContext));
-    }
-    return;
-}
-
-static void eon_clipSetFrustum(eon_clipContext *clip, EON_Camera *cam)
-{
-    if (!clip || !cam) {
-        return; /* FIXME */
-    }
-
-    clip->AdjAsp = 1.0 / cam->AspectRatio;
-    clip->Fov = EON_Clamp(cam->FieldOfView, 1.0, 179.0);
-    clip->CX = cam->Center.Width  << 20;
-    clip->CY = cam->Center.Height << 20;
-    clip->Cam = cam;
-    memset(clip->ClipPlanes, 0, sizeof(clip->ClipPlanes));
-
-    clip->ClipPlanes[EON_CLIP_BACK][2] = -1.0;
-    clip->ClipPlanes[EON_CLIP_BACK][3] = -cam->ClipBack;
-
-    eon_clipSetFrustumPlane(clip, EON_CLIP_LEFT,
-                            cam->Clip.Left, cam->Center.Width);
-    eon_clipSetFrustumPlane(clip, EON_CLIP_RIGHT,
-                            cam->Clip.Right, cam->Center.Width);
-    eon_clipSetFrustumPlane(clip, EON_CLIP_TOP,
-                            cam->Clip.Top, cam->Center.Height);
-    eon_clipSetFrustumPlane(clip, EON_CLIP_BOTTOM,
-                            cam->Clip.Bottom, cam->Center.Height);
-
-    return;
-}
-
-static void eon_clipCopyFaceInfo(eon_clipContext *clip,
-                                 EON_Face *face)
-{
-    EON_UInt a;
-
-    for (a = 0; a < 3; a++) {
-        clip->ClipInfo[0].newVertexes[a] = *(face->Vertexes[a]);
-        clip->ClipInfo[0].Shades[a]      =   face->Shades[a];
-    }
-
-    return;
-}
-
-/* XXX: maybe misleading name? */
-static EON_UInt eon_clipCountVertexes(eon_clipContext *clip,
-                                      EON_UInt numVerts)
-{
-    EON_UInt a = (clip->ClipPlanes[0][3] < 0.0 ? 0 : 1);
-
-    while (a < EON_NUM_CLIP_PLANES && numVerts > 2) {
-        numVerts = eon_clipToPlane(clip, numVerts, clip->ClipPlanes[a]);
-        memcpy(&clip->ClipInfo[0], &clip->ClipInfo[1],
-               sizeof(clip->ClipInfo[0]));
-        a++;
-    }
-
-    return numVerts;
-}
-
-/* FIXME: explain the `2' */
-static void eon_clipDoRenderFace(eon_clipContext *clip, EON_UInt numVerts,
-                                 EON_Renderer *rend, EON_Face *face,
-                                 EON_Frame *frame)
-{
-    EON_Face newface;
-    EON_UInt a, k;
-
-    memcpy(&newface, face, sizeof(EON_Face));
-    for (k = 2; k < numVerts; k ++) {
-        newface.FlatShade = EON_Clamp(face->FlatShade, 0, 1);
-        for (a = 0; a < 3; a ++) {
-            eon_clipInfo *CI = &(clip->ClipInfo[0]);
-            EON_UInt w = (a == 0) ?0 :(a + (k - 2));
-            newface.Vertexes[a]    =            CI->newVertexes + w;
-            newface.Shades[a]      = (EON_Float)CI->Shades[w];
-        }
-        newface.Material->_renderFace(rend, &newface, frame);
-        rend->TriStats[EON_TRI_STAT_TESSELLED]++;
-    }
-    rend->TriStats[EON_TRI_STAT_CLIPPED]++;
-
-    return;
-}
-
-void eon_clipRenderFace(eon_clipContext *clip,
-                        EON_Renderer *rend, EON_Face *face, EON_Frame *frame)
-{
-    EON_UInt numVerts = 3;
-
-    eon_clipCopyFaceInfo(clip, face);
-
-    numVerts = eon_clipCountVertexes(clip, 3);
-
-    // FIXME: explain the `2'
-    if (numVerts > 2) {
-        eon_clipDoRenderFace(clip, numVerts, rend, face, frame);
-    }
-    return;
-}
-
-/* FIXME: misleading name? */
-EON_Int eon_clipIsNeeded(eon_clipContext *clip, EON_Face *face)
-{
-    EON_Rectangle *center = &(clip->Cam->Center);
-    EON_Area *clipArea = &(clip->Cam->Clip);
-    EON_Float clipBack = clip->Cam->ClipBack;
-    EON_Double f  = clip->Fov * clip->AdjAsp;
-    EON_Int needed = 0;
-
-    EON_Double dr = (clipArea->Right  - center->Width);
-    EON_Double dl = (clipArea->Left   - center->Width);
-    EON_Double db = (clipArea->Bottom - center->Height);
-    EON_Double dt = (clipArea->Top    - center->Height);
-
-    EON_Float XFov[3] = { 0.0, 0.0, 0.0 };
-    EON_Float YFov[3] = { 0.0, 0.0, 0.0 };
-    EON_Float VZ[3]   = { 0.0, 0.0, 0.0 };
-
-    XFov[0] = face->Vertexes[0]->Formed.X * clip->Fov;
-    XFov[1] = face->Vertexes[1]->Formed.X * clip->Fov;
-    XFov[2] = face->Vertexes[2]->Formed.X * clip->Fov;
-
-    YFov[0] = face->Vertexes[0]->Formed.Y * f;
-    YFov[1] = face->Vertexes[1]->Formed.Y * f;
-    YFov[2] = face->Vertexes[2]->Formed.Y * f;
-
-    VZ[0]   = face->Vertexes[0]->Formed.Z;
-    VZ[1]   = face->Vertexes[1]->Formed.Z;
-    VZ[2]   = face->Vertexes[2]->Formed.Z;
-
-    needed = ((clipBack <= 0.0 || VZ[0] <= clipBack || VZ[1] <= clipBack || VZ[2] <= clipBack)
-           && (VZ[0]   >= 0          || VZ[1]   >= 0          || VZ[2]   >= 0         )
-           && (XFov[0] <= dr * VZ[0] || XFov[1] <= dr * VZ[1] || XFov[2] <= dr * VZ[2])
-           && (XFov[0] <= dl * VZ[0] || XFov[1] <= dl * VZ[1] || XFov[2] <= dl * VZ[2])
-           && (YFov[0] <= db * VZ[0] || YFov[1] <= db * VZ[2] || YFov[2] <= db * VZ[2])
-           && (YFov[0] <= dt * VZ[0] || YFov[1] <= dt * VZ[2] || YFov[2] <= dt * VZ[2]));
-
-    return needed;
-}
-
-
-
-/*************************************************************************/
-/* Rendering core                                                        */
-/*************************************************************************/
-
-static void *eon_rendererDestroy(EON_Renderer *rend)
-{
-    EON_delRenderer(rend);
-    return NULL;
-}
-
-EON_Renderer *eon_rendererAllocArray(EON_Renderer *rend,
-                                     CX_VArray **array,
-                                     EON_UInt32 size, EON_UInt32 itemSize)
-{
-    if (rend && size && itemSize) {
-        *array = CX_varray_new(size, itemSize);
-        if (*array == NULL) {
-            rend = eon_rendererDestroy(rend);
-        }
-    }
-    return rend;
-}
-
-
-
-EON_Renderer *EON_newRenderer(void)
-{
-    EON_Renderer *rend = CX_zalloc(sizeof(EON_Renderer));
-    if (rend) {
-        rend = eon_rendererAllocArray(rend, &(rend->Faces),
-                                      EON_TRIANGLES_START,
-                                      sizeof(eon_faceInfo));
-        rend = eon_rendererAllocArray(rend, &(rend->Lights),
-                                      EON_LIGHTS_START,
-                                      sizeof(eon_lightInfo));
-    }
-    return rend;
-}
-
-void EON_delRenderer(EON_Renderer *rend)
-{
-    if (rend) {
-        CX_varray_del(rend->Faces);
-        CX_varray_del(rend->Lights);
-        CX_free(rend);
-    }
-    return;
-}
-
-EON_Status EON_rendererSetup(EON_Renderer *rend,
-                             EON_Camera *camera)
-{
-    EON_Float tempMatrix[4 * 4];
-    EON_Status ret = EON_OK;
-
-    if (!rend && !camera) {
-        return EON_ERROR;
-    }
-
-    memset(rend->TriStats, 0, sizeof(rend->TriStats));
-
-    rend->Camera = camera;
-
-    CX_varray_reset(rend->Faces);
-    CX_varray_reset(rend->Lights);
-
-    /* rend->CMatrix initialized as side effect */
-    eon_matrix4x4MakeRotation(rend->CMatrix, 2, -camera->Pan);
-    /* tempMatrix initialized as side effect */
-    eon_matrix4x4MakeRotation(tempMatrix,    1, -camera->Pitch);
-    eon_matrix4x4Multiply(rend->CMatrix,        tempMatrix);
-    /* tempMatrix initialized as side effect */
-    eon_matrix4x4MakeRotation(tempMatrix,    3, -camera->Roll);
-    eon_matrix4x4Multiply(rend->CMatrix,        tempMatrix);
-
-    eon_clipInit(&(rend->Clip));
-    eon_clipSetFrustum(&(rend->Clip), camera);
-
-    return ret;
-}
-
-EON_Status EON_rendererTeardown(EON_Renderer *rend)
-{
-    CX_varray_reset(rend->Faces);
-    CX_varray_reset(rend->Lights);
-
-    return EON_OK;
-}
-
-
-
-EON_Status EON_rendererLight(EON_Renderer *rend,
-                             EON_Light *light)
-{
-    EON_Float Xp = 0.0, Yp = 0.0, Zp = 0.0;
-    EON_Int32 nLights = 0;
-
-    if (!rend && !light) {
-        return EON_ERROR;
-    }
-    nLights = CX_varray_length(rend->Lights);
-    if (light->Type == EON_LIGHT_NONE || nLights > EON_MAX_LIGHTS) {
-        return EON_OK;
-    }
-
-    if (light->Type == EON_LIGHT_VECTOR) {
-        Xp = light->Coords.X;
-        Yp = light->Coords.Y;
-        Zp = light->Coords.Z;
-    } else if (light->Type & EON_LIGHT_POINT) {
-        Xp = light->Coords.X - rend->Camera->Position.X;
-        Yp = light->Coords.Y - rend->Camera->Position.Y;
-        Zp = light->Coords.Z - rend->Camera->Position.Z;
-    }
-
-    eon_lightInfo li;
-    li.Light = light;
-    eon_matrix4x4Apply(rend->CMatrix,
-                       Xp, Yp, Zp,
-                       &(li.Pos.X), &(li.Pos.Y), &(li.Pos.Z));
-
-    CX_varray_append(rend->Lights, &li);
-    return EON_OK;
-}
-
-
-typedef struct eon_polysortcontext_ {
-    eon_faceInfo *Base;
-} eon_polySortContext;
-
-static int eon_siftCmp(eon_faceInfo *fx, eon_faceInfo *fy)
-{
-    return (fx->ZD < fy->ZD) ?1 :0;
-}
-
-static void eon_faceSwap(eon_faceInfo *fx, eon_faceInfo *fy)
-{
-    eon_faceInfo tmp = *fx;
-    *fx              = *fy;
-    *fy              = tmp;
-    return;
-}
-
-static void eon_siftDown(eon_polySortContext *SC,
-                         int L, int U, int dir)
-{	
-    int c = 0;
-    while (1) {
-        c = L + L;
-        if (c > U) {
-            break;
-        }
-        if ((c < U) && dir ^ eon_siftCmp(&SC->Base[c + 1], &SC->Base[c])) {
-            c++;
-        }
-        if (dir ^ eon_siftCmp(&SC->Base[L], &SC->Base[c])) {
-            return;
-        }
-        eon_faceSwap(&(SC->Base[L]), &(SC->Base[c]));
-        L = c;
-    }
-}
-
-static void eon_polySort(eon_polySortContext *SC,
-                         eon_faceInfo *base, int nel, EON_SortMode dir)
-{
-    int i = 0;
-
-    if (dir == 0) {
-        return;
-    }
-
-    SC->Base = base-1;
-    for (i = nel/2; i > 0; i--)
-        eon_siftDown(SC, i, nel, dir);
-    for (i = nel; i > 1; i--) {
-        eon_faceSwap(&(base[0]), &(SC->Base[i]));
-        eon_siftDown(SC, 1, i - 1, dir);
-    }
-    return;
-}
-
-
-
-EON_Status EON_rendererProcess(EON_Renderer *rend,
-                               EON_Frame *frame)
-{
-    EON_Int32 j = 0, nFaces = 0;
-    eon_polySortContext SC = { NULL };
-    void *Data = NULL;
-
-    if (!rend && !frame) {
-        return EON_ERROR;
-    }
- 
-    nFaces = CX_varray_length(rend->Faces);
-    Data = CX_varray_get_ref(rend->Faces, 0); /* FIXME UGLIEST HACK EVER */
-    eon_polySort(&SC, Data, nFaces, rend->Camera->Sort); /* FIXME/TODO */
-
-    for (j = 0; j < nFaces; j++) {
-        eon_faceInfo *fi = CX_varray_get_ref(rend->Faces, j);
-        eon_clipRenderFace(&(rend->Clip), rend, fi->Face, frame);
-    }
-
-    return EON_OK;
-}
-
-static void eon_rendererSetupObjectMatrixes(EON_Renderer *rend,
-                                            EON_Object *obj,
-                                            EON_Float *objMatrix,
-                                            EON_Float *normMatrix,
-                                            EON_Float *bmatrix,
-                                            EON_Float *bnmatrix)
-{
-    EON_Float tempMatrix[4 * 4];
-
-    if (obj->GenMatrix) {
-        eon_matrix4x4MakeRotation(normMatrix, 1, obj->Rotation.X);
-        eon_matrix4x4MakeRotation(tempMatrix, 2, obj->Rotation.Y);
-        eon_matrix4x4Multiply(normMatrix,        tempMatrix);
-        eon_matrix4x4MakeRotation(tempMatrix, 3, obj->Rotation.Z);
-        eon_matrix4x4Multiply(normMatrix,        tempMatrix);
-        memcpy(objMatrix, normMatrix, sizeof(EON_Float) * 4 * 4);
+  }
+  if (capbottom) {
+    if (divr == 3) {
+      f->Vertices[0] = bottomverts + 0;
+      f->Vertices[1] = bottomverts + 1;
+      f->Vertices[2] = bottomverts + 2;
+      f->MappingU[0] = (EON_sInt32) bottomverts[0].xformedx;
+      f->MappingV[0] = (EON_sInt32) bottomverts[0].xformedy;
+      f->MappingU[1] = (EON_sInt32) bottomverts[1].xformedx;
+      f->MappingV[1] = (EON_sInt32) bottomverts[1].xformedy;
+      f->MappingU[2] = (EON_sInt32) bottomverts[2].xformedx;
+      f->MappingV[2] = (EON_sInt32) bottomverts[2].xformedy;
+      f->Material = m; f++;
     } else {
-        memcpy(normMatrix, obj->RMatrix, sizeof(EON_Float) * 4 * 4);
+      for (i = 0; i < divr; i ++) {
+        f->Vertices[0] = bottomverts + i;
+        f->Vertices[1] = bottomverts + (i == divr-1 ? 0 : i + 1);
+        f->Vertices[2] = bottomcapvert;
+        f->MappingU[0] = (EON_sInt32) bottomverts[i].xformedx;
+        f->MappingV[0] = (EON_sInt32) bottomverts[i].xformedy;
+        f->MappingU[1] = (EON_sInt32) bottomverts[(i==divr-1?0:i+1)].xformedx;
+        f->MappingV[1] = (EON_sInt32) bottomverts[(i==divr-1?0:i+1)].xformedy;
+        f->MappingU[2] = f->MappingV[2] = 32768;
+        f->Material = m; f++;
+      }
     }
+  }
+  EON_ObjCalcNormals(o);
+  return (o);
+}
 
-    if (bnmatrix) {
-        eon_matrix4x4Multiply(normMatrix, bnmatrix);
-    }
-
-    if (obj->GenMatrix) {
-        eon_matrix4x4MakeTranslation(tempMatrix,
-                                     obj->Position.X,
-                                     obj->Position.Y,
-                                     obj->Position.Z);
-        eon_matrix4x4Multiply(objMatrix, tempMatrix);
+EON_Obj *EON_MakeCone(EON_Float r, EON_Float h, EON_uInt div,
+                   EON_Bool cap, EON_Mat *m) {
+  EON_Obj *o;
+  EON_Vertex *v;
+  EON_Face *f;
+  EON_uInt32 i;
+  double a, da;
+  if (div < 3) div = 3;
+  o = EON_ObjCreate(div + (div == 3 ? 1 : (cap ? 2 : 1)),
+                  div + (div == 3 ? 1 : (cap ? div : 0)));
+  if (!o) return 0;
+  v = o->Vertices;
+  v->x = v->z = 0; v->y = h/2;
+  v->xformedx = 1<<15;
+  v->xformedy = 1<<15;
+  v++;
+  a = 0.0;
+  da = (2.0*EON_PI)/div;
+  for (i = 1; i <= div; i ++) {
+    v->y = h/-2.0f;
+    v->x = (EON_Float) (r*cos((double) a));
+    v->z = (EON_Float) (r*sin((double) a));
+    v->xformedx = (EON_Float) (32768.0 + (cos((double) a)*32768.0));
+    v->xformedy = (EON_Float) (32768.0 + (sin((double) a)*32768.0));
+    a += da;
+    v++;
+  }
+  if (cap && div != 3) {
+    v->y = h / -2.0f;
+    v->x = v->z = 0.0f;
+    v->xformedx = (EON_Float) (1<<15);
+    v->xformedy = (EON_Float) (1<<15);
+    v++;
+  }
+  f = o->Faces;
+  for (i = 1; i <= div; i ++) {
+    f->Vertices[0] = o->Vertices;
+    f->Vertices[1] = o->Vertices + (i == div ? 1 : i + 1);
+    f->Vertices[2] = o->Vertices + i;
+    f->MappingU[0] = (EON_sInt32) o->Vertices[0].xformedx;
+    f->MappingV[0] = (EON_sInt32) o->Vertices[0].xformedy;
+    f->MappingU[1] = (EON_sInt32) o->Vertices[(i==div?1:i+1)].xformedx;
+    f->MappingV[1] = (EON_sInt32) o->Vertices[(i==div?1:i+1)].xformedy;
+    f->MappingU[2] = (EON_sInt32) o->Vertices[i].xformedx;
+    f->MappingV[2] = (EON_sInt32) o->Vertices[i].xformedy;
+    f->Material = m;
+    f++;
+  }
+  if (cap) {
+    if (div == 3) {
+      f->Vertices[0] = o->Vertices + 1;
+      f->Vertices[1] = o->Vertices + 2;
+      f->Vertices[2] = o->Vertices + 3;
+      f->MappingU[0] = (EON_sInt32) o->Vertices[1].xformedx;
+      f->MappingV[0] = (EON_sInt32) o->Vertices[1].xformedy;
+      f->MappingU[1] = (EON_sInt32) o->Vertices[2].xformedx;
+      f->MappingV[1] = (EON_sInt32) o->Vertices[2].xformedy;
+      f->MappingU[2] = (EON_sInt32) o->Vertices[3].xformedx;
+      f->MappingV[2] = (EON_sInt32) o->Vertices[3].xformedy;
+      f->Material = m;
+      f++;
     } else {
-        memcpy(objMatrix, obj->TMatrix, sizeof(EON_Float) * 4 * 4);
+      for (i = 1; i <= div; i ++) {
+        f->Vertices[0] = o->Vertices + div + 1;
+        f->Vertices[1] = o->Vertices + i;
+        f->Vertices[2] = o->Vertices + (i==div ? 1 : i+1);
+        f->MappingU[0] = (EON_sInt32) o->Vertices[div+1].xformedx;
+        f->MappingV[0] = (EON_sInt32) o->Vertices[div+1].xformedy;
+        f->MappingU[1] = (EON_sInt32) o->Vertices[i].xformedx;
+        f->MappingV[1] = (EON_sInt32) o->Vertices[i].xformedy;
+        f->MappingU[2] = (EON_sInt32) o->Vertices[i==div?1:i+1].xformedx;
+        f->MappingV[2] = (EON_sInt32) o->Vertices[i==div?1:i+1].xformedy;
+        f->Material = m;
+        f++;
+      }
     }
+  }
+  EON_ObjCalcNormals(o);
+  return (o);
+}
 
-    if (bmatrix) {
-        eon_matrix4x4Multiply(objMatrix, bmatrix);
+static EON_uChar verts[6*6] = {
+  0,4,1, 1,4,5, 0,1,2, 3,2,1, 2,3,6, 3,7,6,
+  6,7,4, 4,7,5, 1,7,3, 7,1,5, 2,6,0, 4,0,6
+};
+static EON_uChar map[24*2*3] = {
+  1,0, 1,1, 0,0, 0,0, 1,1, 0,1,
+  0,0, 1,0, 0,1, 1,1, 0,1, 1,0,
+  0,0, 1,0, 0,1, 1,0, 1,1, 0,1,
+  0,0, 1,0, 0,1, 0,1, 1,0, 1,1,
+  1,0, 0,1, 0,0, 0,1, 1,0, 1,1,
+  1,0, 1,1, 0,0, 0,1, 0,0, 1,1
+};
+
+
+EON_Obj *EON_MakeBox(EON_Float w, EON_Float d, EON_Float h, EON_Mat *m)
+{
+  EON_uChar *mm = map;
+  EON_uChar *vv = verts;
+  EON_Obj *o;
+  EON_Vertex *v;
+  EON_Face *f;
+  EON_uInt x;
+  o = EON_ObjCreate(8,12);
+  if (!o) return 0;
+  v = o->Vertices;
+  v->x = -w/2; v->y = h/2; v->z = d/2; v++;
+  v->x = w/2; v->y = h/2; v->z = d/2; v++;
+  v->x = -w/2; v->y = h/2; v->z = -d/2; v++;
+  v->x = w/2; v->y = h/2; v->z = -d/2; v++;
+  v->x = -w/2; v->y = -h/2; v->z = d/2; v++;
+  v->x = w/2; v->y = -h/2; v->z = d/2; v++;
+  v->x = -w/2; v->y = -h/2; v->z = -d/2; v++;
+  v->x = w/2; v->y = -h/2; v->z = -d/2; v++;
+  f = o->Faces;
+  for (x = 0; x < 12; x ++) {
+    f->Vertices[0] = o->Vertices + *vv++;
+    f->Vertices[1] = o->Vertices + *vv++;
+    f->Vertices[2] = o->Vertices + *vv++;
+    f->MappingU[0] = (EON_sInt32) ((double)*mm++ * 65535.0);
+    f->MappingV[0] = (EON_sInt32) ((double)*mm++ * 65535.0);
+    f->MappingU[1] = (EON_sInt32) ((double)*mm++ * 65535.0);
+    f->MappingV[1] = (EON_sInt32) ((double)*mm++ * 65535.0);
+    f->MappingU[2] = (EON_sInt32) ((double)*mm++ * 65535.0);
+    f->MappingV[2] = (EON_sInt32) ((double)*mm++ * 65535.0);
+    f->Material = m;
+    f++;
+  }
+
+  EON_ObjCalcNormals(o);
+  return (o);
+}
+
+EON_Obj *EON_MakePlane(EON_Float w, EON_Float d, EON_uInt res, EON_Mat *m)
+{
+  EON_Obj *o;
+  EON_Vertex *v;
+  EON_Face *f;
+  EON_uInt x, y;
+  o = EON_ObjCreate((res+1)*(res+1),res*res*2);
+  if (!o) return 0;
+  v = o->Vertices;
+  for (y = 0; y <= res; y ++) {
+    for (x = 0; x <= res; x ++) {
+      v->y = 0;
+      v->x = ((x*w)/res) - w/2;
+      v->z = ((y*d)/res) - d/2;
+      v++;
     }
-    return;
-}
-
-static EON_Status eon_rendererProcessObjectChildrens(EON_Renderer *rend,
-                                                     EON_Object *object,
-                                                     EON_Float *objMatrix,
-                                                     EON_Float *normMatrix)
-{
-    int i = 0;
-    if (!object) {
-        return EON_ERROR;
+  }
+  f = o->Faces;
+  for (y = 0; y < res; y ++) {
+    for (x = 0; x < res; x ++) {
+      f->Vertices[0] = o->Vertices + x+(y*(res+1));
+      f->MappingU[0] = (x<<16)/res;
+      f->MappingV[0] = (y<<16)/res;
+      f->Vertices[2] = o->Vertices + x+1+(y*(res+1));
+      f->MappingU[2] = ((x+1)<<16)/res;
+      f->MappingV[2] = (y<<16)/res;
+      f->Vertices[1] = o->Vertices + x+((y+1)*(res+1));
+      f->MappingU[1] = (x<<16)/res;
+      f->MappingV[1] = ((y+1)<<16)/res;
+      f->Material = m;
+      f++;
+      f->Vertices[0] = o->Vertices + x+((y+1)*(res+1));
+      f->MappingU[0] = (x<<16)/res;
+      f->MappingV[0] = ((y+1)<<16)/res;
+      f->Vertices[2] = o->Vertices + x+1+(y*(res+1));
+      f->MappingU[2] = ((x+1)<<16)/res;
+      f->MappingV[2] = (y<<16)/res;
+      f->Vertices[1] = o->Vertices + x+1+((y+1)*(res+1));
+      f->MappingU[1] = ((x+1)<<16)/res;
+      f->MappingV[1] = ((y+1)<<16)/res;
+      f->Material = m;
+      f++;
     }
-
-    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
-        if (object->Children[i]) {
-            eon_rendererProcessObject(rend, object->Children[i],
-                                      objMatrix, normMatrix);
-        }
-    }
-
-    return EON_OK;
+  }
+  EON_ObjCalcNormals(o);
+  return (o);
 }
-
-static int eon_processFaceNull(EON_Face *face, EON_Renderer *rend)
-{
-    return 0; /* NOP! */
-}
-
-static int eon_processFaceFlatLightining(EON_Face *face,
-                                         EON_Renderer *rend)
-{
-    /* TODO */
-    return 0;
-}
-
-static int eon_processFaceGouradShading(EON_Face *face,
-                                        EON_Renderer *rend)
-{
-    /* TODO */
-    return 0;
-}
-
-static int eon_processFaceFillEnvironment(EON_Face *face,
-                                          EON_Renderer *rend)
-{
-    return 0;
-}
-
-static void eon_rendererAdjustVertexMatrix(EON_Renderer *rend,
-                                           EON_Object *obj,
-                                           EON_Float *objMatrix,
-                                           EON_Float *normMatrix)
-{
-    EON_UInt32 x = obj->NumVertexes;
-    EON_Vertex *V = obj->Vertexes;
-
-    do {
-        eon_matrix4x4Apply(objMatrix,
-                            V->Coords.X,  V->Coords.Y,  V->Coords.Z,
-                           &V->Formed.X, &V->Formed.Y, &V->Formed.Z);
-        eon_matrix4x4Apply(normMatrix,
-                            V->Norm.X,        V->Norm.Y,        V->Norm.Z,
-                           &V->NormFormed.X, &V->NormFormed.Y, &V->NormFormed.Z);
-        V++;
-    } while (--x);
-
-    return;
-}
-
-static EON_Status eon_rendererAppendFace(EON_Renderer *rend,
-                                         EON_Face *face)
-{
-    eon_faceInfo fi = {
-        .ZD = face->Vertexes[0]->Formed.Z + 
-              face->Vertexes[1]->Formed.Z +
-              face->Vertexes[2]->Formed.Z,
-        .Face = face,
-    };
-    return CX_varray_append(rend->Faces, &fi);
-}
-
-static int eon_rendererIsFaceVisible(EON_Face *face, EON_Vector3 *N)
-{
-    EON_Vector3 *V = (EON_Vector3 *)&(face->Vertexes[0]->Formed);
-    EON_Double p = eon_Vector3DotProduct(N, V);
-    return p < EON_ZEROF;
-}
-
-static void eon_rendererAdjustByCamera(EON_Renderer *rend,
-                                       EON_Float *objMatrix,
-                                       EON_Float *normMatrix)
-{
-    EON_Float tempMatrix[4 * 4];
-    EON_Vector3 *P = &(rend->Camera->Position);
-
-    eon_matrix4x4MakeTranslation(tempMatrix, P->X, P->Y, P->Z);
-    eon_matrix4x4Multiply(objMatrix, tempMatrix);
-    eon_matrix4x4Multiply(objMatrix, rend->CMatrix);
-    eon_matrix4x4Multiply(normMatrix, rend->CMatrix);
-}
-
-static int eon_faceIsFlatShaded(EON_Face *face)
-{
-    return (face && face->Material
-         && (face->Material->_shadeMode & EON_SHADE_FLAT));
-}
-
-static EON_Status eon_rendererProcessObject(EON_Renderer *rend,
-                                            EON_Object *object,
-                                            EON_Float *bmatrix,
-                                            EON_Float *bnmatrix)
-{
-    EON_Int32 j = 0, nFaces = 0;
-    EON_Float objMatrix[4 * 4], normMatrix[4 * 4];/*, tempMatrix[4 * 4];*/
-    EON_Vector3 N = { .X = 0.0f, .Y = 0.0f, .Z = 0.0f };
-
-    if (!rend || !object || !object->NumFaces || !object->NumVertexes) {
-        return EON_ERROR; /* log */
-    }
-    nFaces = CX_varray_length(rend->Faces);
-    nFaces += object->NumFaces;
-    if (nFaces >= EON_MAX_TRIANGLES) {
-        return EON_ERROR; /* log */
-    }
-
-    rend->TriStats[EON_TRI_STAT_INITIAL] += object->NumFaces;
-
-    eon_rendererSetupObjectMatrixes(rend, object,
-                                    objMatrix, normMatrix,
-                                    bmatrix, bnmatrix);
-    
-    eon_rendererProcessObjectChildrens(rend, object, objMatrix, normMatrix);
-
-    eon_rendererAdjustByCamera(rend, objMatrix, normMatrix);
-    eon_rendererAdjustVertexMatrix(rend, object, objMatrix, normMatrix);
-
-    for (j = 0; j < object->NumFaces; j++) {
-        EON_Face *face = &(object->Faces[j]);
-        if (object->BackfaceCull || eon_faceIsFlatShaded(face)) {
-            eon_matrix4x4Apply(normMatrix,
-                               face->Norm.X, face->Norm.Y, face->Norm.Z,
-                               &N.X, &N.Y, &N.Z);
-        }
-        if ((!object->BackfaceCull || eon_rendererIsFaceVisible(face, &N))
-         && eon_clipIsNeeded(&(rend->Clip), face)) {
-            face->FlatShade = 0.0;
-
-            face->_processFlatLightining(face, rend);
-            face->_processFillEnvironment(face, rend);
-            face->_processGouradShading(face, rend);
-
-            eon_rendererAppendFace(rend, face);
-
-            rend->TriStats[EON_TRI_STAT_CULLED]++;
-        }
-    }
-
-    return EON_OK;
-}
-
-EON_Status EON_rendererObject(EON_Renderer *rend, EON_Object *object)
-{
-    return eon_rendererProcessObject(rend, object, 0, 0);
-}
-
-static int eon_renderFaceNull(EON_Renderer *renderer,
-                              EON_Face *face, EON_Frame *frame)
-{
-    return 0; /* NOP! */
-}
-
-
-static int eon_cameraProjectPoint(EON_Camera *camera,
-                                  const EON_Vector3 *worldPoint,
-                                  EON_ScreenPoint *screenPoint)
-{
-    /* TODO */
-    return 0;
-}
-
-static int eon_renderFaceVertexes(EON_Renderer *renderer,
-                                  EON_Face *face, EON_Frame *frame)
-{
-    static const EON_RGB rgb = { .R = 255, .G = 255, .B = 255, .A = 255 };
-    EON_UInt32 color = EON_RGBPack(&rgb);
-    EON_Camera *cam = renderer->Camera; /* shortcut */
-    EON_ScreenPoint point;
-
-    /* loop unrolled */
-    eon_cameraProjectPoint(cam, &(face->Vertexes[EON_X]->Formed), &point);
-    EON_framePutPixel(frame, point.X, point.Y, color);
-
-    eon_cameraProjectPoint(cam, &(face->Vertexes[EON_Y]->Formed), &point);
-    EON_framePutPixel(frame, point.X, point.Y, color);
-
-    eon_cameraProjectPoint(cam, &(face->Vertexes[EON_Z]->Formed), &point);
-    EON_framePutPixel(frame, point.X, point.Y, color);
-
-    return 0;
-}
-
-
-/*************************************************************************
- * Initialization and Finalization                                       *
- *************************************************************************/
-
-void EON_startup()
-{
-    EON_Log = CX_log_open_console(CX_LOG_DEBUG, stderr);
-    EON_RLog = EON_Log;
-    return;
-}
-
-
-void EON_shutdown()
-{
-    CX_log_close(EON_Log);
-    return;
-}
-
 
 /*************************************************************************/
 

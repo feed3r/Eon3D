@@ -2,9 +2,7 @@
 Eon3D - A simplistic 3D software renderer
 =========================================
 
-(C) 2010-2011 Francesco Romani < fromani | gmail : com >
-
-**[moved to bitbucket](https://bitbucket.org/france/eon3d/)!**
+(C) 2010-2013 Francesco Romani < fromani | gmail : com >
 
 
 
@@ -36,7 +34,7 @@ Eon3D - A simplistic 3D software renderer
 Overview
 --------
 
-Eon3D is a simplistic 3D software rendered inspired by (now abandoned?)
+Eon3D is a simplistic 3D software rendered derived by (now abandoned?)
 Plush3D by Nullsoft.
 
 Eon3D is an exploration and learning project on the branch of the 3D
@@ -64,7 +62,7 @@ examples and debugging tools.
 Requirements/Dependencies (common)
 ----------------------------------
 
-* POSIX platform (libC std + stdint/inttypes is enough, actually).
+* POSIX platform (libc std + stdint/inttypes is enough, actually).
 * C99 compiler (tested against gcc 4+).
 * [cmake](http://www.cmake.org)
 
