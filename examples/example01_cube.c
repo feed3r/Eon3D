@@ -1,95 +1,92 @@
-/**************************************************************************
- * ex01_cube.c: the very first eon3d example: rotates a flat shaded cube  *
- **************************************************************************/
+// Ex2.c: simple Plush example
+// Rotates a flat shaded cube
+// The cube is now a different colored cube then ex1.c
+// ZBuffering has been added, as well as dynamic framebuffer allocation
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <time.h>
 
-#include "eon3d.h"
-#include "eon3dx_console.h"
-
-
-enum {
-    WIDTH  = 640,
-    HEIGHT = 480
-};
+#include <eon3d.h>
+#include <eon3dx_console.h>
 
 
-static int EONx_exit(int ret)
+int main()
 {
-    EON_shutdown();
-    exit(ret);
-    return ret;
+    int frames = 0;
+    time_t start = 0, stop = 0;
+    // Our variables
+    EON_Light *TheLight;   // Our light
+    EON_Obj *TheCube;      // Our cube object
+    EON_Mat *CubeMat;      // The material for the cube
+    EON_Mat *AllMaterials[2]; // Used for creating palette
+    EON_Cam *TheCamera; // Our camera
+    EONx_Console *TheConsole;
+    uint8_t ThePalette[3 * 256];
+    double edge = 100.0;
+
+    EONx_ConsoleStartup();
+
+    CubeMat = EON_MatCreate();    // Create the material for the cube
+    CubeMat->NumGradients = 100; // Have it use 100 colors
+    CubeMat->ShadeType = EON_SHADE_FLAT; // Make the cube flat shaded
+
+    CubeMat->Ambient[0] = 32; // Set red ambient component
+    CubeMat->Ambient[1] = 0;  // Set green ambient component
+    CubeMat->Ambient[2] = 16; // Set blue ambient component
+
+    CubeMat->Diffuse[0] = 200; // Set red diffuse component
+    CubeMat->Diffuse[1] = 100; // Set green diffuse component
+    CubeMat->Diffuse[2] = 150; // Set blue diffuse component
+
+    EON_MatInit(CubeMat);          // Initialize the material
+
+    AllMaterials[0] = CubeMat; // Make list of materials
+    AllMaterials[1] = 0; // Null terminate list of materials
+    EON_MatMakeOptPal(ThePalette,1,255,AllMaterials,2); // Create a nice palette
+
+    ThePalette[0] = ThePalette[1] = ThePalette[2] = 0; // Color 0 is black
+
+    EON_MatMapToPal(CubeMat,ThePalette,0,255); // Map the material to our palette
+
+    TheConsole = EONx_ConsoleNew(800, // Screen width
+                          600, // Screen height
+                          90.0 // Field of view
+                          );
+
+    EONx_ConsoleSetPalette(TheConsole, ThePalette, 256);
+
+    TheCube = EON_MakeBox(edge,edge,edge,CubeMat); // Create the cube
+
+    TheCamera = EONx_ConsoleGetCamera(TheConsole);
+    TheCamera->Z = -300; // Back the camera up from the origin
+    TheCamera->Sort = 0; // We don't need to sort since zbuffering takes care
+                       // of it for us!
+
+    TheLight = EON_LightNew(EON_LIGHT_VECTOR, // vector light
+                            0.0,0.0,0.0, // rotation angles
+                            1.0, // intensity
+                            1.0); // falloff, not used for vector lights
+
+    start = time(NULL);
+    while (!EONx_ConsoleWaitKey(TheConsole)) { // While the keyboard hasn't been touched
+        TheCube->Xa += 1.0; // Rotate by 1 degree on each axis
+        TheCube->Ya += 1.0;
+        TheCube->Za += 1.0;
+        EONx_ConsoleClearFrame(TheConsole);
+        EON_RenderBegin(TheCamera);        // Start rendering with the camera
+        EON_RenderLight(TheLight);         // Render our light
+        EON_RenderObj(TheCube);            // Render our object
+        EON_RenderEnd();                   // Finish rendering
+        EONx_ConsoleShowFrame(TheConsole);
+        frames++;
+    }
+    stop = time(NULL);
+
+    fprintf(stderr, "(%s) %i frames in %f seconds: %.3f FPS\n",
+            __FILE__,
+            frames, (double)stop-(double)start,
+            (double)frames/((double)stop-(double)start));
+
+    return EONx_ConsoleShutdown();
 }
-
-
-int main(int argc, char *argv[])
-{
-    EON_Light *light;       /* Our light */
-    EON_Object *cube;       /* Our cube object */
-    EON_Material *cubeMat;  /* The material for the cube */
-    EON_Camera *camera;     /* Our camera */
-    EON_Renderer *rend;
-    EON_Frame *frame;
-
-    EONx_Console *console;  /* for our viewing pleasure */
-
-    EON_startup();
-
-    cubeMat = EON_newMaterial();
-    cubeMat->NumGradients = 100; /* Have it use 100 colors */
-    cubeMat->Shade = EON_SHADE_FLAT;
-    EON_materialSeal(cubeMat);   /* Don't forget this! */
-
-    cube = EON_newBox(100.0, 100.0, 100.0, cubeMat); // Create the cube
-
-    camera = EON_newCamera(WIDTH, HEIGHT,
-                           WIDTH*3.0/(HEIGHT*4.0), /* Aspect ratio */
-                           90.0);                  /* Field of view */
-    camera->Position.Z = -300; /* Back the camera up from the origin */
-
-    light = EON_newLight(EON_LIGHT_VECTOR,
-                         0.0,0.0,0.0,      /* rotation angles */
-                         1.0,              /* intensity */
-                         1.0);             /* not used for vector lights */
-
-    console = EONx_newConsole(camera);
-    if (!console) {
-        EONx_exit(1);
-    }
-
-    frame = EONx_consoleGetFrame(console, NULL);
-
-    rend = EON_newRenderer();
-    if (!rend) {
-        EONx_exit(1);
-    }
-
-    while (!EONx_consoleNextEvent(console, NULL)) {
-        cube->Rotation.X += 1.0; /* Rotate by 1 degree on each axis */
-        cube->Rotation.Y += 1.0;
-        cube->Rotation.Z += 1.0;
-
-        EON_rendererSetup(rend, camera);  /* Start rendering with the camera */
-        EON_rendererLight(rend, light);   /* Render our light                */
-        EON_rendererObject(rend, cube);   /* Render our object               */
-        EON_rendererProcess(rend, frame); /* Output the rendering            */
-        EON_rendererTeardown(rend);       /* Cleanup                         */
-
-        EONx_consoleShow(console, frame);
-    }
-
-    EON_delRenderer(rend);
-    EONx_delConsole(console);
-    EON_delLight(light);
-    EON_delCamera(camera);
-    EON_delObject(cube);
-    EON_delMaterial(cubeMat);
-    EON_delFrame(frame);
-
-    return EONx_exit(0);
-}
-
-/* vim: set ts=4 sw=4 et */
-/* EOF */
 
