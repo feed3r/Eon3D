@@ -1,5 +1,6 @@
 
 add_executable(example01_cube example01_cube.c)
+add_executable(example02_cube_torus example02_cube_torus.c)
 
 include_directories(${eon3d_BINARY_DIR})
 include_directories(${eon3d_SOURCE_DIR})
@@ -15,4 +16,9 @@ target_link_libraries(example01_cube eon3d)
 target_link_libraries(example01_cube eon3d_kit)
 target_link_libraries(example01_cube eon3dx_console)
 target_link_libraries(example01_cube m)
+
+target_link_libraries(example02_cube_torus eon3d)
+target_link_libraries(example02_cube_torus eon3d_kit)
+target_link_libraries(example02_cube_torus eon3dx_console)
+target_link_libraries(example02_cube_torus m)
 
