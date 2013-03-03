@@ -1,7 +1,7 @@
 /**************************************************************************
  * eon3dx_console.c -- Eon3D eXtension and companion tools                *
  *                  -- Graphical console.                                 *
- * (C) 2010-2011 Francesco Romani <fromani at gmail dot com>              *
+ * (C) 2010-2013 Francesco Romani <fromani at gmail dot com>              *
  *                                                                        *
  * This software is provided 'as-is', without any express or implied      *
  * warranty.  In no event will the authors be held liable for any damages *
@@ -22,11 +22,8 @@
  *                                                                        *
  **************************************************************************/
 
-#include <stdlib.h>
-
-#include "memorykit.h"
-
 #include "eon3dx_console.h"
+
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -39,22 +36,6 @@
 
 
 /**************************************************************************
- * The unavoidable forward declarations.                                  *
- **************************************************************************/
-
-struct eonx_console_ {
-    void        *_private;
-
-    void      *(*NewConsole)(EON_Camera *camera);
-    void       (*DelConsole)(void *console);
-    EON_Status (*NextEvent)(void *console, void *event);
-    EON_Status (*ShowFrame)(void *console, EON_Frame *frame);
-    EON_Frame *(*GetFrame)(void *console, EON_Frame *frame);
-    EON_Status (*Clear)(void *console);
-};
-
-
-/**************************************************************************
  * SDL backend Console implementation.                                    *
  **************************************************************************/
 
@@ -64,457 +45,272 @@ struct eonx_console_ {
 
 #include <SDL.h>
 
-enum {
-    EONx_SDL_BLANK_COLOR = 42
+struct eonx_console_ {
+    EON_Cam *cam;
+    uint8_t *fb;
+    int width;
+    int height;
+    int bpp;
+    EON_ZBuffer *zb;
+    SDL_Surface *screen;
+    SDL_Surface *frame;
 };
 
-typedef struct eonx_SDLConsole_ {
-    SDL_Surface *Surface;
-    SDL_Rect    Rectangle;
 
-    EON_Int     Width;
-    EON_Int     Height;
-} eonx_SDLConsole;
-
-
-/*************************************************************************/
-
-#define RETURN_IF_NULL_PTR(PTR) do { \
-    if (!(PTR)) { \
-        return NULL; \
-    } \
-} while (0);
-
-#define RETURN_IF_NULL_PTR_MSG(PTR, TAG, MSG) do { \
-    if (!(PTR)) { \
-         EON_log((TAG), EON_LOG_ERROR, \
-                 "%s failed: missing %s reference", (MSG), # PTR ); \
-        return NULL; \
-    } \
-} while (0)        
-
-#define FAIL_IF_NULL_PTR(PTR, TAG, MSG) do { \
-    if (!(PTR)) { \
-         EON_log((TAG), EON_LOG_ERROR, \
-                 "%s failed: missing %s reference", (MSG), # PTR ); \
-        return EON_ERROR; \
-    } \
-} while (0)        
-
-/*************************************************************************/
-
-static eonx_SDLConsole *eonx_initSDLVideoMode(eonx_SDLConsole *console)
+static inline int EONx_ConsoleFrameSize(EONx_Console *ctx)
 {
-    Uint32 flags = SDL_HWSURFACE|SDL_DOUBLEBUF|SDL_HWACCEL|SDL_ASYNCBLIT;
+    return ctx->width * ctx->height * ctx->bpp;
+}
 
-    RETURN_IF_NULL_PTR(console);
+static inline int EONx_ConsoleZBufferSize(EONx_Console *ctx)
+{
+    return ctx->width * ctx->height * sizeof(EON_ZBuffer);
+}
 
-    console->Surface = SDL_SetVideoMode(console->Width, console->Height,
-                                        EON_RGB_BPP * 8, flags);
-    if (!console->Surface) {
-        EON_log(EONx_SDL_TAG, EON_LOG_ERROR,
-                "cannot setup SDL Video Mode: %s", SDL_GetError());
-        console = NULL;
+int EONx_ConsoleStartup(void)
+{
+    int err = SDL_Init(SDL_INIT_VIDEO);
+    if (!err) {
+        atexit(SDL_Quit);
     }
-
-    return console;
-}
-
-static eonx_SDLConsole *eonx_initSDLSurface(eonx_SDLConsole *console)
-{
-    RETURN_IF_NULL_PTR(console);
-
-    /* stub */
-
-    return console;
-}
-
-static eonx_SDLConsole *eonx_finiSDLSurface(eonx_SDLConsole *console)
-{
-    RETURN_IF_NULL_PTR(console);
-
-    /* stub */
-
-    return console;
+    return err;
 }
 
 
-/* Almost verbatim copy from www.libsdl.org "Introduction" section */
-static EON_Status eonx_SDLDrawPixel(eonx_SDLConsole *console,
-                                    int x, int y, EON_UInt32 color)
+int EONx_ConsoleShutdown(void)
 {
-    void *drawArea = console->Surface->pixels;
-    Uint32 pitch = console->Surface->pitch;
-    Uint32 px = 0;
-    EON_RGB RGB;
+    return 0;
+}
 
-    EON_RGBUnpack(&RGB, color);
-    px = SDL_MapRGB(console->Surface->format, RGB.R, RGB.G, RGB.B); 
+int EONx_ConsoleSetPalette(EONx_Console *ctx, const uint8_t *palette, int numcolors)
+{
+    int i = 0;
+    SDL_Color colors[256];
+    /* Fill colors with color information */
+    for (i = 0; i < 256; i++){
+        colors[i].r = palette[i * 3 + 0];
+        colors[i].g = palette[i * 3 + 1];
+        colors[i].b = palette[i * 3 + 2];
+    }
+    SDL_SetPalette(ctx->frame, SDL_LOGPAL|SDL_PHYSPAL, colors, 0, 256);
+    return 0;
+}
 
-    EON_log(EONx_SDL_TAG, EON_LOG_DEBUG, "Pixel @ (%ix%i)", x, y);
-
-    if (SDL_MUSTLOCK(console->Surface)) {
-        if (SDL_LockSurface(console->Surface) < 0 ) {
-            EON_log(EONx_SDL_TAG, EON_LOG_ERROR,
-                    "cannot lock the SDL Surface: %s", SDL_GetError());
-            return EON_ERROR;
+static int EONx_ConsoleInitSurfaces(EONx_Console *ctx)
+{
+    int err = -1;
+    Uint32 flags = SDL_HWSURFACE|SDL_DOUBLEBUF|SDL_HWACCEL|SDL_ASYNCBLIT;
+    ctx->screen = SDL_SetVideoMode(ctx->width, ctx->height, 32, flags);
+    if (ctx->screen) {
+        /* SDL interprets each pixel as a 32-bit number, so our masks must depend
+           on the endianness (byte order) of the machine */
+        Uint32 rmask = 0x000000ff;
+        Uint32 gmask = 0x0000ff00;
+        Uint32 bmask = 0x00ff0000;
+        Uint32 amask = 0xff000000;
+        ctx->frame = SDL_CreateRGBSurfaceFrom(ctx->fb, ctx->width, ctx->height,
+                                              ctx->bpp, ctx->width,
+                                              rmask, gmask, bmask, amask);
+        if (ctx->frame) {
+            err = 0;
         }
     }
-
-    switch (console->Surface->format->BytesPerPixel) {
-      case 1: { /* Assuming 8-bpp */
-        Uint8 *bufp = (Uint8 *)drawArea + y * pitch + x;
-        *bufp = px; /* FIXME */
-      }
-      break;
-
-      case 2: { /* Probably 15-bpp or 16-bpp */
-        Uint16 *bufp = (Uint16 *)drawArea + y * pitch/2 + x;
-        *bufp = px; /* FIXME */
-      }
-      break;
-
-      case 3: { /* Slow 24-bpp mode, usually not used */
-        Uint8 *bufp = drawArea + y * pitch + x;
-        SDL_PixelFormat *fmt = console->Surface->format;
-        *(bufp + fmt->Rshift/8) = ((px & fmt->Rmask) >> fmt->Rshift) << fmt->Rloss;
-        *(bufp + fmt->Gshift/8) = ((px & fmt->Gmask) >> fmt->Gshift) << fmt->Gloss;
-        *(bufp + fmt->Bshift/8) = ((px & fmt->Bmask) >> fmt->Bshift) << fmt->Bloss;
-      }
-      break;
-
-      case 4: { /* Probably 32-bpp */
-        Uint32 *bufp = drawArea + y * pitch/4 + x;
-        *bufp = px;
-      }
-      break;
-    }
-
-    if (SDL_MUSTLOCK(console->Surface)) {
-        SDL_UnlockSurface(console->Surface);
-    }
-    return EON_OK;
-}
-
-static EON_Status eonx_SDLPutPixel(EON_Frame *frame,
-                                   EON_Int x, EON_Int y, EON_UInt32 color)
-{
-    if (!frame || !frame->_private) {
-        EON_log(EONx_SDL_TAG, EON_LOG_ERROR,
-                "put pixel failed: bad frame reference");
-        return EON_ERROR;
-    }
-    eonx_SDLConsole *SDLCon = frame->_private;
-
-    return eonx_SDLDrawPixel(SDLCon, x, y, color);
-}
-
-/*************************************************************************/
-
-static EON_Status eonx_SDLConsoleClear(void *SDLCon_)
-{
-    eonx_SDLConsole *SDLCon = SDLCon_;
-    Uint8 C = EONx_SDL_BLANK_COLOR; 
-    
-    FAIL_IF_NULL_PTR(SDLCon, EONx_SDL_TAG, "clear");
-    
-    EON_log(EONx_SDL_TAG, EON_LOG_DEBUG, "clear surface");
-
-    Uint32 color = SDL_MapRGB(SDLCon->Surface->format, C, C, C);
-    SDL_FillRect(SDLCon->Surface, NULL, color);
-
-    return EON_OK;
+    return err;
 }
 
 
-static EON_Status eonx_SDLConsoleNextEvent(void *SDLCon_, void *ev)
+static void *EONx_ConsoleCleanup(EONx_Console *ctx)
 {
-    EON_Status ret = EON_OK; 
+    if (ctx->frame) {
+        SDL_FreeSurface(ctx->frame);
+        ctx->frame = NULL;
+    }
+    if (ctx->cam) {
+        EON_CamDelete(ctx->cam);
+        ctx->cam = NULL;
+    }
+    if (ctx->fb) {
+        free(ctx->fb);
+        ctx->fb = NULL;
+    }
+    if (ctx->zb) {
+        free(ctx->zb);
+        ctx->zb = NULL;
+    }
+    free(ctx);
+    return NULL;
+}
+
+EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov)
+{
+    return EONx_ConsoleCreate(sw, sh, 1.0, fov,
+                       EONx_CONSOLE_FLAG_ZBUFFER);
+}
+
+EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
+                    EON_Float ar, EON_Float fov,
+                    EON_uInt flags)
+{
+    int err = -1;
+    EONx_Console *ctx = calloc(1, sizeof(*ctx));
+    if (ctx) {
+        ctx->width = sw;
+        ctx->height = sh;
+        ctx->bpp = 8; // XXX
+        if (flags & EONx_CONSOLE_FLAG_ZBUFFER) {
+            ctx->zb = malloc(EONx_ConsoleZBufferSize(ctx));
+        }
+        ctx->fb = malloc(EONx_ConsoleFrameSize(ctx));
+        if (ctx->fb) {
+            ctx->cam = EON_CamCreate(sw, sh, ar, fov,
+                                     ctx->fb, ctx->zb);
+            if (ctx->cam) {
+                err = EONx_ConsoleInitSurfaces(ctx);
+            }
+
+        }
+    }
+    if (err) {
+        ctx = EONx_ConsoleCleanup(ctx);
+    }
+    return ctx;
+}
+
+
+void *EONx_ConsoleDelete(EONx_Console *ctx)
+{
+    EONx_ConsoleCleanup(ctx);
+    return NULL;
+}
+
+
+int EONx_ConsoleClearFrame(EONx_Console *ctx)
+{
+    int err = -1;
+    if (ctx) {
+        // clear framebuffer for next frame
+        memset(ctx->fb, 0, EONx_ConsoleFrameSize(ctx));
+        if (ctx->zb) {
+            memset(ctx->zb, 0, EONx_ConsoleZBufferSize(ctx));
+        }
+        err = 0;
+    }
+    return err;
+}
+
+
+int EONx_ConsoleShowFrame(EONx_Console *ctx)
+{
+    int err = -1;
+    if (ctx) {
+        err = SDL_BlitSurface(ctx->frame, NULL, ctx->screen, NULL);
+        err = SDL_Flip(ctx->screen);
+    }
+    return err;
+}
+
+
+EON_Cam *EONx_ConsoleGetCamera(EONx_Console *ctx)
+{
+    EON_Cam *cam = NULL;
+    if (ctx) {
+        cam = ctx->cam;
+    }
+    return cam;
+}
+
+
+int EONx_ConsoleWaitKey(EONx_Console *ctx)
+{
+    int ret = 0;
     SDL_Event event;
 
-    if (SDL_WaitEvent(&event)) {
-        if (event.type == SDL_QUIT) {
-            EON_log(EONx_SDL_TAG, EON_LOG_INFO, "got quit event. Bye!");
-            ret = EON_ERROR;
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+            case SDL_QUIT:
+                ret = -1;
+                break;
+            default:
+                ret = 0;
+                break;
         }
-    } else {
-        EON_log(EONx_SDL_TAG, EON_LOG_ERROR,
-                "error fetching event: %s", SDL_GetError());
-        ret = EON_ERROR;
     }
-    return ret;
-}
-
-static EON_Frame *eonx_SDLConsoleGetFrame(void *SDLCon_,
-                                          EON_Frame *frame)
-{
-    eonx_SDLConsole *SDLCon = SDLCon_;
-
-    RETURN_IF_NULL_PTR_MSG(SDLCon, EONx_SDL_TAG, "get frame");
-
-    if (!frame) {
-        frame = CX_zalloc(sizeof(EON_Frame));
-    }
-    if (frame) {
-        frame->F.Width  = SDLCon->Width;
-        frame->F.Height = SDLCon->Height;
-        frame->Flags    = EON_FRAME_FLAG_DR;
-        /* yes, this smells ugly */
-        frame->Pixels   = SDLCon->Surface->pixels;
-        frame->PutPixel = eonx_SDLPutPixel;
-        frame->_private = SDLCon;
-    }
-    return frame;
-}
-
-static EON_Status eonx_SDLCopyFrame(eonx_SDLConsole *SDLCon,
-                                    EON_Frame *frame)
-{
-    return EON_OK; /* always do nothing succesfully */
-}
-
-static EON_Status eonx_SDLConsoleShow(void *SDLCon_,
-                                      EON_Frame *frame)
-{
-    eonx_SDLConsole *SDLCon = SDLCon_;
-    EON_Status ret = EON_OK;
-
-    FAIL_IF_NULL_PTR(SDLCon, EONx_SDL_TAG, "show frame");
-    FAIL_IF_NULL_PTR(frame,  EONx_SDL_TAG, "show frame");
-
-    EON_log(EONx_SDL_TAG, EON_LOG_DEBUG, "show frame @%p DR=[%s]",
-            frame, (frame->Flags & EON_FRAME_FLAG_DR) ?"Y" :"N");
-
-    if (!(frame->Flags & EON_FRAME_FLAG_DR)) {
-        ret = eonx_SDLCopyFrame(SDLCon, frame);
-    }
-
-    SDL_UpdateRect(SDLCon->Surface, 0, 0, 0, 0);
-    SDL_Flip(SDLCon->Surface);
 
     return ret;
 }
 
 
-/*************************************************************************/
-
-
-static eonx_SDLConsole *eonx_initSDLConsole(eonx_SDLConsole *console,
-                                            EON_Camera *camera)
+const char *EONx_ConsoleGetError(EONx_Console *ctx)
 {
-    console->Width  = camera->Screen.Width;
-    console->Height = camera->Screen.Height;
-
-    atexit(SDL_Quit); /* I'm not convinced about that */
-    
-    SDL_WM_SetCaption("EON3D SDL console", NULL);
-   
-    console = eonx_initSDLVideoMode(console);
-    console = eonx_initSDLSurface(console);
-
-    if (console) {
-        EON_log(EONx_SDL_TAG, EON_LOG_INFO,
-                "SDL console window: %ix%i",
-                console->Width, console->Height);
-    }
-    return console;
-}
-
-static eonx_SDLConsole *eonx_finiSDLConsole(eonx_SDLConsole *console)
-{
-    if (console) {
-        eonx_finiSDLSurface(console);
-        /* 
-         * surface obtained by SetVideoMode will be automagically
-         * released by SDL_Quit
-         */
-         console = NULL;
-    }
-    return console;
-}
-
-static eonx_SDLConsole *eonx_SDLConsoleAlloc(EON_Camera *camera)
-{
-    eonx_SDLConsole *console = CX_zalloc(sizeof(eonx_SDLConsole));
-    if (!console) {
-        EON_log(EONx_SDL_TAG, EON_LOG_ERROR,
-                "cannot allocate a Console Context");
-    } else {
-        void *SDLCon = eonx_initSDLConsole(console, camera);
-        if (SDLCon) {
-            console = SDLCon;
-        } else {
-            CX_free(console);
-            console = NULL;
-        }
-    }
-    return console;
+    return SDL_GetError();
 }
 
 
-static void *eonx_SDLConsoleNew(EON_Camera *camera)
+#else /* ! HAVE_SDL */
+
+
+struct eonx_console_ {
+    void *useless;
+};
+
+int EONx_ConsoleStartup(void)
 {
-    eonx_SDLConsole *SDLCon = NULL;
-    int err = 0;
-
-    RETURN_IF_NULL_PTR_MSG(camera, EONx_SDL_TAG, "SDL initialization");
-
-    err = SDL_Init(SDL_INIT_VIDEO); /* XXX */
-    if (err) {
-        EON_log(EONx_SDL_TAG, EON_LOG_ERROR,
-                "SDL initialization failed: %s", SDL_GetError());
-    } else {
-        SDLCon = eonx_SDLConsoleAlloc(camera);
-    }
-
-    if (SDLCon) {
-        eonx_SDLConsoleClear(SDLCon);
-    }
-    return SDLCon;
+    return 0;
 }
 
-
-static void eonx_SDLConsoleDel(void *console)
+int EONx_ConsoleShutdown(void)
 {
-    console = eonx_finiSDLConsole(console);
-    if (!console) {
-        SDL_Quit();
-    }
-    return;
+    return 0;
 }
 
-
-static void eonx_SDLConsoleRegister(EONx_Console *console)
+EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
+                                 EON_Float ar, EON_Float fov,
+                                 EON_uInt flags)
 {
-    if (console) { /* XXX */
-        console->NewConsole = eonx_SDLConsoleNew;
-        console->DelConsole = eonx_SDLConsoleDel;
- 
-        console->NextEvent  = eonx_SDLConsoleNextEvent;
-        console->ShowFrame  = eonx_SDLConsoleShow;
-        console->GetFrame   = eonx_SDLConsoleGetFrame;
-        console->Clear      = eonx_SDLConsoleClear;
-    }
-    return;
+    return NULL;
 }
 
+EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov)
+{
+    return NULL;
+}
+
+void *EONx_ConsoleDelete(EONx_Console *ctx)
+{
+    return NULL;
+}
+
+EON_Cam *EONx_ConsoleGetCamera(EONx_Console *ctx)
+{
+    return NULL;
+}
+
+int EONx_ConsoleWaitKey(EONx_Console *ctx)
+{
+    return 0;
+}
+
+int EONx_ConsoleSetPalette(EONx_Console *ctx, const uint8_t *palette, int numcolors)
+{
+    return 0;
+}
+
+int EONx_ConsoleClearFrame(EONx_Console *ctx)
+{
+    return 0;
+}
+
+int EONx_ConsoleShowFrame(EONx_Console *ctx)
+{
+    return 0;
+}
+
+const char *EONx_ConsoleGetError(EONx_Console *ctx)
+{
+    return NULL;
+}
 
 #endif /* HAVE_SDL */
-
-/**************************************************************************
- * NULL backend Console implementation.                                   *
- **************************************************************************/
-
-#define EONx_NULL_TAG    "EONCON"
-
-static void *eonx_NullConsoleNew(EON_Camera *camera)
-{
-    return NULL; /* FIXME */ 
-}
-
-
-static void eonx_NullConsoleDel(void *console)
-{
-    return;
-}
-
-static EON_Status eonx_NullConsoleNextEvent(void *console, void *event)
-{
-    return EON_OK; /* never exits */
-}
-
-static EON_Status eonx_NullConsoleShow(void *console, EON_Frame *frame)
-{
-    return EON_OK;
-}
-
-static EON_Status eonx_NullConsoleClear(void *console)
-{
-    return EON_OK;
-}
-
-static EON_Frame *eonx_NullConsoleGetFrame(void *console,
-                                           EON_Frame *frame)
-{
-    return frame;
-}
-
-static void eonx_NullConsoleRegister(EONx_Console *console)
-{
-    if (console) { /* XXX */
-        console->NewConsole = eonx_NullConsoleNew;
-        console->DelConsole = eonx_NullConsoleDel;
-
-        console->NextEvent  = eonx_NullConsoleNextEvent;
-        console->ShowFrame  = eonx_NullConsoleShow;
-        console->GetFrame   = eonx_NullConsoleGetFrame;
-        console->Clear      = eonx_NullConsoleClear;
-    }
-    return;
-}
-
-
-/*************************************************************************
- * Console (frontend)                                                    *
- *************************************************************************/
-
-EONx_Console *EONx_newConsole(EON_Camera *camera)
-{
-    EONx_Console *console = CX_zalloc(sizeof(EONx_Console));
-    if (console) {
-        eonx_NullConsoleRegister(console);
-#ifdef HAVE_SDL
-        eonx_SDLConsoleRegister(console);
-#endif /* HAVE_SDL */
-
-        console->_private = console->NewConsole(camera);
-    }
-    return console;
-}
-
-void EONx_delConsole(EONx_Console *console)
-{
-    if (console && console->DelConsole) {
-        console->DelConsole(console->_private);
-    }
-    return;
-}
-
-EON_Status EONx_consoleNextEvent(EONx_Console *console, void *event)
-{
-    EON_Status err = EON_ERROR;
-    if (console && console->NextEvent) {
-        err = console->NextEvent(console->_private, event);
-    }
-    return err;
-}
-
-EON_Status EONx_consoleShow(EONx_Console *console, EON_Frame *frame)
-{
-    EON_Status err = EON_ERROR;
-    if (console && console->ShowFrame) {
-        err = console->ShowFrame(console->_private, frame);
-    }
-    return err;
-}
-
-EON_Frame *EONx_consoleGetFrame(EONx_Console *console,
-                                EON_Frame *frame)
-{
-    if (console && console->GetFrame) {
-        frame = console->GetFrame(console->_private, frame);
-    }
-    return frame;
-}
-
-EON_Status EONx_consoleClear(EONx_Console *console)
-{
-    EON_Status err = EON_ERROR;
-    if (console && console->Clear) {
-        err = console->Clear(console->_private);
-    }
-    return err;
-}
 
 /* vim: set ts=4 sw=4 et */
 /* EOF */

@@ -1,7 +1,7 @@
 /**************************************************************************
  * eon3dx_console.h -- Eon3D eXtension and companion tools                *
  *                  -- Graphical console.                                 *
- * (C) 2010-2011 Francesco Romani <fromani at gmail dot com>              *
+ * (C) 2010-2013 Francesco Romani <fromani at gmail dot com>              *
  *                                                                        *
  * This software is provided 'as-is', without any express or implied      *
  * warranty.  In no event will the authors be held liable for any damages *
@@ -25,12 +25,6 @@
 #ifndef EON3DX_CONSOLE_H
 #define EON3DX_CONSOLE_H
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-
 #include <eon3d.h>
 
 /** \file eon3dx_console.h
@@ -46,78 +40,34 @@
 */
 typedef struct eonx_console_ EONx_Console;
 
+int EONx_ConsoleStartup(void);
 
-/** \fn allocates a new console.
+int EONx_ConsoleShutdown(void);
 
-    Allocates a new console and attaches it to a given EON_Camera.
-    A console represents a viewpoint, so it has to have an attached camera.
+enum {
+    EONx_CONSOLE_FLAG_NONE = 0,
+    EONx_CONSOLE_FLAG_ZBUFFER = 1
+};
 
-    \param camera a EON_Camera representing the console viewpoint.
-    \return a new console handle on success,
-            NULL on error.
+EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
+                                 EON_Float ar, EON_Float fov,
+                                 EON_uInt flags);
 
-    \see EONx_delConsole
-*/
-EONx_Console *EONx_newConsole(EON_Camera *camera);
+EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov);
 
+void *EONx_ConsoleDelete(EONx_Console *ctx);
 
-/** \fn release a console handle.
+EON_Cam *EONx_ConsoleGetCamera(EONx_Console *ctx);
 
-    Release a console handle obtained via EONx_newConsole.
+int EONx_ConsoleWaitKey(EONx_Console *ctx);
 
-    \param console a valid EONx_Console handle to release.
+int EONx_ConsoleSetPalette(EONx_Console *ctx, const uint8_t *palette, int numcolors);
 
-    \see EONx_newConsole
-*/
-void EONx_delConsole(EONx_Console *console);
+int EONx_ConsoleClearFrame(EONx_Console *ctx);
 
-/* TODO */
-EON_Status EONx_consoleNextEvent(EONx_Console *console, void *event);
+int EONx_ConsoleShowFrame(EONx_Console *ctx);
 
-/** \fn shows a frame into the console.
-
-    Shows a given frame into a console.
-
-    \param console a valid EONx_Console handle.
-    \param frame the frame to display.
-    \return EON_OK on success,
-            EON_ERROR otherwise.
-
-    \see EONx_consoleGetFrame
-*/
-EON_Status EONx_consoleShow(EONx_Console *console, EON_Frame *frame);
-
-/** \fn blanks the console.
-
-    Blanks the given console.
-
-    \param console a valid EONx_Console handle.
-    \return EON_OK on success,
-            EON_ERROR otherwise.
-*/
-EON_Status EONx_consoleClear(EONx_Console *console);
-
-
-/** \fn Gets a frame handle optimized for the given console.
-
-    Any EON_Frame can safely displayed to any console, in the worst case
-    involving some memory area copies. This function allow the caller to
-    obtain the most optimized frame handle to be used with the given
-    console. Using the obtained frame, the display can be done in the most
-    efficient manner.
-
-    \param console a valid EONx_Console handle.
-    \param frame a EON_Frame handle to setup. If NULL, a new EON_Frame
-           will be allocated. The newly allocated frame can be safely
-           disposed as usual.
-    \return an optimized frame on success,
-            NULL on error.
-
-    \see EONx_consoleShow
-*/
-EON_Frame *EONx_consoleGetFrame(EONx_Console *console, EON_Frame *frame);
-
-
+const char *EONx_ConsoleGetError(EONx_Console *ctx);
 
 #endif /* EON3DX_CONSOLE_H */
 
