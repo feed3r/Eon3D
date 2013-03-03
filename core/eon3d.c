@@ -458,7 +458,8 @@ void EON_MatMapToPal(EON_Mat *m, EON_uChar *pal, EON_sInt pstart, EON_sInt pend)
   eon_MatSetupTransparent(m,pal);
 }
 
-static void eon_GenerateSinglePalette(EON_Mat *m) {
+static void eon_GenerateSinglePalette(EON_Mat *m)
+{
   m->_ColorsUsed = 1;
   if (m->_RequestedColors) free(m->_RequestedColors);
   m->_RequestedColors = (EON_uChar *) malloc(3);
@@ -467,7 +468,8 @@ static void eon_GenerateSinglePalette(EON_Mat *m) {
   m->_RequestedColors[2] = EON_Min(EON_Max(m->Ambient[2],0),255);
 }
 
-static void eon_GeneratePhongPalette(EON_Mat *m) {
+static void eon_GeneratePhongPalette(EON_Mat *m)
+{
   EON_uInt i = m->NumGradients, x;
   EON_sInt c;
   EON_uChar *pal;
@@ -494,7 +496,8 @@ static void eon_GeneratePhongPalette(EON_Mat *m) {
   } while (--i);
 }
 
-static void eon_GenerateTextureEnvPalette(EON_Mat *m) {
+static void eon_GenerateTextureEnvPalette(EON_Mat *m)
+{
   EON_sInt c;
   EON_uInt whichlevel,whichindex;
   EON_uChar *texpal, *envpal, *pal;
@@ -565,7 +568,8 @@ static void eon_GenerateTextureEnvPalette(EON_Mat *m) {
   }
 }
 
-static void eon_GenerateTexturePalette(EON_Mat *m, EON_Texture *t) {
+static void eon_GenerateTexturePalette(EON_Mat *m, EON_Texture *t)
+{
   EON_uChar *ppal, *pal;
   EON_sInt c, i, x;
   m->_ColorsUsed = t->NumColors;
@@ -581,7 +585,8 @@ static void eon_GenerateTexturePalette(EON_Mat *m, EON_Texture *t) {
   } while (--i);
 }
 
-static void eon_GeneratePhongTexturePalette(EON_Mat *m, EON_Texture *t) {
+static void eon_GeneratePhongTexturePalette(EON_Mat *m, EON_Texture *t)
+{
   double a, ca, da, cb;
   EON_uInt16 *addtable;
   EON_uChar *ppal, *pal;
@@ -624,17 +629,20 @@ static void eon_GeneratePhongTexturePalette(EON_Mat *m, EON_Texture *t) {
   } while (--i);
 }
 
-static void eon_GeneratePhongTransparentPalette(EON_Mat *m) {
+static void eon_GeneratePhongTransparentPalette(EON_Mat *m)
+{
   m->_tsfact = (EON_sInt) (m->NumGradients*(1.0/(1+m->Transparent)));
   eon_GeneratePhongPalette(m);
 }
 
-static void  eon_GenerateTransparentPalette(EON_Mat *m) {
+static void  eon_GenerateTransparentPalette(EON_Mat *m)
+{
   m->_tsfact = 0;
   eon_GeneratePhongPalette(m);
 }
 
-static void eon_SetMaterialPutFace(EON_Mat *m) {
+static void eon_SetMaterialPutFace(EON_Mat *m)
+{
   m->_PutFace = 0;
   switch (m->_ft) {
     case EON_FILL_TRANSPARENT: switch(m->_st) {
@@ -694,12 +702,14 @@ typedef struct __ct {
   struct __ct *next;
 } _ct;
 
-static int mdist(_ct *a, _ct *b) {
+static int mdist(_ct *a, _ct *b)
+{
   return ((a->r-b->r)*(a->r-b->r)+(a->g-b->g)*(a->g-b->g)+(a->b-b->b)*(a->b-b->b));
 }
 
 void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
-                     EON_sInt pend, EON_Mat **materials, EON_sInt nmats) {
+                     EON_sInt pend, EON_Mat **materials, EON_sInt nmats)
+{
   EON_uChar *allColors = 0;
   EON_sInt numColors = 0, nc, x;
   EON_sInt len = pend + 1 - pstart;
@@ -793,7 +803,8 @@ void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
 //
 
 EON_Light *EON_LightSet(EON_Light *light, EON_uChar mode, EON_Float x, EON_Float y,
-                     EON_Float z, EON_Float intensity, EON_Float halfDist) {
+                     EON_Float z, EON_Float intensity, EON_Float halfDist)
+{
   EON_Float m[16], m2[16];
   light->Type = mode;
   light->Intensity = intensity;
@@ -818,16 +829,19 @@ EON_Light *EON_LightSet(EON_Light *light, EON_uChar mode, EON_Float x, EON_Float
   return light;
 }
 
-EON_Light *EON_LightCreate() {
+EON_Light *EON_LightCreate()
+{
   return calloc(1, sizeof(EON_Light));
 }
 
-void EON_LightDelete(EON_Light *l) {
+void EON_LightDelete(EON_Light *l)
+{
   free(l);
 }
 
 EON_Light *EON_LightNew(EON_uChar mode, EON_Float x, EON_Float y, EON_Float z,
-                     EON_Float intensity, EON_Float halfDist) {
+                     EON_Float intensity, EON_Float halfDist)
+{
   EON_Light *l = EON_LightCreate();
   if (l) {
       l = EON_LightSet(l, mode, x, y, z, intensity, halfDist);
@@ -866,7 +880,8 @@ void EON_CamSetTarget(EON_Cam *c, EON_Float x, EON_Float y, EON_Float z)
 }
 
 EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov,
-                    EON_uChar *fb, EON_ZBuffer *zb) {
+                    EON_uChar *fb, EON_ZBuffer *zb)
+{
   EON_Cam *c = calloc(1, sizeof(EON_Cam));
   if (c) {
     c->Fov = fov;
@@ -1071,7 +1086,8 @@ EON_sInt EON_ClipNeeded(EON_Face *face)
 
 
 static void _FindNormal(double x2, double x3,double y2, double y3,
-                        double zv, double *res) {
+                        double zv, double *res)
+{
   res[0] = zv*(y2-y3);
   res[1] = zv*(x3-x2);
   res[2] = x2*y3 - y2*x3;
@@ -1441,8 +1457,8 @@ EON_uChar EON_Text_DefaultFont[256*16] = {
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-/* Can't find another place to put this... */
-void EON_TexDelete(EON_Texture *t) {
+void EON_TexDelete(EON_Texture *t)
+{
   if (t) {
     if (t->Data) free(t->Data);
     if (t->PaletteData) free(t->PaletteData);
@@ -1464,7 +1480,8 @@ void EON_TextSetFont(EON_uChar *font, EON_uChar height)
 }
 
 void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                   EON_uChar color, EON_uChar c) {
+                   EON_uChar color, EON_uChar c)
+{
   EON_uChar *font = current_font + (c*font_height);
   EON_sInt offset = x+(y*cam->ScreenWidth);
   EON_ZBuffer zz = (EON_ZBuffer) (1.0/z);
@@ -1523,7 +1540,8 @@ void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
 }
 
 void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                  EON_uChar color, EON_sChar *string) {
+                    EON_uChar color, EON_sChar *string)
+{
   EON_sInt xx = x;
   while (*string) {
     switch (*string) {
@@ -1541,7 +1559,8 @@ void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
 }
 
 void EON_TextPrintf(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                  EON_uChar color, EON_sChar *format, ...) {
+                    EON_uChar color, EON_sChar *format, ...)
+{
   va_list arglist;
   EON_sChar str[256];
   va_start(arglist, format);
@@ -2078,7 +2097,8 @@ void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace) {
+void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace)
+{
   EON_uChar i0, i1, i2;
   EON_uChar *gmem = cam->frameBuffer;
   EON_ZBuffer *zbuf = cam->zBuffer;
@@ -2252,7 +2272,8 @@ void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace) {
   }
 }
 
-void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace) {
+void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace)
+{
   EON_uChar i0, i1, i2;
   EON_uChar *gmem = cam->frameBuffer;
   EON_ZBuffer *zbuf = cam->zBuffer;
@@ -2655,7 +2676,8 @@ void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace) {
+void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace)
+{
   EON_uChar i0, i1, i2;
   EON_Float MappingU1, MappingU2, MappingU3;
   EON_Float MappingV1, MappingV2, MappingV3;
@@ -3019,7 +3041,8 @@ void EON_PF_TransF(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace) {
+void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace)
+{
   EON_uChar i0, i1, i2;
   EON_uChar *gmem = cam->frameBuffer;
   EON_uChar *remap = TriFace->Material->_ReMapTable;
@@ -3220,7 +3243,8 @@ void EON_RenderBegin(EON_Cam *Camera)
   EON_ClipSetFrustum(_cam);
 }
 
-void EON_RenderLight(EON_Light *light) {
+void EON_RenderLight(EON_Light *light)
+{
   EON_Float *pl, xp, yp, zp;
   if (light->Type == EON_LIGHT_NONE || _numlights >= EON_MAX_LIGHTS) return;
   pl = _lights[_numlights].l;
@@ -3238,7 +3262,8 @@ void EON_RenderLight(EON_Light *light) {
   _lights[_numlights++].light = light;
 }
 
-static void _RenderObj(EON_Obj *obj, EON_Float *bmatrix, EON_Float *bnmatrix) {
+static void _RenderObj(EON_Obj *obj, EON_Float *bmatrix, EON_Float *bnmatrix)
+{
   EON_uInt32 i, x, facepos;
   EON_Float nx = 0.0, ny = 0.0, nz = 0.0;
   double tmp, tmp2;
@@ -3434,7 +3459,8 @@ void EON_RenderEnd()
 
 static _faceInfo *Base, tmp;
 
-static void _hsort(_faceInfo *base, int nel, int dir) {
+static void _hsort(_faceInfo *base, int nel, int dir)
+{
   static int i;
   Base=base-1;
   for (i=nel/2; i>0; i--) _sift_down(i,nel,dir);
@@ -3446,7 +3472,8 @@ static void _hsort(_faceInfo *base, int nel, int dir) {
 
 #define Comp(x,y) (( x ).zd < ( y ).zd ? 1 : 0)
 
-static void _sift_down(int L, int U, int dir) {
+static void _sift_down(int L, int U, int dir)
+{
   static int c;
   while (1) {
     c=L+L;
@@ -3532,7 +3559,8 @@ EON_Obj *EON_MakeTorus(EON_Float r1, EON_Float r2, EON_uInt divrot, EON_uInt div
   return (o);
 }
 
-EON_Obj *EON_MakeSphere(EON_Float r, EON_uInt divr, EON_uInt divh, EON_Mat *m) {
+EON_Obj *EON_MakeSphere(EON_Float r, EON_uInt divr, EON_uInt divh, EON_Mat *m)
+{
   EON_Obj *o;
   EON_Vertex *v;
   EON_Face *f;
@@ -3633,7 +3661,8 @@ EON_Obj *EON_MakeSphere(EON_Float r, EON_uInt divr, EON_uInt divh, EON_Mat *m) {
 }
 
 EON_Obj *EON_MakeCylinder(EON_Float r, EON_Float h, EON_uInt divr, EON_Bool captop,
-                       EON_Bool capbottom, EON_Mat *m) {
+                          EON_Bool capbottom, EON_Mat *m)
+{
   EON_Obj *o;
   EON_Vertex *v, *topverts, *bottomverts, *topcapvert=0, *bottomcapvert=0;
   EON_Face *f;
@@ -3753,7 +3782,8 @@ EON_Obj *EON_MakeCylinder(EON_Float r, EON_Float h, EON_uInt divr, EON_Bool capt
 }
 
 EON_Obj *EON_MakeCone(EON_Float r, EON_Float h, EON_uInt div,
-                   EON_Bool cap, EON_Mat *m) {
+                      EON_Bool cap, EON_Mat *m)
+{
   EON_Obj *o;
   EON_Vertex *v;
   EON_Face *f;
