@@ -67,10 +67,11 @@ static inline int EONx_ConsoleZBufferSize(EONx_Console *ctx)
     return ctx->width * ctx->height * sizeof(EON_ZBuffer);
 }
 
-int EONx_ConsoleStartup(void)
+int EONx_ConsoleStartup(const char *title, const char *icon)
 {
     int err = SDL_Init(SDL_INIT_VIDEO);
     if (!err) {
+        SDL_WM_SetCaption(title, icon);
         atexit(SDL_Quit);
     }
     return err;
@@ -144,12 +145,12 @@ static void *EONx_ConsoleCleanup(EONx_Console *ctx)
 EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov)
 {
     return EONx_ConsoleCreate(sw, sh, 1.0, fov,
-                       EONx_CONSOLE_FLAG_ZBUFFER);
+                              EONx_CONSOLE_FLAG_ZBUFFER);
 }
 
 EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
-                    EON_Float ar, EON_Float fov,
-                    EON_uInt flags)
+                                 EON_Float ar, EON_Float fov,
+                                 EON_uInt flags)
 {
     int err = -1;
     EONx_Console *ctx = calloc(1, sizeof(*ctx));
@@ -244,7 +245,6 @@ const char *EONx_ConsoleGetError(EONx_Console *ctx)
 {
     return SDL_GetError();
 }
-
 
 #else /* ! HAVE_SDL */
 

@@ -40,7 +40,7 @@
 */
 typedef struct eonx_console_ EONx_Console;
 
-int EONx_ConsoleStartup(void);
+int EONx_ConsoleStartup(const char *title, const char *icon);
 
 int EONx_ConsoleShutdown(void);
 
