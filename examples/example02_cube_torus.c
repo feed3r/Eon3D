@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include <eon3d.h>
+#include <eon3dx.h>
 #include <eon3dx_console.h>
 
 
@@ -28,7 +29,7 @@ int main()
     EONx_Console *TheConsole;
     uint8_t ThePalette[3 * 256];
 
-    EONx_ConsoleStartup();
+    EONx_ConsoleStartup("Eon3D :: example 2", NULL);
 
     CubeMat = EON_MatCreate();    // Create the material for the cube
     CubeMat->NumGradients = 100; // Have it use 100 colors

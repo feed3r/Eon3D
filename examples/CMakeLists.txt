@@ -13,12 +13,14 @@ link_directories(${eon3d_BINARY_DIR}/core)
 link_directories(${eon3d_BINARY_DIR}/deps/cxkit)
 
 target_link_libraries(example01_cube eon3d)
-target_link_libraries(example01_cube eon3d_kit)
+target_link_libraries(example01_cube eon3dx)
 target_link_libraries(example01_cube eon3dx_console)
+target_link_libraries(example01_cube eon3d_kit)
 target_link_libraries(example01_cube m)
 
 target_link_libraries(example02_cube_torus eon3d)
-target_link_libraries(example02_cube_torus eon3d_kit)
+target_link_libraries(example02_cube_torus eon3dx)
 target_link_libraries(example02_cube_torus eon3dx_console)
+target_link_libraries(example02_cube_torus eon3d_kit)
 target_link_libraries(example02_cube_torus m)
 
