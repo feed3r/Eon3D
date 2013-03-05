@@ -1,5 +1,5 @@
 /**************************************************************************
- * eon3d.h -- Eon3D is a simplistic 3D software renderer.               *
+ * eon3d.h -- Eon3D is a simplistic 3D software renderer.                 *
  * (C) 2010-2013 Francesco Romani <fromani at gmail dot com>              *
  *                                                                        *
  * derived from                                                           *
@@ -49,7 +49,7 @@
 
 enum {
     /* Maximum children per object */
-    EON_MAX_CHILDREN = 16,
+    EON_MAX_CHILDREN = 128,
     /* Maximum lights per scene -- if you exceed this, they will be ignored */
     EON_MAX_LIGHTS = 32,
     /* Maximum number of triangles per scene -- if you exceed this, entire
@@ -57,7 +57,7 @@ enum {
        approximately 8*EON_MAX_TRIANGLES bytes of memory. i.e. the default of
        16384 consumes 128kbytes of memory. not really a big deal,
     */
-    EON_MAX_TRIANGLES = 16384
+    EON_MAX_TRIANGLES = 1048576
 };
 
 typedef float EON_ZBuffer;        /* z-buffer type (must be float) */
