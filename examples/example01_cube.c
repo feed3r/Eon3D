@@ -1,7 +1,4 @@
-// Ex2.c: simple Plush example
-// Rotates a flat shaded cube
-// The cube is now a different colored cube then ex1.c
-// ZBuffering has been added, as well as dynamic framebuffer allocation
+/* Rotates a flat shaded cube */
 
 #include <stdio.h>
 #include <time.h>

@@ -1,8 +1,4 @@
-// Ex3.c: simple Plush example
-// Rotates a flat shaded cube AND a gouraud torus
-// Uses z-buffering for smooth intersections
-// Also rotates the lightsource around
-
+/* Rotates a flat shaded cube AND a gouraud shaded torus */
 
 #include <stdio.h>
 #include <time.h>
