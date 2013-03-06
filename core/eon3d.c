@@ -1143,58 +1143,58 @@ static void _FindNormal(double x2, double x3,double y2, double y3,
  /* Returns: 0 if nothing gets in,  1 or 2 if pout1 & pout2 get in */
 static EON_uInt _ClipToPlane(EON_uInt numVerts, double *plane)
 {
-  EON_uInt i, nextvert, curin, nextin;
-  double curdot, nextdot, scale;
-  EON_uInt invert, outvert;
-  invert = 0;
-  outvert = 0;
-  curdot = m_cl[0].newVertices[0].xformedx*plane[0] +
-           m_cl[0].newVertices[0].xformedy*plane[1] +
-           m_cl[0].newVertices[0].xformedz*plane[2];
-  curin = (curdot >= plane[3]);
+    EON_uInt i, nextvert, curin, nextin;
+    double curdot, nextdot, scale;
+    EON_uInt invert, outvert;
+    invert = 0;
+    outvert = 0;
+    curdot = m_cl[0].newVertices[0].xformedx*plane[0] +
+             m_cl[0].newVertices[0].xformedy*plane[1] +
+             m_cl[0].newVertices[0].xformedz*plane[2];
+    curin = (curdot >= plane[3]);
 
-  for (i=0 ; i < numVerts; i++) {
-    nextvert = (i + 1) % numVerts;
-    if (curin) {
-      m_cl[1].Shades[outvert] = m_cl[0].Shades[invert];
-      m_cl[1].MappingU[outvert] = m_cl[0].MappingU[invert];
-      m_cl[1].MappingV[outvert] = m_cl[0].MappingV[invert];
-      m_cl[1].eMappingU[outvert] = m_cl[0].eMappingU[invert];
-      m_cl[1].eMappingV[outvert] = m_cl[0].eMappingV[invert];
-      m_cl[1].newVertices[outvert++] = m_cl[0].newVertices[invert];
-    }
-    nextdot = m_cl[0].newVertices[nextvert].xformedx*plane[0] +
-              m_cl[0].newVertices[nextvert].xformedy*plane[1] +
-              m_cl[0].newVertices[nextvert].xformedz*plane[2];
-    nextin = (nextdot >= plane[3]);
-    if (curin != nextin) {
-      scale = (plane[3] - curdot) / (nextdot - curdot);
-      m_cl[1].newVertices[outvert].xformedx = (EON_Float) (m_cl[0].newVertices[invert].xformedx +
-           (m_cl[0].newVertices[nextvert].xformedx - m_cl[0].newVertices[invert].xformedx)
-             * scale);
-      m_cl[1].newVertices[outvert].xformedy = (EON_Float) (m_cl[0].newVertices[invert].xformedy +
-           (m_cl[0].newVertices[nextvert].xformedy - m_cl[0].newVertices[invert].xformedy)
-             * scale);
-      m_cl[1].newVertices[outvert].xformedz = (EON_Float) (m_cl[0].newVertices[invert].xformedz +
-           (m_cl[0].newVertices[nextvert].xformedz - m_cl[0].newVertices[invert].xformedz)
-             * scale);
-      m_cl[1].Shades[outvert] = m_cl[0].Shades[invert] +
+    for (i=0 ; i < numVerts; i++) {
+        nextvert = (i + 1) % numVerts;
+        if (curin) {
+            m_cl[1].Shades[outvert] = m_cl[0].Shades[invert];
+            m_cl[1].MappingU[outvert] = m_cl[0].MappingU[invert];
+            m_cl[1].MappingV[outvert] = m_cl[0].MappingV[invert];
+            m_cl[1].eMappingU[outvert] = m_cl[0].eMappingU[invert];
+            m_cl[1].eMappingV[outvert] = m_cl[0].eMappingV[invert];
+            m_cl[1].newVertices[outvert++] = m_cl[0].newVertices[invert];
+        }
+        nextdot = m_cl[0].newVertices[nextvert].xformedx*plane[0] +
+                  m_cl[0].newVertices[nextvert].xformedy*plane[1] +
+                  m_cl[0].newVertices[nextvert].xformedz*plane[2];
+        nextin = (nextdot >= plane[3]);
+        if (curin != nextin) {
+            scale = (plane[3] - curdot) / (nextdot - curdot);
+            m_cl[1].newVertices[outvert].xformedx = (EON_Float) (m_cl[0].newVertices[invert].xformedx +
+                (m_cl[0].newVertices[nextvert].xformedx - m_cl[0].newVertices[invert].xformedx)
+                 * scale);
+            m_cl[1].newVertices[outvert].xformedy = (EON_Float) (m_cl[0].newVertices[invert].xformedy +
+                (m_cl[0].newVertices[nextvert].xformedy - m_cl[0].newVertices[invert].xformedy)
+                 * scale);
+            m_cl[1].newVertices[outvert].xformedz = (EON_Float) (m_cl[0].newVertices[invert].xformedz +
+                (m_cl[0].newVertices[nextvert].xformedz - m_cl[0].newVertices[invert].xformedz)
+                 * scale);
+            m_cl[1].Shades[outvert] = m_cl[0].Shades[invert] +
                         (m_cl[0].Shades[nextvert] - m_cl[0].Shades[invert]) * scale;
-      m_cl[1].MappingU[outvert] = m_cl[0].MappingU[invert] +
-           (m_cl[0].MappingU[nextvert] - m_cl[0].MappingU[invert]) * scale;
-      m_cl[1].MappingV[outvert] = m_cl[0].MappingV[invert] +
-           (m_cl[0].MappingV[nextvert] - m_cl[0].MappingV[invert]) * scale;
-      m_cl[1].eMappingU[outvert] = m_cl[0].eMappingU[invert] +
-           (m_cl[0].eMappingU[nextvert] - m_cl[0].eMappingU[invert]) * scale;
-      m_cl[1].eMappingV[outvert] = m_cl[0].eMappingV[invert] +
-           (m_cl[0].eMappingV[nextvert] - m_cl[0].eMappingV[invert]) * scale;
-      outvert++;
+            m_cl[1].MappingU[outvert] = m_cl[0].MappingU[invert] +
+                (m_cl[0].MappingU[nextvert] - m_cl[0].MappingU[invert]) * scale;
+           m_cl[1].MappingV[outvert] = m_cl[0].MappingV[invert] +
+                (m_cl[0].MappingV[nextvert] - m_cl[0].MappingV[invert]) * scale;
+           m_cl[1].eMappingU[outvert] = m_cl[0].eMappingU[invert] +
+                (m_cl[0].eMappingU[nextvert] - m_cl[0].eMappingU[invert]) * scale;
+           m_cl[1].eMappingV[outvert] = m_cl[0].eMappingV[invert] +
+                (m_cl[0].eMappingV[nextvert] - m_cl[0].eMappingV[invert]) * scale;
+            outvert++;
+        }
+        curdot = nextdot;
+        curin = nextin;
+        invert++;
     }
-    curdot = nextdot;
-    curin = nextin;
-    invert++;
-  }
-  return outvert;
+    return outvert;
 }
 
 // spline.c
@@ -1202,44 +1202,47 @@ static EON_uInt _ClipToPlane(EON_uInt numVerts, double *plane)
 
 void EON_SplineGetPoint(EON_Spline *s, EON_Float frame, EON_Float *out)
 {
-  EON_sInt32 i, i_1, i0, i1, i2;
-  EON_Float time1,time2,time3;
-  EON_Float t1,t2,t3,t4,u1,u2,u3,u4,v1,v2,v3;
-  EON_Float a,b,c,d;
+    EON_sInt32 i, i_1, i0, i1, i2;
+    EON_Float time1,time2,time3;
+    EON_Float t1,t2,t3,t4,u1,u2,u3,u4,v1,v2,v3;
+    EON_Float a,b,c,d;
 
-  EON_Float *keys = s->keys;
+    EON_Float *keys = s->keys;
 
-  a = (1-s->tens)*(1+s->cont)*(1+s->bias);
-  b = (1-s->tens)*(1-s->cont)*(1-s->bias);
-  c = (1-s->tens)*(1-s->cont)*(1+s->bias);
-  d = (1-s->tens)*(1+s->cont)*(1-s->bias);
-  v1 = t1 = -a / 2.0; u1 = a;
-  u2 = (-6-2*a+2*b+c)/2.0; v2 = (a-b)/2.0; t2 = (4+a-b-c) / 2.0;
-  t3 = (-4+b+c-d) / 2.0;
-  u3 = (6-2*b-c+d)/2.0;
-  v3 = b/2.0;
-  t4 = d/2.0; u4 = -t4;
+    a = (1-s->tens)*(1+s->cont)*(1+s->bias);
+    b = (1-s->tens)*(1-s->cont)*(1-s->bias);
+    c = (1-s->tens)*(1-s->cont)*(1+s->bias);
+    d = (1-s->tens)*(1+s->cont)*(1-s->bias);
+    v1 = t1 = -a / 2.0; u1 = a;
+    u2 = (-6-2*a+2*b+c)/2.0; v2 = (a-b)/2.0; t2 = (4+a-b-c) / 2.0;
+    t3 = (-4+b+c-d) / 2.0;
+    u3 = (6-2*b-c+d)/2.0;
+    v3 = b/2.0;
+    t4 = d/2.0; u4 = -t4;
 
-  i0 = (EON_uInt) frame;
-  i_1 = i0 - 1;
-  while (i_1 < 0) i_1 += s->numKeys;
-  i1 = i0 + 1;
-  while (i1 >= s->numKeys) i1 -= s->numKeys;
-  i2 = i0 + 2;
-  while (i2 >= s->numKeys) i2 -= s->numKeys;
-  time1 = frame - (EON_Float) ((EON_uInt) frame);
-  time2 = time1*time1;
-  time3 = time2*time1;
-  i0 *= s->keyWidth;
-  i1 *= s->keyWidth;
-  i2 *= s->keyWidth;
-  i_1 *= s->keyWidth;
-  for (i = 0; i < s->keyWidth; i ++) {
-    a = t1*keys[i+i_1]+t2*keys[i+i0]+t3*keys[i+i1]+t4*keys[i+i2];
-    b = u1*keys[i+i_1]+u2*keys[i+i0]+u3*keys[i+i1]+u4*keys[i+i2];
-    c = v1*keys[i+i_1]+v2*keys[i+i0]+v3*keys[i+i1];
-    *out++ = a*time3 + b*time2 + c*time1 + keys[i+i0];
-  }
+    i0 = (EON_uInt) frame;
+    i_1 = i0 - 1;
+    while (i_1 < 0)
+        i_1 += s->numKeys;
+    i1 = i0 + 1;
+    while (i1 >= s->numKeys)
+        i1 -= s->numKeys;
+    i2 = i0 + 2;
+    while (i2 >= s->numKeys)
+        i2 -= s->numKeys;
+    time1 = frame - (EON_Float) ((EON_uInt) frame);
+    time2 = time1*time1;
+    time3 = time2*time1;
+    i0 *= s->keyWidth;
+    i1 *= s->keyWidth;
+    i2 *= s->keyWidth;
+    i_1 *= s->keyWidth;
+    for (i = 0; i < s->keyWidth; i ++) {
+        a = t1*keys[i+i_1]+t2*keys[i+i0]+t3*keys[i+i1]+t4*keys[i+i2];
+        b = u1*keys[i+i_1]+u2*keys[i+i0]+u3*keys[i+i1]+u4*keys[i+i2];
+        c = v1*keys[i+i_1]+v2*keys[i+i0]+v3*keys[i+i1];
+        *out++ = a*time3 + b*time2 + c*time1 + keys[i+i0];
+    }
 }
 
 // plush.c
@@ -1248,11 +1251,13 @@ void EON_SplineGetPoint(EON_Spline *s, EON_Float frame, EON_Float *out)
 
 void EON_TexDelete(EON_Texture *t)
 {
-  if (t) {
-    if (t->Data) free(t->Data);
-    if (t->PaletteData) free(t->PaletteData);
-    free(t);
-  }
+    if (t) {
+        if (t->Data)
+            free(t->Data);
+        if (t->PaletteData)
+            free(t->PaletteData);
+        free(t);
+    }
 }
 
 // putface.h
