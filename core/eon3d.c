@@ -1264,171 +1264,181 @@ void EON_TexDelete(EON_Texture *t)
 //
 
 #define PUTFACE_SORT() \
-  i0 = 0; i1 = 1; i2 = 2; \
-  if (TriFace->Scry[0] > TriFace->Scry[1]) { \
-     i0 = 1; i1 = 0; \
-  } \
-  if (TriFace->Scry[i0] > TriFace->Scry[2]) { \
-     i2 ^= i0; i0 ^= i2; i2 ^= i0; \
-  } \
-  if (TriFace->Scry[i1] > TriFace->Scry[i2]) { \
-     i2 ^= i1; i1 ^= i2; i2 ^= i1; \
-  }
+    i0 = 0; i1 = 1; i2 = 2; \
+    if (TriFace->Scry[0] > TriFace->Scry[1]) { \
+        i0 = 1; i1 = 0; \
+    } \
+    if (TriFace->Scry[i0] > TriFace->Scry[2]) { \
+        i2 ^= i0; i0 ^= i2; i2 ^= i0; \
+    } \
+    if (TriFace->Scry[i1] > TriFace->Scry[i2]) { \
+        i2 ^= i1; i1 ^= i2; i2 ^= i1; \
+    }
 
 
 #define PUTFACE_SORT_ENV() \
-  PUTFACE_SORT(); \
-  MappingU1=TriFace->eMappingU[i0]*Texture->uScale*\
-            TriFace->Material->EnvScaling;\
-  MappingV1=TriFace->eMappingV[i0]*Texture->vScale*\
-            TriFace->Material->EnvScaling;\
-  MappingU2=TriFace->eMappingU[i1]*Texture->uScale*\
-            TriFace->Material->EnvScaling;\
-  MappingV2=TriFace->eMappingV[i1]*Texture->vScale*\
-            TriFace->Material->EnvScaling;\
-  MappingU3=TriFace->eMappingU[i2]*Texture->uScale*\
-            TriFace->Material->EnvScaling;\
-  MappingV3=TriFace->eMappingV[i2]*Texture->vScale*\
-            TriFace->Material->EnvScaling;
+    PUTFACE_SORT(); \
+    MappingU1=TriFace->eMappingU[i0]*Texture->uScale*\
+              TriFace->Material->EnvScaling;\
+    MappingV1=TriFace->eMappingV[i0]*Texture->vScale*\
+              TriFace->Material->EnvScaling;\
+    MappingU2=TriFace->eMappingU[i1]*Texture->uScale*\
+              TriFace->Material->EnvScaling;\
+    MappingV2=TriFace->eMappingV[i1]*Texture->vScale*\
+              TriFace->Material->EnvScaling;\
+    MappingU3=TriFace->eMappingU[i2]*Texture->uScale*\
+              TriFace->Material->EnvScaling;\
+    MappingV3=TriFace->eMappingV[i2]*Texture->vScale*\
+              TriFace->Material->EnvScaling;
 
 #define PUTFACE_SORT_TEX() \
-  PUTFACE_SORT(); \
-  MappingU1=TriFace->MappingU[i0]*Texture->uScale*\
-            TriFace->Material->TexScaling;\
-  MappingV1=TriFace->MappingV[i0]*Texture->vScale*\
-            TriFace->Material->TexScaling;\
-  MappingU2=TriFace->MappingU[i1]*Texture->uScale*\
-            TriFace->Material->TexScaling;\
-  MappingV2=TriFace->MappingV[i1]*Texture->vScale*\
-            TriFace->Material->TexScaling;\
-  MappingU3=TriFace->MappingU[i2]*Texture->uScale*\
-            TriFace->Material->TexScaling;\
-  MappingV3=TriFace->MappingV[i2]*Texture->vScale*\
-            TriFace->Material->TexScaling;
+    PUTFACE_SORT(); \
+    MappingU1=TriFace->MappingU[i0]*Texture->uScale*\
+              TriFace->Material->TexScaling;\
+    MappingV1=TriFace->MappingV[i0]*Texture->vScale*\
+              TriFace->Material->TexScaling;\
+    MappingU2=TriFace->MappingU[i1]*Texture->uScale*\
+              TriFace->Material->TexScaling;\
+    MappingV2=TriFace->MappingV[i1]*Texture->vScale*\
+              TriFace->Material->TexScaling;\
+    MappingU3=TriFace->MappingU[i2]*Texture->uScale*\
+              TriFace->Material->TexScaling;\
+    MappingV3=TriFace->MappingV[i2]*Texture->vScale*\
+              TriFace->Material->TexScaling;
 
 // pf_solid.c
 //
 
 void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
 {
-  EON_uChar i0, i1, i2;
+    EON_uChar i0, i1, i2;
 
-  EON_uChar *gmem = cam->frameBuffer;
-  EON_ZBuffer *zbuf = cam->zBuffer;
+    EON_uChar *gmem = cam->frameBuffer;
+    EON_ZBuffer *zbuf = cam->zBuffer;
 
-  EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
-  EON_ZBuffer dZL=0, dZ1=0, dZ2=0, Z1, ZL, Z2, Z3;
-  EON_sInt32 Y1, Y2, Y0, dY;
-  EON_uChar stat;
-  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
-  EON_uChar bc;
-  EON_sInt32 shade;
+    EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
+    EON_ZBuffer dZL=0, dZ1=0, dZ2=0, Z1, ZL, Z2, Z3;
+    EON_sInt32 Y1, Y2, Y0, dY;
+    EON_uChar stat;
+    EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+    EON_uChar bc;
+    EON_sInt32 shade;
 
-  PUTFACE_SORT();
+    PUTFACE_SORT();
 
-  shade=(EON_sInt32) (TriFace->fShade*(TriFace->Material->_ColorsUsed-1));
-  if (shade < 0) shade=0;
-  if (shade > (EON_sInt32) TriFace->Material->_ColorsUsed-1) shade=TriFace->Material->_ColorsUsed-1;
-  bc=TriFace->Material->_ReMapTable[shade];
+    shade=(EON_sInt32) (TriFace->fShade*(TriFace->Material->_ColorsUsed-1));
+    if (shade < 0)
+        shade=0;
+    if (shade > (EON_sInt32)TriFace->Material->_ColorsUsed-1)
+        shade=TriFace->Material->_ColorsUsed-1;
+    bc=TriFace->Material->_ReMapTable[shade];
 
-  X2 = X1 = TriFace->Scrx[i0];
-  Z1 = TriFace->Scrz[i0];
-  Z2 = TriFace->Scrz[i1];
-  Z3 = TriFace->Scrz[i2];
-  Y0 = (TriFace->Scry[i0]+(1<<19)) >> 20;
-  Y1 = (TriFace->Scry[i1]+(1<<19)) >> 20;
-  Y2 = (TriFace->Scry[i2]+(1<<19)) >> 20;
+    X2 = X1 = TriFace->Scrx[i0];
+    Z1 = TriFace->Scrz[i0];
+    Z2 = TriFace->Scrz[i1];
+    Z3 = TriFace->Scrz[i2];
+    Y0 = (TriFace->Scry[i0]+(1<<19)) >> 20;
+    Y1 = (TriFace->Scry[i1]+(1<<19)) >> 20;
+    Y2 = (TriFace->Scry[i2]+(1<<19)) >> 20;
 
-  dY = Y2-Y0;
-  if (dY) {
-    dX2 = (TriFace->Scrx[i2] - X1) / dY;
-    dZ2 = (Z3 - Z1) / dY;
-  }
-  dY = Y1-Y0;
-  if (dY) {
-    dX1 = (TriFace->Scrx[i1] - X1) / dY;
-    dZ1 = (Z2 - Z1) / dY;
-    if (dX2 < dX1) {
-      dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
-      dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
-      stat = 2;
-    } else stat = 1;
-    Z2 = Z1;
-  } else {
-    if (TriFace->Scrx[i1] > X1) {
-      X2 = TriFace->Scrx[i1];
-      stat = 2|4;
+    dY = Y2-Y0;
+    if (dY) {
+        dX2 = (TriFace->Scrx[i2] - X1) / dY;
+        dZ2 = (Z3 - Z1) / dY;
+    }
+    dY = Y1-Y0;
+    if (dY) {
+        dX1 = (TriFace->Scrx[i1] - X1) / dY;
+        dZ1 = (Z2 - Z1) / dY;
+        if (dX2 < dX1) {
+            dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
+            dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
+            stat = 2;
+        } else
+            stat = 1;
+        Z2 = Z1;
     } else {
-      X1 = TriFace->Scrx[i1];
-      ZL = Z1; Z1 = Z2; Z2 = ZL;
-      stat = 1|8;
+        if (TriFace->Scrx[i1] > X1) {
+            X2 = TriFace->Scrx[i1];
+            stat = 2|4;
+        } else {
+            X1 = TriFace->Scrx[i1];
+            ZL = Z1; Z1 = Z2; Z2 = ZL;
+        stat = 1|8;
+        }
     }
-  }
 
-  if (zb) {
-    XL1 = ((dX1-dX2)*dY+(1<<19))>>20;
-    if (XL1) dZL = ((dZ1-dZ2)*dY)/XL1;
-    else {
-      XL1 = (X2-X1+(1<<19))>>20;
-      if (zb && XL1) dZL = (Z2-Z1)/XL1;
-      else dZL = 0.0;
+    if (zb) {
+        XL1 = ((dX1-dX2)*dY+(1<<19))>>20;
+        if (XL1)
+            dZL = ((dZ1-dZ2)*dY)/XL1;
+        else {
+            XL1 = (X2-X1+(1<<19))>>20;
+            if (zb && XL1)
+                dZL = (Z2-Z1)/XL1;
+            else
+                dZL = 0.0;
+        }
     }
-  }
 
-  gmem += (Y0 * cam->ScreenWidth);
-  zbuf += (Y0 * cam->ScreenWidth);
+    gmem += (Y0 * cam->ScreenWidth);
+    zbuf += (Y0 * cam->ScreenWidth);
 
-  while (Y0 < Y2) {
-    if (Y0 == Y1) {
-      dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
-      if (dY) {
-        if (stat & 1) {
-          X1 = TriFace->Scrx[i1];
-          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+    while (Y0 < Y2) {
+        if (Y0 == Y1) {
+            dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
+            if (dY) {
+                if (stat & 1) {
+                    X1 = TriFace->Scrx[i1];
+                    dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+                }
+                if (stat & 2) {
+                    X2 = TriFace->Scrx[i1];
+                    dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+                }
+                if (stat & 4) {
+                    X1 = TriFace->Scrx[i0];
+                    dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+                }
+                if (stat & 8) {
+                    X2 = TriFace->Scrx[i0];
+                    dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
+                }
+                dZ1 = (Z3-Z1)/dY;
+            }
         }
-        if (stat & 2) {
-          X2 = TriFace->Scrx[i1];
-          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
+        XL1 = (X1+(1<<19))>>20;
+        XL2 = (X2+(1<<19))>>20;
+        ZL = Z1;
+        XL2 -= XL1;
+        if (XL2 > 0) {
+            zbuf += XL1;
+            gmem += XL1;
+            XL1 += XL2;
+            if (zb)
+                do {
+                    if (*zbuf < ZL) {
+                        *zbuf = ZL;
+                        *gmem = bc;
+                    }
+                    gmem++;
+                    zbuf++;
+                    ZL += dZL;
+                } while (--XL2);
+            else
+                do
+                    *gmem++ = bc;
+                while (--XL2);
+            gmem -= XL1;
+            zbuf -= XL1;
         }
-        if (stat & 4) {
-          X1 = TriFace->Scrx[i0];
-          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
-        }
-        if (stat & 8) {
-          X2 = TriFace->Scrx[i0];
-          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
-        }
-        dZ1 = (Z3-Z1)/dY;
-      }
+        gmem += cam->ScreenWidth;
+        zbuf += cam->ScreenWidth;
+        Z1 += dZ1;
+        X1 += dX1;
+        X2 += dX2;
+        Y0++;
     }
-    XL1 = (X1+(1<<19))>>20;
-    XL2 = (X2+(1<<19))>>20;
-    ZL = Z1;
-    XL2 -= XL1;
-    if (XL2 > 0) {
-      zbuf += XL1;
-      gmem += XL1;
-      XL1 += XL2;
-      if (zb) do {
-          if (*zbuf < ZL) {
-            *zbuf = ZL;
-            *gmem = bc;
-          }
-          gmem++;
-          zbuf++;
-          ZL += dZL;
-        } while (--XL2);
-      else do *gmem++ = bc; while (--XL2);
-      gmem -= XL1;
-      zbuf -= XL1;
-    }
-    gmem += cam->ScreenWidth;
-    zbuf += cam->ScreenWidth;
-    Z1 += dZ1;
-    X1 += dX1;
-    X2 += dX2;
-    Y0++;
-  }
 }
 
 void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace)
@@ -2878,13 +2888,13 @@ void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace)
 //
 
 typedef struct {
-  EON_Float zd;
-  EON_Face *face;
+    EON_Float zd;
+    EON_Face *face;
 } _faceInfo;
 
 typedef struct {
-  EON_Light *light;
-  EON_Float l[3];
+    EON_Light *light;
+    EON_Float l[3];
 } _lightInfo;
 
 #define MACRO_eon_MatrixApply(m,x,y,z,outx,outy,outz) \
@@ -2896,14 +2906,14 @@ typedef struct {
       ((( x1 )*( x2 ))+(( y1 )*( y2 ))+(( z1 )*( z2 )))
 
 #define MACRO_eon_NormalizeVector(x,y,z) { \
-  register double length; \
-  length = ( x )*( x )+( y )*( y )+( z )*( z ); \
-  if (length > 0.0000000001) { \
-    EON_Float l = (EON_Float) sqrt(length); \
-    ( x ) /= l; \
-    ( y ) /= l; \
-    ( z ) /= l; \
-  } \
+    register double length; \
+    length = ( x )*( x )+( y )*( y )+( z )*( z ); \
+    if (length > 0.0000000001) { \
+        EON_Float l = (EON_Float) sqrt(length); \
+        ( x ) /= l; \
+        ( y ) /= l; \
+        ( z ) /= l; \
+    } \
 }
 
 EON_uInt32 EON_Render_TriStats[4];
@@ -2921,36 +2931,37 @@ static void _hsort(_faceInfo *base, int nel, int dir);
 
 void EON_RenderBegin(EON_Cam *Camera)
 {
-  EON_Float tempMatrix[16];
-  memset(EON_Render_TriStats,0,sizeof(EON_Render_TriStats));
-  _cam = Camera;
-  _numlights = 0;
-  _numfaces = 0;
-  EON_MatrixRotate(_cMatrix,2,-Camera->Pan);
-  EON_MatrixRotate(tempMatrix,1,-Camera->Pitch);
-  EON_MatrixMultiply(_cMatrix,tempMatrix);
-  EON_MatrixRotate(tempMatrix,3,-Camera->Roll);
-  EON_MatrixMultiply(_cMatrix,tempMatrix);
-  EON_ClipSetFrustum(_cam);
+    EON_Float tempMatrix[16];
+    memset(EON_Render_TriStats,0,sizeof(EON_Render_TriStats));
+    _cam = Camera;
+    _numlights = 0;
+    _numfaces = 0;
+    EON_MatrixRotate(_cMatrix,2,-Camera->Pan);
+    EON_MatrixRotate(tempMatrix,1,-Camera->Pitch);
+    EON_MatrixMultiply(_cMatrix,tempMatrix);
+    EON_MatrixRotate(tempMatrix,3,-Camera->Roll);
+    EON_MatrixMultiply(_cMatrix,tempMatrix);
+    EON_ClipSetFrustum(_cam);
 }
 
 void EON_RenderLight(EON_Light *light)
 {
-  EON_Float *pl, xp, yp, zp;
-  if (light->Type == EON_LIGHT_NONE || _numlights >= EON_MAX_LIGHTS) return;
-  pl = _lights[_numlights].l;
-  if (light->Type == EON_LIGHT_VECTOR) {
-    xp = light->Xp;
-    yp = light->Yp;
-    zp = light->Zp;
-    MACRO_eon_MatrixApply(_cMatrix,xp,yp,zp,pl[0],pl[1],pl[2]);
-  } else if (light->Type & EON_LIGHT_POINT) {
-    xp = light->Xp-_cam->X;
-    yp = light->Yp-_cam->Y;
-    zp = light->Zp-_cam->Z;
-    MACRO_eon_MatrixApply(_cMatrix,xp,yp,zp,pl[0],pl[1],pl[2]);
-  }
-  _lights[_numlights++].light = light;
+    EON_Float *pl, xp, yp, zp;
+    if (light->Type == EON_LIGHT_NONE || _numlights >= EON_MAX_LIGHTS)
+        return;
+    pl = _lights[_numlights].l;
+    if (light->Type == EON_LIGHT_VECTOR) {
+        xp = light->Xp;
+        yp = light->Yp;
+        zp = light->Zp;
+        MACRO_eon_MatrixApply(_cMatrix,xp,yp,zp,pl[0],pl[1],pl[2]);
+    } else if (light->Type & EON_LIGHT_POINT) {
+        xp = light->Xp-_cam->X;
+        yp = light->Yp-_cam->Y;
+        zp = light->Zp-_cam->Z;
+        MACRO_eon_MatrixApply(_cMatrix,xp,yp,zp,pl[0],pl[1],pl[2]);
+    }
+    _lights[_numlights++].light = light;
 }
 
 static void _RenderObj(EON_Obj *obj, EON_Float *bmatrix, EON_Float *bnmatrix)
