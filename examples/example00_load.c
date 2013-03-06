@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 
     EONx_ConsoleSetPalette(TheConsole, ThePalette, 256);
 
-    TheModel = EON_ReadPLYObj(filename, ModelMat);
+    TheModel = EONx_ReadPLYObj(filename, ModelMat);
 
     TheCamera = EONx_ConsoleGetCamera(TheConsole);
     TheCamera->Z = -distance; // Back the camera up from the origin
