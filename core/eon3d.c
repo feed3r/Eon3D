@@ -2887,16 +2887,6 @@ void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace)
 // render.c
 //
 
-typedef struct {
-    EON_Float zd;
-    EON_Face *face;
-} _faceInfo;
-
-typedef struct {
-    EON_Light *light;
-    EON_Float l[3];
-} _lightInfo;
-
 #define MACRO_eon_MatrixApply(m,x,y,z,outx,outy,outz) \
       ( outx ) = ( x )*( m )[0] + ( y )*( m )[1] + ( z )*( m )[2] + ( m )[3];\
       ( outy ) = ( x )*( m )[4] + ( y )*( m )[5] + ( z )*( m )[6] + ( m )[7];\
@@ -2919,7 +2909,7 @@ typedef struct {
 EON_uInt32 EON_Render_TriStats[4];
 
 static EON_uInt32 _numfaces;
-static _faceInfo _faces[EON_MAX_TRIANGLES];
+static EON_FaceInfo _faces[EON_MAX_TRIANGLES];
 
 static EON_Float _cMatrix[16];
 static EON_uInt32 _numlights;
@@ -2927,7 +2917,7 @@ static _lightInfo _lights[EON_MAX_LIGHTS];
 static EON_Cam *_cam;
 static void eon_RenderObj(EON_Obj *, EON_Float *, EON_Float *);
 static void _sift_down(int L, int U, int dir);
-static void _hsort(_faceInfo *base, int nel, int dir);
+static void _hsort(EON_FaceInfo *base, int nel, int dir);
 
 static void eon_RendReset(EON_Rend *rend)
 {
@@ -3166,7 +3156,7 @@ void EON_RenderObj(EON_Rend *rend, EON_Obj *obj)
 
 void EON_RenderEnd(EON_Rend *rend)
 {
-    _faceInfo *f;
+    EON_FaceInfo *f;
     if (_cam->Sort > 0)
         _hsort(_faces,_numfaces, 0);
     else if (_cam->Sort < 0)
@@ -3182,9 +3172,9 @@ void EON_RenderEnd(EON_Rend *rend)
     _numlights = 0;
 }
 
-static _faceInfo *Base, tmp;
+static EON_FaceInfo *Base, tmp;
 
-static void _hsort(_faceInfo *base, int nel, int dir)
+static void _hsort(EON_FaceInfo *base, int nel, int dir)
 {
     static int i;
     Base = base-1;
