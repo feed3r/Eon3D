@@ -973,7 +973,7 @@ static void _FindNormal(double x2, double x3,
  /* Returns: 0 if nothing gets in,  1 or 2 if pout1 & pout2 get in */
 static EON_uInt _ClipToPlane(EON_uInt numVerts, double *plane);
 
-void EON_ClipSetFrustum(EON_Cam *cam)
+void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam)
 {
     m_adj_asp = 1.0 / cam->AspectRatio;
     m_fov = EON_Min(EON_Max(cam->Fov,1.0),179.0);
@@ -1050,7 +1050,7 @@ void EON_ClipSetFrustum(EON_Cam *cam)
 }
 
 
-void EON_ClipRenderFace(EON_Face *face)
+void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face)
 {
     EON_uInt k, a, w, numVerts = 3;
     double tmp, tmp2;
@@ -1100,7 +1100,7 @@ void EON_ClipRenderFace(EON_Face *face)
     }
 }
 
-EON_sInt EON_ClipNeeded(EON_Face *face)
+EON_sInt EON_ClipNeeded(EON_Clip *clip, EON_Face *face)
 {
     double dr,dl,db,dt;
     double f;

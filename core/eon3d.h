@@ -261,6 +261,31 @@ typedef struct _EON_Cam {
   EON_ZBuffer *zBuffer;           /* Z Buffer (NULL if none) */
 } EON_Cam;
 
+typedef struct _EON_RenderInfo {
+    EON_uInt32 TriStats[4];
+} EON_RenderInfo;
+
+#define NUM_CLIP_PLANES 5
+
+typedef struct _EON_ClipInfo {
+    EON_Vertex newVertices[8];
+    double Shades[8];
+    double MappingU[8];
+    double MappingV[8];
+    double eMappingU[8];
+    double eMappingV[8];
+} EON_ClipInfo;
+
+typedef struct _EON_Clip {
+    EON_RenderInfo *Info;
+    EON_ClipInfo CL[2];
+    double ClipPlanes[NUM_CLIP_PLANES][4];
+    EON_Cam *Cam;
+    EON_sInt32 Cx, Cy;
+    double Fov;
+    double AdjAsp;
+} EON_Clip;
+
 
 extern EON_uInt32 EON_Render_TriStats[4]; /* Three different triangle counts from
                                           the last EON_Render() block:
@@ -281,12 +306,10 @@ typedef struct _EON_LightInfo {
 } EON_LightInfo;
 
 typedef struct _EON_Rend {
-    EON_uInt32 TriStats[4];
-
+    EON_RenderInfo Info;
+    EON_Float CMatrix[16];
     EON_uInt32 Numfaces;
     EON_FaceInfo Faces[EON_MAX_TRIANGLES];
-
-    EON_Float CMatrix[16];
     EON_uInt32 Numlights;
     EON_LightInfo Lights[EON_MAX_LIGHTS];
     EON_Cam *Cam;
@@ -477,7 +500,7 @@ EON_Obj *EON_ObjCalcNormals(EON_Obj *obj);
     Sets up the internal structures.
     DO NOT CALL THIS ROUTINE FROM WITHIN A EON_Render*() block.
 */
-void EON_ClipSetFrustum(EON_Cam *cam);
+void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam);
 
 /*
   EON_ClipRenderFace() renders a face and clips it to the frustum initialized
@@ -488,7 +511,7 @@ void EON_ClipSetFrustum(EON_Cam *cam);
     nothing
   Notes: this is used internally by EON_Render*(), so be careful. Kinda slow too.
 */
-void EON_ClipRenderFace(EON_Face *face);
+void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face);
 
 /*
   EON_ClipNeeded() decides whether the face is in the frustum, intersecting
@@ -501,7 +524,7 @@ void EON_ClipRenderFace(EON_Face *face);
     1: the face is intersecting the frustum, sEON_itting and drawing necessary
   Notes: this is used internally by EON_Render*(), so be careful. Kinda slow too.
 */
-EON_sInt EON_ClipNeeded(EON_Face *face);
+EON_sInt EON_ClipNeeded(EON_Clip *clip, EON_Face *face);
 
 /******************************************************************************
 ** Light Handling Routines (light.c)
