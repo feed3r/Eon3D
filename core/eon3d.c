@@ -2925,11 +2925,32 @@ static EON_Float _cMatrix[16];
 static EON_uInt32 _numlights;
 static _lightInfo _lights[EON_MAX_LIGHTS];
 static EON_Cam *_cam;
-static void _RenderObj(EON_Obj *, EON_Float *, EON_Float *);
+static void eon_RenderObj(EON_Obj *, EON_Float *, EON_Float *);
 static void _sift_down(int L, int U, int dir);
 static void _hsort(_faceInfo *base, int nel, int dir);
 
-void EON_RenderBegin(EON_Cam *Camera)
+static void eon_RendReset(EON_Rend *rend)
+{
+    memset(rend, 0, sizeof(*rend));
+    return;
+}
+
+EON_Rend *EON_RendCreate(EON_Cam *Camera)
+{
+    EON_Rend *rend = calloc(1, sizeof(*rend));
+    if (rend) {
+        rend->Cam = Camera;
+    }
+    return rend;
+}
+
+void EON_RendDelete(EON_Rend *rend)
+{
+    free(rend);
+    return 0;
+}
+
+void EON_RenderBegin(EON_Rend *rend, EON_Cam *Camera)
 {
     EON_Float tempMatrix[16];
     memset(EON_Render_TriStats,0,sizeof(EON_Render_TriStats));
@@ -2944,7 +2965,7 @@ void EON_RenderBegin(EON_Cam *Camera)
     EON_ClipSetFrustum(_cam);
 }
 
-void EON_RenderLight(EON_Light *light)
+void EON_RenderLight(EON_Rend *rend, EON_Light *light)
 {
     EON_Float *pl, xp, yp, zp;
     if (light->Type == EON_LIGHT_NONE || _numlights >= EON_MAX_LIGHTS)
@@ -2964,7 +2985,8 @@ void EON_RenderLight(EON_Light *light)
     _lights[_numlights++].light = light;
 }
 
-static void _RenderObj(EON_Obj *obj, EON_Float *bmatrix, EON_Float *bnmatrix)
+static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
+                          EON_Float *bmatrix, EON_Float *bnmatrix)
 {
   EON_uInt32 i, x, facepos;
   EON_Float nx = 0.0, ny = 0.0, nz = 0.0;
@@ -2993,7 +3015,7 @@ static void _RenderObj(EON_Obj *obj, EON_Float *bmatrix, EON_Float *bnmatrix)
   if (bmatrix) EON_MatrixMultiply(oMatrix,bmatrix);
 
   for (i = 0; i < EON_MAX_CHILDREN; i ++)
-    if (obj->Children[i]) _RenderObj(obj->Children[i],oMatrix,nMatrix);
+    if (obj->Children[i]) eon_RenderObj(obj->Children[i],oMatrix,nMatrix);
   if (!obj->NumFaces || !obj->NumVertices) return;
 
   EON_MatrixTranslate(tempMatrix, -_cam->X, -_cam->Y, -_cam->Z);
@@ -3137,12 +3159,12 @@ static void _RenderObj(EON_Obj *obj, EON_Float *bmatrix, EON_Float *bnmatrix)
   } while (--x); /* Face loop */
 }
 
-void EON_RenderObj(EON_Obj *obj)
+void EON_RenderObj(EON_Rend *rend, EON_Obj *obj)
 {
-    _RenderObj(obj,0,0);
+    eon_RenderObj(obj,0,0);
 }
 
-void EON_RenderEnd()
+void EON_RenderEnd(EON_Rend *rend)
 {
     _faceInfo *f;
     if (_cam->Sort > 0)

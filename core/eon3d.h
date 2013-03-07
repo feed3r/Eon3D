@@ -270,6 +270,29 @@ extern EON_uInt32 EON_Render_TriStats[4]; /* Three different triangle counts fro
                                           3: final tris after tesselation
                                        */
 
+typedef struct _EON_FaceInfo {
+    EON_Float zd;
+    EON_Face *face;
+} EON_FaceInfo;
+
+typedef struct _EON_LightInfo {
+    EON_Light *light;
+    EON_Float l[3];
+} EON_LightInfo;
+
+typedef struct _EON_Rend {
+    EON_uInt32 TriStats[4];
+
+    EON_uInt32 Numfaces;
+    EON_FaceInfo Faces[EON_MAX_TRIANGLES];
+
+    EON_Float CMatrix[16];
+    EON_uInt32 Numlights;
+    EON_LightInfo Lights[EON_MAX_LIGHTS];
+    EON_Cam *Cam;
+} EON_Rend;
+
+
 /******************************************************************************
 ** Material Functions (mat.c)
 ******************************************************************************/
@@ -575,6 +598,10 @@ void EON_CamDelete(EON_Cam *c);
 ** Easy Rendering Interface (render.c)
 ******************************************************************************/
 
+EON_Rend *EON_RendCreate(EON_Cam *Camera);
+
+void EON_RendDelete(EON_Rend *rend);
+
 /*
  EON_RenderBegin() begins the rendering process.
    Parameters:
@@ -585,7 +612,7 @@ void EON_CamDelete(EON_Cam *c);
      Only one rendering process can occur at a time.
      Uses EON_Clip*(), so don't use them within or around a EON_Render() block.
 */
-void EON_RenderBegin(EON_Cam *Camera);
+void EON_RenderBegin(EON_Rend *rend);
 
 /*
    EON_RenderLight() adds a light to the scene.
@@ -595,7 +622,7 @@ void EON_RenderBegin(EON_Cam *Camera);
      nothing
    Notes: Any objects rendered before will be unaffected by this.
 */
-void EON_RenderLight(EON_Light *light);
+void EON_RenderLight(EON_Rend *rend, EON_Light *light);
 
 /*
    EON_RenderObj() adds an object and all of it's subobjects to the scene.
@@ -606,16 +633,16 @@ void EON_RenderLight(EON_Light *light);
    Notes: if Camera->Sort is zero, objects are rendered in the order that
      they are added to the scene.
 */
-void EON_RenderObj(EON_Obj *obj);
+void EON_RenderObj(EON_Rend *rend, EON_Obj *obj);
 
 /*
    EON_RenderEnd() actually does the rendering, and closes the rendering process
-   Paramters:
+   Parameters:
      none
    Returns:
      nothing
 */
-void EON_RenderEnd();
+void EON_RenderEnd(EON_Rend *rend);
 
 
 /******************************************************************************
