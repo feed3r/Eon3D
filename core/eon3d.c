@@ -1249,7 +1249,7 @@ void EON_SplineGetPoint(EON_Spline *s, EON_Float frame, EON_Float *out)
 //
 
 
-void EON_DeleteTexture(EON_Texture *t)
+void EON_TexDelete(EON_Texture *t)
 {
     if (t) {
         if (t->Data)

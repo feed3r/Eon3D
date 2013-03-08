@@ -523,11 +523,10 @@ EON_Light *EON_LightNew(EON_uChar mode, EON_Float x, EON_Float y, EON_Float z,
 */
 void EON_LightDelete(EON_Light *l);
 
-/* PUT ME SOMEWHERE */
 /*
-** EON_DeleteTexture() frees all memory associated with "t"
+  EON_TexDelete() frees all memory associated with "t"
 */
-void EON_DeleteTexture(EON_Texture *t);
+void EON_TexDelete(EON_Texture *t);
 
 
 /******************************************************************************
