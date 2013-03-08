@@ -230,19 +230,38 @@ static EON_sInt eon_ReadPCX(char *filename, EON_uInt16 *width, EON_uInt16 *heigh
     if (!fp)
         return -1;
     fgetc(fp);
-    if (fgetc(fp) != 5) { fclose(fp); return -2; }
-    if (fgetc(fp) != 1) { fclose(fp); return -2; }
-    if (fgetc(fp) != 8) { fclose(fp); return -3; }
-    sx = fgetc(fp); sx |= fgetc(fp)<<8;
-    sy = fgetc(fp); sy |= fgetc(fp)<<8;
-    ex = fgetc(fp); ex |= fgetc(fp)<<8;
-    ey = fgetc(fp); ey |= fgetc(fp)<<8;
+    if (fgetc(fp) != 5) {
+        fclose(fp);
+        return -2;
+    }
+    if (fgetc(fp) != 1) {
+        fclose(fp);
+        return -2;
+    }
+    if (fgetc(fp) != 8) {
+        fclose(fp);
+        return -3;
+    }
+    sx  = fgetc(fp);
+    sx |= fgetc(fp)<<8;
+    sy  = fgetc(fp);
+    sy |= fgetc(fp)<<8;
+    ex  = fgetc(fp);
+    ex |= fgetc(fp)<<8;
+    ey  = fgetc(fp);
+    ey |= fgetc(fp)<<8;
     *width = ex - sx + 1;
     *height = ey - sy + 1;
     fseek(fp,128,SEEK_SET);
-    if (feof(fp)) { fclose(fp); return -4; }
-    *data = (EON_uChar *) malloc((*width) * (*height));
-    if (!*data) { fclose(fp); return -128; }
+    if (feof(fp)) {
+        fclose(fp);
+        return -4;
+    }
+    *data = malloc((*width) * (*height));
+    if (!*data) {
+        fclose(fp);
+        return -128;
+    }
     sx = *height;
     data2 = *data;
     do {
@@ -309,24 +328,26 @@ EON_Texture *EON_ReadPCXTex(char *fn, EON_Bool rescale, EON_Bool optimize)
 {
     EON_uChar *data, *pal;
     EON_uInt16 x, y;
-    EON_Texture *t;
-    if (eon_ReadPCX(fn,&x,&y,&pal,&data) < 0) return 0;
-    t = (EON_Texture *) malloc(sizeof(EON_Texture));
-    if (!t) return 0;
+    EON_Texture *t = NULL;
+    if (eon_ReadPCX(fn,&x,&y,&pal,&data) < 0)
+        return NULL;
+    t = malloc(sizeof(EON_Texture));
+    if (!t)
+        return NULL;
     t->Width = eon_HiBit(x);
     t->Height = eon_HiBit(y);
     if (rescale && (1 << t->Width != x || 1 << t->Height != y)) {
-        EON_uChar nx, ny, *newdata;
-        nx = t->Width;
-        if ((1 << t->Width) != x) nx++;
-        ny = t->Height;
-        if ((1 << t->Height) != y) ny++;
-        newdata = (EON_uChar *) malloc((1<<nx)*(1<<ny));
+        EON_uChar *newdata = NULL;
+        EON_uChar nx = t->Width;
+        EON_uChar ny = t->Height;
+        if ((1 << t->Width) != x)
+            nx++;
+        if ((1 << t->Height) != y)
+            ny++;
+        newdata = malloc((1<<nx)*(1<<ny));
         if (!newdata) {
-            free(t);
-            free(data);
-            free(pal);
-            return 0;
+            EON_DeleteTexture(t);
+            return NULL;
         }
         eon_RescaleImage(data,newdata,x,y,1<<nx,1<<ny);
         free(data);
