@@ -525,9 +525,9 @@ void EON_LightDelete(EON_Light *l);
 
 /* PUT ME SOMEWHERE */
 /*
-** EON_TexDelete() frees all memory associated with "t"
+** EON_DeleteTexture() frees all memory associated with "t"
 */
-void EON_TexDelete(EON_Texture *t);
+void EON_DeleteTexture(EON_Texture *t);
 
 
 /******************************************************************************
