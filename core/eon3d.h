@@ -250,7 +250,6 @@ typedef struct _EON_Light {
 typedef struct _EON_Cam {
   EON_Float Fov;                  /* FOV in degrees valid range is 1-179 */
   EON_Float AspectRatio;          /* Aspect ratio (usually 1.0) */
-  EON_sChar Sort;                 /* Sort polygons, -1 f-t-b, 1 b-t-f, 0 no */
   EON_Float ClipBack;             /* Far clipping ( < 0.0 is none) */
   EON_sInt ClipTop, ClipLeft;     /* Screen Clipping */
   EON_sInt ClipBottom, ClipRight;
@@ -259,7 +258,7 @@ typedef struct _EON_Cam {
   EON_Float X, Y, Z;              /* Camera position in worldspace */
   EON_Float Pitch, Pan, Roll;     /* Camera angle in degrees in worldspace */
   EON_uChar *frameBuffer;         /* Framebuffer (ScreenWidth*ScreenHeight) */
-  EON_ZBuffer *zBuffer;           /* Z Buffer (NULL if none) */
+  EON_ZBuffer *zBuffer;           /* Z Buffer */
 } EON_Cam;
 
 typedef struct _EON_RenderInfo {
@@ -657,8 +656,6 @@ void EON_RenderLight(EON_Rend *rend, EON_Light *light);
      obj: object to render
    Returns:
      nothing
-   Notes: if Camera->Sort is zero, objects are rendered in the order that
-     they are added to the scene.
 */
 void EON_RenderObj(EON_Rend *rend, EON_Obj *obj);
 

@@ -82,8 +82,6 @@ int main()
 
     TheCamera = EONx_ConsoleGetCamera(TheConsole);
     TheCamera->Z = -300; // Back the camera up from the origin
-    TheCamera->Sort = 0; // We don't need to sort since zbuffering takes care
-                         // of it for us!
 
     TheLight = EON_LightCreate(); // Create the light. Will be set up every frame
 

@@ -935,7 +935,6 @@ EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov,
         c->ClipBack = 8.0e30f;
         c->frameBuffer = fb;
         c->zBuffer = zb;
-        c->Sort = (zb != NULL);
     }
     return c;
 }
@@ -2885,7 +2884,6 @@ void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace)
 
 static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                           EON_Float *bmatrix, EON_Float *bnmatrix);
-static void eon_HSort(EON_FaceInfo *base, int nel, int dir);
 
 static void eon_RendReset(EON_Rend *rend)
 {
@@ -3129,64 +3127,15 @@ void EON_RenderObj(EON_Rend *rend, EON_Obj *obj)
 
 void EON_RenderEnd(EON_Rend *rend)
 {
-    EON_FaceInfo *f;
-    if (rend->Cam->Sort > 0)
-        eon_HSort(rend->Faces, rend->NumFaces, 0);
-    else if (rend->Cam->Sort < 0)
-        eon_HSort(rend->Faces,rend->NumFaces, 1);
-    f = rend->Faces;
+    EON_FaceInfo *f = rend->Faces;
     while (rend->NumFaces--) {
         if (f->face->Material && f->face->Material->_PutFace) {
             EON_ClipRenderFace(&rend->Clip, f->face);
         }
         f++;
     }
-    rend->NumFaces=0;
+    rend->NumFaces = 0;
     rend->NumLights = 0;
-}
-
-typedef struct _eon_HS {
-    EON_FaceInfo *Base;
-    EON_FaceInfo tmp;
-    int c;
-    int i;
-} eon_HS;
-
-static EON_FaceInfo *Base, tmp;
-
-#define Comp(x,y) (( x ).zd < ( y ).zd ? 1 : 0)
-
-static void eon_SiftDown(int L, int U, int dir)
-{
-    static int c;
-    while (1) {
-        c = L+L;
-        if (c > U)
-            break;
-        if ((c < U) && dir^Comp(Base[c+1],Base[c]))
-            c++;
-        if (dir^Comp(Base[L],Base[c]))
-            return;
-        tmp = Base[L];
-        Base[L] = Base[c];
-        Base[c] = tmp;
-        L = c;
-    }
-}
-#undef Comp
-
-static void eon_HSort(EON_FaceInfo *base, int nel, int dir)
-{
-    static int i;
-    Base = base-1;
-    for (i = nel/2; i > 0; i--)
-        eon_SiftDown(i,nel,dir);
-    for (i = nel; i > 1; ) {
-        tmp = base[0];
-        base[0] = Base[i];
-        Base[i] = tmp;
-        eon_SiftDown(1, i-= 1, dir);
-    }
 }
 
 /*************************************************************************/
