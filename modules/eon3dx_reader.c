@@ -346,7 +346,7 @@ EON_Texture *EON_ReadPCXTex(char *fn, EON_Bool rescale, EON_Bool optimize)
             ny++;
         newdata = malloc((1<<nx)*(1<<ny));
         if (!newdata) {
-            EON_DeleteTexture(t);
+            EON_TexDelete(t);
             return NULL;
         }
         eon_RescaleImage(data,newdata,x,y,1<<nx,1<<ny);
