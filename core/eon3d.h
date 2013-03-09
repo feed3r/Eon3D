@@ -590,7 +590,7 @@ void EON_TexDelete(EON_Texture *t);
     ar: aspect ratio (usually 1.0)
     fov: field of view (usually 45-120)
     fb: pointer to framebuffer
-    zb: pointer to Z buffer (or NULL)
+    zb: pointer to Z buffer
   Returns:
     a pointer to the newly allocated camera
 */
@@ -623,8 +623,22 @@ void EON_CamDelete(EON_Cam *c);
 ** Easy Rendering Interface (render.c)
 ******************************************************************************/
 
+/*
+  EON_RendCreate() allocates a new renderer context.
+  Parameters:
+    Camera: an already initialized and ready EON_Cam.
+  Returns:
+    a pointer to the newly allocated context.
+*/
 EON_Rend *EON_RendCreate(EON_Cam *Camera);
 
+/*
+   EON_RendDelete() frees all memory associated with a rendering context.
+   Paramters:
+     rend: context to free
+   Returns:
+     nothing
+*/
 void EON_RendDelete(EON_Rend *rend);
 
 /*
@@ -764,20 +778,6 @@ void EON_SplineInit(EON_Spline *s);
     nothing
 */
 void EON_SplineGetPoint(EON_Spline *s, EON_Float frame, EON_Float *out);
-
-/******************************************************************************
-** Built-in Rasterizers
-******************************************************************************/
-
-void EON_PF_SolidF(EON_Cam *, EON_Face *);
-void EON_PF_SolidG(EON_Cam *, EON_Face *);
-void EON_PF_TexF(EON_Cam *, EON_Face *);
-void EON_PF_TexG(EON_Cam *, EON_Face *);
-void EON_PF_TexEnv(EON_Cam *, EON_Face *);
-void EON_PF_PTexF(EON_Cam *, EON_Face *);
-void EON_PF_PTexG(EON_Cam *, EON_Face *);
-void EON_PF_TransF(EON_Cam *, EON_Face *);
-void EON_PF_TransG(EON_Cam *, EON_Face *);
 
 /*************************************************************************/
 

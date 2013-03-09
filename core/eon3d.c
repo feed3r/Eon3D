@@ -33,6 +33,22 @@
 
 #include "eon3d.h"
 
+
+/******************************************************************************
+** Built-in Rasterizers
+******************************************************************************/
+
+static void EON_PF_SolidF(EON_Cam *, EON_Face *);
+static void EON_PF_SolidG(EON_Cam *, EON_Face *);
+static void EON_PF_TexF(EON_Cam *, EON_Face *);
+static void EON_PF_TexG(EON_Cam *, EON_Face *);
+static void EON_PF_TexEnv(EON_Cam *, EON_Face *);
+static void EON_PF_PTexF(EON_Cam *, EON_Face *);
+static void EON_PF_PTexG(EON_Cam *, EON_Face *);
+static void EON_PF_TransF(EON_Cam *, EON_Face *);
+static void EON_PF_TransG(EON_Cam *, EON_Face *);
+
+
 // math.c
 //
 void EON_MatrixRotate(EON_Float matrix[], EON_uChar m, EON_Float Deg)
@@ -1283,7 +1299,7 @@ void EON_TexDelete(EON_Texture *t)
 // pf_solid.c
 //
 
-void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
 {
     EON_uChar i0, i1, i2;
 
@@ -1415,7 +1431,7 @@ void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
     }
 }
 
-void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace)
 {
   EON_uChar i0, i1, i2;
   EON_uChar *gmem = cam->frameBuffer;
@@ -1560,7 +1576,7 @@ void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace)
 // pf_tex.c
 //
 
-void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace)
 {
   EON_uChar i0, i1, i2;
   EON_uChar *gmem = cam->frameBuffer;
@@ -1772,7 +1788,7 @@ void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace)
 {
   EON_uChar i0, i1, i2;
   EON_uChar *gmem = cam->frameBuffer;
@@ -1947,7 +1963,7 @@ void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace)
 {
   EON_uChar i0, i1, i2;
   EON_uChar *gmem = cam->frameBuffer;
@@ -2140,7 +2156,7 @@ void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace)
 // pf_ptex.c
 //
 
-void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace)
 {
   EON_uChar i0, i1, i2;
   EON_uChar *gmem = cam->frameBuffer;
@@ -2351,7 +2367,7 @@ void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace)
 {
   EON_uChar i0, i1, i2;
   EON_Float MappingU1, MappingU2, MappingU3;
@@ -2596,7 +2612,7 @@ void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace)
 // pf_trans.c
 //
 
-void EON_PF_TransF(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_TransF(EON_Cam *cam, EON_Face *TriFace)
 {
   EON_uChar i0, i1, i2;
   EON_uChar *gmem = cam->frameBuffer;
@@ -2716,7 +2732,7 @@ void EON_PF_TransF(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace)
 {
   EON_uChar i0, i1, i2;
   EON_uChar *gmem = cam->frameBuffer;
