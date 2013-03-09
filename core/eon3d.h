@@ -80,17 +80,20 @@ typedef int8_t EON_sChar;         /* signed 8 bit integer */
 /* Utility min() and max() functions */
 #define EON_Min(x,y) (( ( x ) > ( y ) ? ( y ) : ( x )))
 #define EON_Max(x,y) (( ( x ) < ( y ) ? ( y ) : ( x )))
+#define EON_Clamp(x,m,M) ( EON_Min(EON_Max(( x ), ( m )), ( M )) )
 
 /*
 ** Shade modes. Used with EON_Mat.ShadeType
 ** Note that (EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE) and
 ** (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE) are valid shading modes.
 */
-#define EON_SHADE_NONE (1)
-#define EON_SHADE_FLAT (2)
-#define EON_SHADE_FLAT_DISTANCE (4)
-#define EON_SHADE_GOURAUD (8)
-#define EON_SHADE_GOURAUD_DISTANCE (16)
+enum {
+    EON_SHADE_NONE             = 1,
+    EON_SHADE_FLAT             = 2,
+    EON_SHADE_FLAT_DISTANCE    = 4,
+    EON_SHADE_GOURAUD          = 8,
+    EON_SHADE_GOURAUD_DISTANCE = 16
+}'
 
 /*
 ** Light modes. Used with EON_Light.Type or EON_LightSet().
@@ -98,25 +101,23 @@ typedef int8_t EON_sChar;         /* signed 8 bit integer */
 ** the light and the point, EON_LIGHT_POINT_DISTANCE has falloff with proportion
 ** to distance**2 (see EON_LightSet() for setting it), EON_LIGHT_POINT does both.
 */
-#define EON_LIGHT_NONE (0x0)
-#define EON_LIGHT_VECTOR (0x1)
-#define EON_LIGHT_POINT (0x2|0x4)
-#define EON_LIGHT_POINT_DISTANCE (0x2)
-#define EON_LIGHT_POINT_ANGLE (0x4)
+enum {
+    EON_LIGHT_NONE           =  0x0,
+    EON_LIGHT_VECTOR         =  0x1,
+    EON_LIGHT_POINT          = (0x2|0x4),
+    EON_LIGHT_POINT_DISTANCE =  0x2,
+    EON_LIGHT_POINT_ANGLE    =  0x4
+};
 
-/* Used internally; EON_FILL_* are stored in EON_Mat._st. */
-#define EON_FILL_SOLID (0x0)
-#define EON_FILL_TEXTURE (0x1)
-#define EON_FILL_ENVIRONMENT (0x2)
-#define EON_FILL_TRANSPARENT (0x4)
-
-#define EON_TEXENV_ADD (0)
-#define EON_TEXENV_MUL (1)
-#define EON_TEXENV_AVG (2)
-#define EON_TEXENV_TEXMINUSENV (3)
-#define EON_TEXENV_ENVMINUSTEX (4)
-#define EON_TEXENV_MIN (5)
-#define EON_TEXENV_MAX (6)
+enum {
+    EON_TEXENV_ADD         = 0,
+    EON_TEXENV_MUL         = 1,
+    EON_TEXENV_AVG         = 2,
+    EON_TEXENV_TEXMINUSENV = 3,
+    EON_TEXENV_ENVMINUSTEX = 4,
+    EON_TEXENV_MIN         = 5,
+    EON_TEXENV_MAX         = 6
+};
 
 /*
 ** Texture type. Read textures with EON_ReadPCXTex(), and assign them to

@@ -48,6 +48,14 @@ static void EON_PF_PTexG(EON_Cam *, EON_Face *);
 static void EON_PF_TransF(EON_Cam *, EON_Face *);
 static void EON_PF_TransG(EON_Cam *, EON_Face *);
 
+/* Used internally; EON_FILL_* are stored in EON_Mat._st. */
+enum {
+    EON_FILL_SOLID       = 0x0,
+    EON_FILL_TEXTURE     = 0x1,
+    EON_FILL_ENVIRONMENT = 0x2,
+    EON_FILL_TRANSPARENT = 0x4
+};
+
 
 // math.c
 //
