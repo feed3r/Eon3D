@@ -264,6 +264,14 @@ typedef struct _EON_Cam {
 
 typedef struct _EON_RenderInfo {
     EON_uInt32 TriStats[4];
+    /*
+    Three different triangle counts from
+    the last EON_Render() block:
+    0: initial tris
+    1: tris after culling
+    2: final polys after real clipping
+    3: final tris after tesselation
+    */
 } EON_RenderInfo;
 
 enum {
@@ -290,17 +298,6 @@ typedef struct _EON_Clip {
     double AdjAsp;
 } EON_Clip;
 
-
-extern EON_uInt32 EON_Render_TriStats[4];
-/*
-   Three different triangle counts from
-   the last EON_Render() block:
-   0: initial tris
-   1: tris after culling
-   2: final polys after real clipping
-   3: final tris after tesselation
-*/
-
 typedef struct _EON_FaceInfo {
     EON_Float zd;
     EON_Face *face;
@@ -313,6 +310,7 @@ typedef struct _EON_LightInfo {
 
 typedef struct _EON_Rend {
     EON_RenderInfo Info;
+    EON_Clip Clip;
     EON_Float CMatrix[16];
     EON_uInt32 NumFaces;
     EON_FaceInfo Faces[EON_MAX_TRIANGLES];

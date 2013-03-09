@@ -730,9 +730,9 @@ static void eon_SetMaterialPutFace(EON_Mat *m)
 }
 
 typedef struct __ct {
+    struct __ct *next;
     EON_uChar r,g,b;
     EON_Bool visited;
-    struct __ct *next;
 } _ct;
 
 static int mdist(_ct *a, _ct *b)
@@ -943,109 +943,87 @@ EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov,
 // clip.c
 //
 
-#define NUM_CLIP_PLANES 5
-
-typedef struct
-{
-    EON_Vertex newVertices[8];
-    double Shades[8];
-    double MappingU[8];
-    double MappingV[8];
-    double eMappingU[8];
-    double eMappingV[8];
-} _clipInfo;
-
-
-static _clipInfo m_cl[2];
-
-
-static double m_clipPlanes[NUM_CLIP_PLANES][4];
-static EON_Cam *m_cam;
-static EON_sInt32 m_cx, m_cy;
-static double m_fov;
-static double m_adj_asp;
-
-static void _FindNormal(double x2, double x3,
-                        double y2, double y3,
-                        double zv,
-                        double *res);
+static void eon_FindNormal(double x2, double x3,
+                           double y2, double y3,
+                           double zv,
+                           double *res);
 
  /* Returns: 0 if nothing gets in,  1 or 2 if pout1 & pout2 get in */
-static EON_uInt _ClipToPlane(EON_uInt numVerts, double *plane);
+static EON_uInt eon_ClipToPlane(EON_Clip *clip, EON_uInt numVerts, double *plane);
 
 void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam)
 {
-    m_adj_asp = 1.0 / cam->AspectRatio;
-    m_fov = EON_Min(EON_Max(cam->Fov,1.0),179.0);
-    m_fov = (1.0/tan(m_fov*(EON_PI/360.0)))*(double) (cam->ClipRight-cam->ClipLeft);
-    m_cx = cam->CenterX<<20;
-    m_cy = cam->CenterY<<20;
-    m_cam = cam;
-    memset(m_clipPlanes,0,sizeof(m_clipPlanes));
+    clip->AdjAsp = 1.0 / cam->AspectRatio;
+    clip->Fov = EON_Min(EON_Max(cam->Fov,1.0),179.0);
+    clip->Fov = (1.0/tan(clip->Fov*(EON_PI/360.0)))*(double) (cam->ClipRight-cam->ClipLeft);
+    clip->Cx = cam->CenterX<<20;
+    clip->Cy = cam->CenterY<<20;
+    clip->Cam = cam;
+    memset(clip->ClipPlanes, 0, sizeof(clip->ClipPlanes));
 
     /* Back */
-    m_clipPlanes[0][2] = -1.0;
-    m_clipPlanes[0][3] = -cam->ClipBack;
+    clip->ClipPlanes[0][2] = -1.0;
+    clip->ClipPlanes[0][3] = -cam->ClipBack;
 
     /* Left */
-    m_clipPlanes[1][3] = 0.00000001;
+    clip->ClipPlanes[1][3] = 0.00000001;
     if (cam->ClipLeft == cam->CenterX) {
-        m_clipPlanes[1][0] = 1.0;
+        clip->ClipPlanes[1][0] = 1.0;
     }
     else
-        _FindNormal(-100,-100,
+        eon_FindNormal(-100,-100,
                     100, -100,
-                    m_fov*-100.0/(cam->ClipLeft-cam->CenterX),
-                    m_clipPlanes[1]);
+                    clip->Fov*-100.0/(cam->ClipLeft-cam->CenterX),
+                    clip->ClipPlanes[1]);
     if (cam->ClipLeft > cam->CenterX) {
-        m_clipPlanes[1][0] = -m_clipPlanes[1][0];
-        m_clipPlanes[1][1] = -m_clipPlanes[1][1];
-        m_clipPlanes[1][2] = -m_clipPlanes[1][2];
+        clip->ClipPlanes[1][0] = -clip->ClipPlanes[1][0];
+        clip->ClipPlanes[1][1] = -clip->ClipPlanes[1][1];
+        clip->ClipPlanes[1][2] = -clip->ClipPlanes[1][2];
     }
 
     /* Right */
-    m_clipPlanes[2][3] = 0.00000001;
+    clip->ClipPlanes[2][3] = 0.00000001;
     if (cam->ClipRight == cam->CenterX) {
-        m_clipPlanes[2][0] = -1.0;
+        clip->ClipPlanes[2][0] = -1.0;
     }
     else
-        _FindNormal(100,100,
+        eon_FindNormal(100,100,
                     -100, 100,
-                    m_fov*100.0/(cam->ClipRight-cam->CenterX),
-                    m_clipPlanes[2]);
+                    clip->Fov*100.0/(cam->ClipRight-cam->CenterX),
+                    clip->ClipPlanes[2]);
     if (cam->ClipRight < cam->CenterX) {
-        m_clipPlanes[2][0] = -m_clipPlanes[2][0];
-        m_clipPlanes[2][1] = -m_clipPlanes[2][1];
-        m_clipPlanes[2][2] = -m_clipPlanes[2][2];
+        clip->ClipPlanes[2][0] = -clip->ClipPlanes[2][0];
+        clip->ClipPlanes[2][1] = -clip->ClipPlanes[2][1];
+        clip->ClipPlanes[2][2] = -clip->ClipPlanes[2][2];
     }
     /* Top */
-    m_clipPlanes[3][3] = 0.00000001;
+    clip->ClipPlanes[3][3] = 0.00000001;
     if (cam->ClipTop == cam->CenterY) {
-        m_clipPlanes[3][1] = -1.0;
+        clip->ClipPlanes[3][1] = -1.0;
     } else
-        _FindNormal(100, -100,
+        eon_FindNormal(100, -100,
                     100, 100,
-                    m_fov*m_adj_asp*100.0/(cam->CenterY-cam->ClipTop),
-                    m_clipPlanes[3]);
+                    clip->Fov*clip->AdjAsp*100.0/(cam->CenterY-cam->ClipTop),
+                    clip->ClipPlanes[3]);
     if (cam->ClipTop > cam->CenterY) {
-        m_clipPlanes[3][0] = -m_clipPlanes[3][0];
-        m_clipPlanes[3][1] = -m_clipPlanes[3][1];
-        m_clipPlanes[3][2] = -m_clipPlanes[3][2];
+        clip->ClipPlanes[3][0] = -clip->ClipPlanes[3][0];
+        clip->ClipPlanes[3][1] = -clip->ClipPlanes[3][1];
+        clip->ClipPlanes[3][2] = -clip->ClipPlanes[3][2];
     }
 
     /* Bottom */
-    m_clipPlanes[4][3] = 0.00000001;
+    clip->ClipPlanes[4][3] = 0.00000001;
     if (cam->ClipBottom == cam->CenterY) {
-        m_clipPlanes[4][1] = 1.0;
+        clip->ClipPlanes[4][1] = 1.0;
     } else
-        _FindNormal(-100, 100,
+        eon_FindNormal(-100, 100,
                     -100, -100,
-                    m_fov*m_adj_asp*-100.0/(cam->CenterY-cam->ClipBottom),
-                    m_clipPlanes[4]);
+                    clip->Fov*clip->AdjAsp*-100.0/(cam->CenterY-cam->ClipBottom),
+                    clip->ClipPlanes[4]);
     if (cam->ClipBottom < cam->CenterY) {
-        m_clipPlanes[4][0] = -m_clipPlanes[4][0];
-        m_clipPlanes[4][1] = -m_clipPlanes[4][1];
-        m_clipPlanes[4][2] = -m_clipPlanes[4][2];
+        clip->ClipPlanes[4][0] = -clip->ClipPlanes[4][0];
+        clip->ClipPlanes[4][1] = -clip->ClipPlanes[4][1];
+        clip->ClipPlanes[4][2] = -clip->ClipPlanes[4][2];
     }
 }
 
@@ -1057,18 +1035,18 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face)
     EON_Face newface;
 
     for (a = 0; a < 3; a ++) {
-        m_cl[0].newVertices[a] = *(face->Vertices[a]);
-        m_cl[0].Shades[a] = face->Shades[a];
-        m_cl[0].MappingU[a] = face->MappingU[a];
-        m_cl[0].MappingV[a] = face->MappingV[a];
-        m_cl[0].eMappingU[a] = face->eMappingU[a];
-        m_cl[0].eMappingV[a] = face->eMappingV[a];
+        clip->CL[0].newVertices[a] = *(face->Vertices[a]);
+        clip->CL[0].Shades[a] = face->Shades[a];
+        clip->CL[0].MappingU[a] = face->MappingU[a];
+        clip->CL[0].MappingV[a] = face->MappingV[a];
+        clip->CL[0].eMappingU[a] = face->eMappingU[a];
+        clip->CL[0].eMappingV[a] = face->eMappingV[a];
     }
 
-    a = (m_clipPlanes[0][3] < 0.0 ? 0 : 1);
+    a = (clip->ClipPlanes[0][3] < 0.0 ? 0 : 1);
     while (a < NUM_CLIP_PLANES && numVerts > 2) {
-        numVerts = _ClipToPlane(numVerts, m_clipPlanes[a]);
-        memcpy(&m_cl[0],&m_cl[1],sizeof(m_cl)/2);
+        numVerts = eon_ClipToPlane(clip, numVerts, clip->ClipPlanes[a]);
+        memcpy(&clip->CL[0],&clip->CL[1],sizeof(clip->CL)/2);
         a++;
     }
     if (numVerts > 2) {
@@ -1080,46 +1058,46 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face)
                     w = 0;
                 else
                     w = a+(k-2);
-                newface.Vertices[a] = m_cl[0].newVertices+w;
-                newface.Shades[a] = (EON_Float) m_cl[0].Shades[w];
-                newface.MappingU[a] = (EON_sInt32)m_cl[0].MappingU[w];
-                newface.MappingV[a] = (EON_sInt32)m_cl[0].MappingV[w];
-                newface.eMappingU[a] = (EON_sInt32)m_cl[0].eMappingU[w];
-                newface.eMappingV[a] = (EON_sInt32)m_cl[0].eMappingV[w];
+                newface.Vertices[a] = clip->CL[0].newVertices+w;
+                newface.Shades[a] = (EON_Float) clip->CL[0].Shades[w];
+                newface.MappingU[a] = (EON_sInt32)clip->CL[0].MappingU[w];
+                newface.MappingV[a] = (EON_sInt32)clip->CL[0].MappingV[w];
+                newface.eMappingU[a] = (EON_sInt32)clip->CL[0].eMappingU[w];
+                newface.eMappingV[a] = (EON_sInt32)clip->CL[0].eMappingV[w];
                 newface.Scrz[a] = 1.0f/newface.Vertices[a]->xformedz;
-                tmp2 = m_fov * newface.Scrz[a];
+                tmp2 = clip->Fov * newface.Scrz[a];
                 tmp = tmp2*newface.Vertices[a]->xformedx;
                 tmp2 *= newface.Vertices[a]->xformedy;
-                newface.Scrx[a] = m_cx + ((EON_sInt32)((tmp*(float) (1<<20))));
-                newface.Scry[a] = m_cy - ((EON_sInt32)((tmp2*m_adj_asp*(float) (1<<20))));
+                newface.Scrx[a] = clip->Cx + ((EON_sInt32)((tmp*(float) (1<<20))));
+                newface.Scry[a] = clip->Cy - ((EON_sInt32)((tmp2*clip->AdjAsp*(float) (1<<20))));
             }
-            newface.Material->_PutFace(m_cam,&newface);
-            EON_Render_TriStats[3] ++;
+            newface.Material->_PutFace(clip->Cam,&newface);
+            clip->Info->TriStats[3] ++;
         }
-        EON_Render_TriStats[2] ++;
+        clip->Info->TriStats[2] ++;
     }
 }
 
 EON_sInt EON_ClipNeeded(EON_Clip *clip, EON_Face *face)
 {
-    double dr = (m_cam->ClipRight - m_cam->CenterX);
-    double dl = (m_cam->ClipLeft - m_cam->CenterX);
-    double db = (m_cam->ClipBottom - m_cam->CenterY);
-    double dt = (m_cam->ClipTop - m_cam->CenterY);
-    double f = m_fov * m_adj_asp;
-    return ((m_cam->ClipBack <= 0.0 ||
-            face->Vertices[0]->xformedz <= m_cam->ClipBack ||
-            face->Vertices[1]->xformedz <= m_cam->ClipBack ||
-            face->Vertices[2]->xformedz <= m_cam->ClipBack) &&
+    double dr = (clip->Cam->ClipRight - clip->Cam->CenterX);
+    double dl = (clip->Cam->ClipLeft - clip->Cam->CenterX);
+    double db = (clip->Cam->ClipBottom - clip->Cam->CenterY);
+    double dt = (clip->Cam->ClipTop - clip->Cam->CenterY);
+    double f = clip->Fov * clip->AdjAsp;
+    return ((clip->Cam->ClipBack <= 0.0 ||
+            face->Vertices[0]->xformedz <= clip->Cam->ClipBack ||
+            face->Vertices[1]->xformedz <= clip->Cam->ClipBack ||
+            face->Vertices[2]->xformedz <= clip->Cam->ClipBack) &&
             (face->Vertices[0]->xformedz >= 0 ||
             face->Vertices[1]->xformedz >= 0 ||
             face->Vertices[2]->xformedz >= 0) &&
-            (face->Vertices[0]->xformedx*m_fov<=dr*face->Vertices[0]->xformedz ||
-            face->Vertices[1]->xformedx*m_fov<=dr*face->Vertices[1]->xformedz ||
-            face->Vertices[2]->xformedx*m_fov<=dr*face->Vertices[2]->xformedz) &&
-            (face->Vertices[0]->xformedx*m_fov>=dl*face->Vertices[0]->xformedz ||
-            face->Vertices[1]->xformedx*m_fov>=dl*face->Vertices[1]->xformedz ||
-            face->Vertices[2]->xformedx*m_fov>=dl*face->Vertices[2]->xformedz) &&
+            (face->Vertices[0]->xformedx*clip->Fov<=dr*face->Vertices[0]->xformedz ||
+            face->Vertices[1]->xformedx*clip->Fov<=dr*face->Vertices[1]->xformedz ||
+            face->Vertices[2]->xformedx*clip->Fov<=dr*face->Vertices[2]->xformedz) &&
+            (face->Vertices[0]->xformedx*clip->Fov>=dl*face->Vertices[0]->xformedz ||
+            face->Vertices[1]->xformedx*clip->Fov>=dl*face->Vertices[1]->xformedz ||
+            face->Vertices[2]->xformedx*clip->Fov>=dl*face->Vertices[2]->xformedz) &&
             (face->Vertices[0]->xformedy*f<=db*face->Vertices[0]->xformedz ||
             face->Vertices[1]->xformedy*f<=db*face->Vertices[1]->xformedz ||
             face->Vertices[2]->xformedy*f<=db*face->Vertices[2]->xformedz) &&
@@ -1130,8 +1108,8 @@ EON_sInt EON_ClipNeeded(EON_Clip *clip, EON_Face *face)
 
 
 
-static void _FindNormal(double x2, double x3,double y2, double y3,
-                        double zv, double *res)
+static void eon_FindNormal(double x2, double x3,double y2, double y3,
+                           double zv, double *res)
 {
     res[0] = zv*(y2-y3);
     res[1] = zv*(x3-x2);
@@ -1139,53 +1117,52 @@ static void _FindNormal(double x2, double x3,double y2, double y3,
 }
 
  /* Returns: 0 if nothing gets in,  1 or 2 if pout1 & pout2 get in */
-static EON_uInt _ClipToPlane(EON_uInt numVerts, double *plane)
+static EON_uInt eon_ClipToPlane(EON_Clip *clip,
+                                EON_uInt numVerts, double *plane)
 {
     EON_uInt i, nextvert, curin, nextin;
     double curdot, nextdot, scale;
-    EON_uInt invert, outvert;
-    invert = 0;
-    outvert = 0;
-    curdot = m_cl[0].newVertices[0].xformedx*plane[0] +
-             m_cl[0].newVertices[0].xformedy*plane[1] +
-             m_cl[0].newVertices[0].xformedz*plane[2];
+    EON_uInt invert = 0, outvert = 0;
+    curdot = clip->CL[0].newVertices[0].xformedx*plane[0] +
+             clip->CL[0].newVertices[0].xformedy*plane[1] +
+             clip->CL[0].newVertices[0].xformedz*plane[2];
     curin = (curdot >= plane[3]);
 
-    for (i=0 ; i < numVerts; i++) {
+    for (i = 0 ; i < numVerts; i++) {
         nextvert = (i + 1) % numVerts;
         if (curin) {
-            m_cl[1].Shades[outvert] = m_cl[0].Shades[invert];
-            m_cl[1].MappingU[outvert] = m_cl[0].MappingU[invert];
-            m_cl[1].MappingV[outvert] = m_cl[0].MappingV[invert];
-            m_cl[1].eMappingU[outvert] = m_cl[0].eMappingU[invert];
-            m_cl[1].eMappingV[outvert] = m_cl[0].eMappingV[invert];
-            m_cl[1].newVertices[outvert++] = m_cl[0].newVertices[invert];
+            clip->CL[1].Shades[outvert] = clip->CL[0].Shades[invert];
+            clip->CL[1].MappingU[outvert] = clip->CL[0].MappingU[invert];
+            clip->CL[1].MappingV[outvert] = clip->CL[0].MappingV[invert];
+            clip->CL[1].eMappingU[outvert] = clip->CL[0].eMappingU[invert];
+            clip->CL[1].eMappingV[outvert] = clip->CL[0].eMappingV[invert];
+            clip->CL[1].newVertices[outvert++] = clip->CL[0].newVertices[invert];
         }
-        nextdot = m_cl[0].newVertices[nextvert].xformedx*plane[0] +
-                  m_cl[0].newVertices[nextvert].xformedy*plane[1] +
-                  m_cl[0].newVertices[nextvert].xformedz*plane[2];
+        nextdot = clip->CL[0].newVertices[nextvert].xformedx*plane[0] +
+                  clip->CL[0].newVertices[nextvert].xformedy*plane[1] +
+                  clip->CL[0].newVertices[nextvert].xformedz*plane[2];
         nextin = (nextdot >= plane[3]);
         if (curin != nextin) {
             scale = (plane[3] - curdot) / (nextdot - curdot);
-            m_cl[1].newVertices[outvert].xformedx = (EON_Float) (m_cl[0].newVertices[invert].xformedx +
-                (m_cl[0].newVertices[nextvert].xformedx - m_cl[0].newVertices[invert].xformedx)
+            clip->CL[1].newVertices[outvert].xformedx = (EON_Float) (clip->CL[0].newVertices[invert].xformedx +
+                (clip->CL[0].newVertices[nextvert].xformedx - clip->CL[0].newVertices[invert].xformedx)
                  * scale);
-            m_cl[1].newVertices[outvert].xformedy = (EON_Float) (m_cl[0].newVertices[invert].xformedy +
-                (m_cl[0].newVertices[nextvert].xformedy - m_cl[0].newVertices[invert].xformedy)
+            clip->CL[1].newVertices[outvert].xformedy = (EON_Float) (clip->CL[0].newVertices[invert].xformedy +
+                (clip->CL[0].newVertices[nextvert].xformedy - clip->CL[0].newVertices[invert].xformedy)
                  * scale);
-            m_cl[1].newVertices[outvert].xformedz = (EON_Float) (m_cl[0].newVertices[invert].xformedz +
-                (m_cl[0].newVertices[nextvert].xformedz - m_cl[0].newVertices[invert].xformedz)
+            clip->CL[1].newVertices[outvert].xformedz = (EON_Float) (clip->CL[0].newVertices[invert].xformedz +
+                (clip->CL[0].newVertices[nextvert].xformedz - clip->CL[0].newVertices[invert].xformedz)
                  * scale);
-            m_cl[1].Shades[outvert] = m_cl[0].Shades[invert] +
-                        (m_cl[0].Shades[nextvert] - m_cl[0].Shades[invert]) * scale;
-            m_cl[1].MappingU[outvert] = m_cl[0].MappingU[invert] +
-                (m_cl[0].MappingU[nextvert] - m_cl[0].MappingU[invert]) * scale;
-           m_cl[1].MappingV[outvert] = m_cl[0].MappingV[invert] +
-                (m_cl[0].MappingV[nextvert] - m_cl[0].MappingV[invert]) * scale;
-           m_cl[1].eMappingU[outvert] = m_cl[0].eMappingU[invert] +
-                (m_cl[0].eMappingU[nextvert] - m_cl[0].eMappingU[invert]) * scale;
-           m_cl[1].eMappingV[outvert] = m_cl[0].eMappingV[invert] +
-                (m_cl[0].eMappingV[nextvert] - m_cl[0].eMappingV[invert]) * scale;
+            clip->CL[1].Shades[outvert] = clip->CL[0].Shades[invert] +
+                        (clip->CL[0].Shades[nextvert] - clip->CL[0].Shades[invert]) * scale;
+            clip->CL[1].MappingU[outvert] = clip->CL[0].MappingU[invert] +
+                (clip->CL[0].MappingU[nextvert] - clip->CL[0].MappingU[invert]) * scale;
+           clip->CL[1].MappingV[outvert] = clip->CL[0].MappingV[invert] +
+                (clip->CL[0].MappingV[nextvert] - clip->CL[0].MappingV[invert]) * scale;
+           clip->CL[1].eMappingU[outvert] = clip->CL[0].eMappingU[invert] +
+                (clip->CL[0].eMappingU[nextvert] - clip->CL[0].eMappingU[invert]) * scale;
+           clip->CL[1].eMappingV[outvert] = clip->CL[0].eMappingV[invert] +
+                (clip->CL[0].eMappingV[nextvert] - clip->CL[0].eMappingV[invert]) * scale;
             outvert++;
         }
         curdot = nextdot;
@@ -2904,7 +2881,6 @@ void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace)
     } \
 }
 
-EON_uInt32 EON_Render_TriStats[4];
 
 
 static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
@@ -2924,6 +2900,7 @@ EON_Rend *EON_RendCreate(EON_Cam *Camera)
     if (rend) {
         eon_RendReset(rend);
         rend->Cam = Camera;
+        rend->Clip.Info = &rend->Info;
     }
     return rend;
 }
@@ -2937,7 +2914,7 @@ void EON_RendDelete(EON_Rend *rend)
 void EON_RenderBegin(EON_Rend *rend)
 {
     EON_Float tempMatrix[16];
-    memset(EON_Render_TriStats,0,sizeof(EON_Render_TriStats));
+    memset(&rend->Info, 0, sizeof(rend->Info));
     rend->NumLights = 0;
     rend->NumFaces = 0;
     EON_MatrixRotate(rend->CMatrix,2,  -rend->Cam->Pan);
@@ -2945,7 +2922,7 @@ void EON_RenderBegin(EON_Rend *rend)
     EON_MatrixMultiply(rend->CMatrix, tempMatrix);
     EON_MatrixRotate(tempMatrix,3, -rend->Cam->Roll);
     EON_MatrixMultiply(rend->CMatrix, tempMatrix);
-    EON_ClipSetFrustum(NULL/* FIXME */, rend->Cam);
+    EON_ClipSetFrustum(&rend->Clip, rend->Cam);
 }
 
 void EON_RenderLight(EON_Rend *rend, EON_Light *light)
@@ -3028,7 +3005,7 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
     return;
   }
 
-  EON_Render_TriStats[0] += obj->NumFaces;
+  rend->Info.TriStats[0] += obj->NumFaces;
   rend->NumFaces += obj->NumFaces;
   x = obj->NumFaces;
 
@@ -3040,7 +3017,7 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
     if (!obj->BackfaceCull || (MACRO_eon_DotProduct(nx,ny,nz,
         face->Vertices[0]->xformedx, face->Vertices[0]->xformedy,
         face->Vertices[0]->xformedz) < 0.0000001)) {
-      if (EON_ClipNeeded(NULL/* FIXME */, face)) {
+      if (EON_ClipNeeded(&rend->Clip, face)) {
         if (face->Material->_st & (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE)) {
           tmp = face->sLighting;
           if (face->Material->_st & EON_SHADE_FLAT) {
@@ -3138,7 +3115,7 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
         rend->Faces[facepos].zd = face->Vertices[0]->xformedz+
         face->Vertices[1]->xformedz+face->Vertices[2]->xformedz;
         rend->Faces[facepos++].face = face;
-        EON_Render_TriStats[1] ++;
+        rend->Info.TriStats[1] ++;
       } /* Is it in our area Check */
     } /* Backface Check */
     rend->NumFaces = facepos;
@@ -3161,7 +3138,7 @@ void EON_RenderEnd(EON_Rend *rend)
     f = rend->Faces;
     while (rend->NumFaces--) {
         if (f->face->Material && f->face->Material->_PutFace) {
-            EON_ClipRenderFace(NULL/* FIXME */, f->face);
+            EON_ClipRenderFace(&rend->Clip, f->face);
         }
         f++;
     }
