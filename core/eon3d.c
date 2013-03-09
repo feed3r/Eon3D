@@ -2885,8 +2885,7 @@ void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace)
 
 static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                           EON_Float *bmatrix, EON_Float *bnmatrix);
-static void _sift_down(int L, int U, int dir);
-static void _hsort(EON_FaceInfo *base, int nel, int dir);
+static void eon_HSort(EON_FaceInfo *base, int nel, int dir);
 
 static void eon_RendReset(EON_Rend *rend)
 {
@@ -3132,9 +3131,9 @@ void EON_RenderEnd(EON_Rend *rend)
 {
     EON_FaceInfo *f;
     if (rend->Cam->Sort > 0)
-        _hsort(rend->Faces, rend->NumFaces, 0);
+        eon_HSort(rend->Faces, rend->NumFaces, 0);
     else if (rend->Cam->Sort < 0)
-        _hsort(rend->Faces,rend->NumFaces, 1);
+        eon_HSort(rend->Faces,rend->NumFaces, 1);
     f = rend->Faces;
     while (rend->NumFaces--) {
         if (f->face->Material && f->face->Material->_PutFace) {
@@ -3146,25 +3145,18 @@ void EON_RenderEnd(EON_Rend *rend)
     rend->NumLights = 0;
 }
 
-static EON_FaceInfo *Base, tmp;
+typedef struct _eon_HS {
+    EON_FaceInfo *Base;
+    EON_FaceInfo tmp;
+    int c;
+    int i;
+} eon_HS;
 
-static void _hsort(EON_FaceInfo *base, int nel, int dir)
-{
-    static int i;
-    Base = base-1;
-    for (i = nel/2; i > 0; i--)
-        _sift_down(i,nel,dir);
-    for (i = nel; i > 1; ) {
-        tmp = base[0];
-        base[0] = Base[i];
-        Base[i] = tmp;
-        _sift_down(1, i-= 1, dir);
-    }
-}
+static EON_FaceInfo *Base, tmp;
 
 #define Comp(x,y) (( x ).zd < ( y ).zd ? 1 : 0)
 
-static void _sift_down(int L, int U, int dir)
+static void eon_SiftDown(int L, int U, int dir)
 {
     static int c;
     while (1) {
@@ -3182,6 +3174,20 @@ static void _sift_down(int L, int U, int dir)
     }
 }
 #undef Comp
+
+static void eon_HSort(EON_FaceInfo *base, int nel, int dir)
+{
+    static int i;
+    Base = base-1;
+    for (i = nel/2; i > 0; i--)
+        eon_SiftDown(i,nel,dir);
+    for (i = nel; i > 1; ) {
+        tmp = base[0];
+        base[0] = Base[i];
+        Base[i] = tmp;
+        eon_SiftDown(1, i-= 1, dir);
+    }
+}
 
 /*************************************************************************/
 
