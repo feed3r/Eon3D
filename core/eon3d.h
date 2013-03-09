@@ -62,6 +62,7 @@ enum {
 
 typedef float EON_ZBuffer;        /* z-buffer type (must be float) */
 typedef float EON_Float;          /* General floating point */
+typedef double EON_Double;        /* Double-precision floating point */
 typedef float EON_IEEEFloat32;    /* IEEE 32 bit floating point */
 typedef int32_t EON_sInt32;       /* signed 32 bit integer */
 typedef uint32_t EON_uInt32;      /* unsigned 32 bit integer */
@@ -249,7 +250,6 @@ typedef struct _EON_Light {
 typedef struct _EON_Cam {
   EON_Float Fov;                  /* FOV in degrees valid range is 1-179 */
   EON_Float AspectRatio;          /* Aspect ratio (usually 1.0) */
-  EON_sChar Sort;                 /* Sort polygons, -1 f-t-b, 1 b-t-f, 0 no */
   EON_Float ClipBack;             /* Far clipping ( < 0.0 is none) */
   EON_sInt ClipTop, ClipLeft;     /* Screen Clipping */
   EON_sInt ClipBottom, ClipRight;
@@ -258,17 +258,66 @@ typedef struct _EON_Cam {
   EON_Float X, Y, Z;              /* Camera position in worldspace */
   EON_Float Pitch, Pan, Roll;     /* Camera angle in degrees in worldspace */
   EON_uChar *frameBuffer;         /* Framebuffer (ScreenWidth*ScreenHeight) */
-  EON_ZBuffer *zBuffer;           /* Z Buffer (NULL if none) */
+  EON_ZBuffer *zBuffer;           /* Z Buffer */
 } EON_Cam;
 
+typedef struct _EON_RenderInfo {
+    EON_uInt32 TriStats[4];
+    /*
+    Three different triangle counts from
+    the last EON_Render() block:
+    0: initial tris
+    1: tris after culling
+    2: final polys after real clipping
+    3: final tris after tesselation
+    */
+} EON_RenderInfo;
 
-extern EON_uInt32 EON_Render_TriStats[4]; /* Three different triangle counts from
-                                          the last EON_Render() block:
-                                          0: initial tris
-                                          1: tris after culling
-                                          2: final polys after real clipping
-                                          3: final tris after tesselation
-                                       */
+enum {
+    NUM_CLIP_PLANES = 5
+};
+
+typedef struct _EON_ClipInfo {
+    EON_Vertex newVertices[8];
+    double Shades[8];
+    double MappingU[8];
+    double MappingV[8];
+    double eMappingU[8];
+    double eMappingV[8];
+} EON_ClipInfo;
+
+typedef struct _EON_Clip {
+    EON_RenderInfo *Info;
+    EON_ClipInfo CL[2];
+    double ClipPlanes[NUM_CLIP_PLANES][4];
+    EON_Cam *Cam;
+    EON_sInt32 Cx;
+    EON_sInt32 Cy;
+    double Fov;
+    double AdjAsp;
+} EON_Clip;
+
+typedef struct _EON_FaceInfo {
+    EON_Float zd;
+    EON_Face *face;
+} EON_FaceInfo;
+
+typedef struct _EON_LightInfo {
+    EON_Light *light;
+    EON_Float l[3];
+} EON_LightInfo;
+
+typedef struct _EON_Rend {
+    EON_RenderInfo Info;
+    EON_Clip Clip;
+    EON_Float CMatrix[16];
+    EON_uInt32 NumFaces;
+    EON_FaceInfo Faces[EON_MAX_TRIANGLES];
+    EON_uInt32 NumLights;
+    EON_LightInfo Lights[EON_MAX_LIGHTS];
+    EON_Cam *Cam;
+} EON_Rend;
+
 
 /******************************************************************************
 ** Material Functions (mat.c)
@@ -454,7 +503,7 @@ EON_Obj *EON_ObjCalcNormals(EON_Obj *obj);
     Sets up the internal structures.
     DO NOT CALL THIS ROUTINE FROM WITHIN A EON_Render*() block.
 */
-void EON_ClipSetFrustum(EON_Cam *cam);
+void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam);
 
 /*
   EON_ClipRenderFace() renders a face and clips it to the frustum initialized
@@ -465,7 +514,7 @@ void EON_ClipSetFrustum(EON_Cam *cam);
     nothing
   Notes: this is used internally by EON_Render*(), so be careful. Kinda slow too.
 */
-void EON_ClipRenderFace(EON_Face *face);
+void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face);
 
 /*
   EON_ClipNeeded() decides whether the face is in the frustum, intersecting
@@ -478,7 +527,7 @@ void EON_ClipRenderFace(EON_Face *face);
     1: the face is intersecting the frustum, sEON_itting and drawing necessary
   Notes: this is used internally by EON_Render*(), so be careful. Kinda slow too.
 */
-EON_sInt EON_ClipNeeded(EON_Face *face);
+EON_sInt EON_ClipNeeded(EON_Clip *clip, EON_Face *face);
 
 /******************************************************************************
 ** Light Handling Routines (light.c)
@@ -574,6 +623,10 @@ void EON_CamDelete(EON_Cam *c);
 ** Easy Rendering Interface (render.c)
 ******************************************************************************/
 
+EON_Rend *EON_RendCreate(EON_Cam *Camera);
+
+void EON_RendDelete(EON_Rend *rend);
+
 /*
  EON_RenderBegin() begins the rendering process.
    Parameters:
@@ -584,7 +637,7 @@ void EON_CamDelete(EON_Cam *c);
      Only one rendering process can occur at a time.
      Uses EON_Clip*(), so don't use them within or around a EON_Render() block.
 */
-void EON_RenderBegin(EON_Cam *Camera);
+void EON_RenderBegin(EON_Rend *rend);
 
 /*
    EON_RenderLight() adds a light to the scene.
@@ -594,7 +647,7 @@ void EON_RenderBegin(EON_Cam *Camera);
      nothing
    Notes: Any objects rendered before will be unaffected by this.
 */
-void EON_RenderLight(EON_Light *light);
+void EON_RenderLight(EON_Rend *rend, EON_Light *light);
 
 /*
    EON_RenderObj() adds an object and all of it's subobjects to the scene.
@@ -602,19 +655,17 @@ void EON_RenderLight(EON_Light *light);
      obj: object to render
    Returns:
      nothing
-   Notes: if Camera->Sort is zero, objects are rendered in the order that
-     they are added to the scene.
 */
-void EON_RenderObj(EON_Obj *obj);
+void EON_RenderObj(EON_Rend *rend, EON_Obj *obj);
 
 /*
    EON_RenderEnd() actually does the rendering, and closes the rendering process
-   Paramters:
+   Parameters:
      none
    Returns:
      nothing
 */
-void EON_RenderEnd();
+void EON_RenderEnd(EON_Rend *rend);
 
 
 /******************************************************************************

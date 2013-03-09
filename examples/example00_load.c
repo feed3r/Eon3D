@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
     EON_Mat *ModelMat;      // The material for the cube
     EON_Mat *AllMaterials[2]; // Used for creating palette
     EON_Cam *TheCamera; // Our camera
+    EON_Rend *TheRend;
     EONx_Console *TheConsole;
     uint8_t ThePalette[3 * 256];
     double distance = 50;
@@ -70,13 +71,13 @@ int main(int argc, char *argv[])
 
     TheCamera = EONx_ConsoleGetCamera(TheConsole);
     TheCamera->Z = -distance; // Back the camera up from the origin
-    TheCamera->Sort = 0; // We don't need to sort since zbuffering takes care
-                         // of it for us!
 
     TheLight = EON_LightNew(EON_LIGHT_VECTOR, // vector light
                             0.0, 0.0, 0.0, // rotation angles
                             1.0, // intensity
                             1.0); // falloff, not used for vector lights
+
+    TheRend = EON_RendCreate(TheCamera);
 
     start = time(NULL);
     while (!EONx_ConsoleWaitKey(TheConsole)) { // While the keyboard hasn't been touched
@@ -85,10 +86,10 @@ int main(int argc, char *argv[])
         TheModel->Ya += 1.0;
         TheModel->Za += 1.0;
         EONx_ConsoleClearFrame(TheConsole);
-        EON_RenderBegin(TheCamera);        // Start rendering with the camera
-        EON_RenderLight(TheLight);         // Render our light
-        EON_RenderObj(TheModel);            // Render our object
-        EON_RenderEnd();                   // Finish rendering
+        EON_RenderBegin(TheRend);           // Start rendering with the camera
+        EON_RenderLight(TheRend, TheLight); // Render our light
+        EON_RenderObj(TheRend, TheModel);   // Render our object
+        EON_RenderEnd(TheRend);             // Finish rendering
         EONx_ConsoleShowFrame(TheConsole);
         frames++;
     }
