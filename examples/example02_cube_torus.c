@@ -22,6 +22,7 @@ int main()
     EON_Mat *TorusMat;     // The material for the torus
     EON_Mat *AllMaterials[3]; // Used for creating palette
     EON_Cam *TheCamera; // Our camera
+    EON_Rend *TheRend;
     EONx_Console *TheConsole;
     uint8_t ThePalette[3 * 256];
 
@@ -86,6 +87,8 @@ int main()
 
     TheLight = EON_LightCreate(); // Create the light. Will be set up every frame
 
+    TheRend = EON_RendCreate(TheCamera);
+
     start = time(NULL);
     while (!EONx_ConsoleWaitKey(TheConsole)) { // While the keyboard hasn't been touched
         TheCube->Xa += 1.0; // Rotate cube by 1 degree on each axis
@@ -105,11 +108,11 @@ int main()
                      1.0); // falloff, not used for vector lights
 
         EONx_ConsoleClearFrame(TheConsole);
-        EON_RenderBegin(TheCamera);        // Start rendering with the camera
-        EON_RenderLight(TheLight);         // Render our light
-        EON_RenderObj(TheCube);            // Render our object
-        EON_RenderObj(TheTorus);           // Render our torus
-        EON_RenderEnd();                   // Finish rendering
+        EON_RenderBegin(TheRend);           // Start rendering with the camera
+        EON_RenderLight(TheRend, TheLight); // Render our light
+        EON_RenderObj(TheRend, TheCube);    // Render our object
+        EON_RenderObj(TheRend, TheTorus);   // Render our torus
+        EON_RenderEnd(TheRend);             // Finish rendering
         EONx_ConsoleShowFrame(TheConsole);
         frames++;
     }

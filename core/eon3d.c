@@ -1102,13 +1102,11 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face)
 
 EON_sInt EON_ClipNeeded(EON_Clip *clip, EON_Face *face)
 {
-    double dr,dl,db,dt;
-    double f;
-    dr = (m_cam->ClipRight-m_cam->CenterX);
-    dl = (m_cam->ClipLeft-m_cam->CenterX);
-    db = (m_cam->ClipBottom-m_cam->CenterY);
-    dt = (m_cam->ClipTop-m_cam->CenterY);
-    f = m_fov*m_adj_asp;
+    double dr = (m_cam->ClipRight - m_cam->CenterX);
+    double dl = (m_cam->ClipLeft - m_cam->CenterX);
+    double db = (m_cam->ClipBottom - m_cam->CenterY);
+    double dt = (m_cam->ClipTop - m_cam->CenterY);
+    double f = m_fov * m_adj_asp;
     return ((m_cam->ClipBack <= 0.0 ||
             face->Vertices[0]->xformedz <= m_cam->ClipBack ||
             face->Vertices[1]->xformedz <= m_cam->ClipBack ||
@@ -2908,14 +2906,9 @@ void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace)
 
 EON_uInt32 EON_Render_TriStats[4];
 
-static EON_uInt32 _numfaces;
-static EON_FaceInfo _faces[EON_MAX_TRIANGLES];
 
-static EON_Float _cMatrix[16];
-static EON_uInt32 _numlights;
-static _lightInfo _lights[EON_MAX_LIGHTS];
-static EON_Cam *_cam;
-static void eon_RenderObj(EON_Obj *, EON_Float *, EON_Float *);
+static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
+                          EON_Float *bmatrix, EON_Float *bnmatrix);
 static void _sift_down(int L, int U, int dir);
 static void _hsort(EON_FaceInfo *base, int nel, int dir);
 
@@ -2927,8 +2920,9 @@ static void eon_RendReset(EON_Rend *rend)
 
 EON_Rend *EON_RendCreate(EON_Cam *Camera)
 {
-    EON_Rend *rend = calloc(1, sizeof(*rend));
+    EON_Rend *rend = malloc(sizeof(*rend));
     if (rend) {
+        eon_RendReset(rend);
         rend->Cam = Camera;
     }
     return rend;
@@ -2937,42 +2931,41 @@ EON_Rend *EON_RendCreate(EON_Cam *Camera)
 void EON_RendDelete(EON_Rend *rend)
 {
     free(rend);
-    return 0;
+    return;
 }
 
-void EON_RenderBegin(EON_Rend *rend, EON_Cam *Camera)
+void EON_RenderBegin(EON_Rend *rend)
 {
     EON_Float tempMatrix[16];
     memset(EON_Render_TriStats,0,sizeof(EON_Render_TriStats));
-    _cam = Camera;
-    _numlights = 0;
-    _numfaces = 0;
-    EON_MatrixRotate(_cMatrix,2,-Camera->Pan);
-    EON_MatrixRotate(tempMatrix,1,-Camera->Pitch);
-    EON_MatrixMultiply(_cMatrix,tempMatrix);
-    EON_MatrixRotate(tempMatrix,3,-Camera->Roll);
-    EON_MatrixMultiply(_cMatrix,tempMatrix);
-    EON_ClipSetFrustum(_cam);
+    rend->NumLights = 0;
+    rend->NumFaces = 0;
+    EON_MatrixRotate(rend->CMatrix,2,  -rend->Cam->Pan);
+    EON_MatrixRotate(tempMatrix,1, -rend->Cam->Pitch);
+    EON_MatrixMultiply(rend->CMatrix, tempMatrix);
+    EON_MatrixRotate(tempMatrix,3, -rend->Cam->Roll);
+    EON_MatrixMultiply(rend->CMatrix, tempMatrix);
+    EON_ClipSetFrustum(NULL/* FIXME */, rend->Cam);
 }
 
 void EON_RenderLight(EON_Rend *rend, EON_Light *light)
 {
     EON_Float *pl, xp, yp, zp;
-    if (light->Type == EON_LIGHT_NONE || _numlights >= EON_MAX_LIGHTS)
+    if (light->Type == EON_LIGHT_NONE || rend->NumLights >= EON_MAX_LIGHTS)
         return;
-    pl = _lights[_numlights].l;
+    pl = rend->Lights[rend->NumLights].l;
     if (light->Type == EON_LIGHT_VECTOR) {
         xp = light->Xp;
         yp = light->Yp;
         zp = light->Zp;
-        MACRO_eon_MatrixApply(_cMatrix,xp,yp,zp,pl[0],pl[1],pl[2]);
+        MACRO_eon_MatrixApply(rend->CMatrix,xp,yp,zp,pl[0],pl[1],pl[2]);
     } else if (light->Type & EON_LIGHT_POINT) {
-        xp = light->Xp-_cam->X;
-        yp = light->Yp-_cam->Y;
-        zp = light->Zp-_cam->Z;
-        MACRO_eon_MatrixApply(_cMatrix,xp,yp,zp,pl[0],pl[1],pl[2]);
+        xp = light->Xp - rend->Cam->X;
+        yp = light->Yp - rend->Cam->Y;
+        zp = light->Zp - rend->Cam->Z;
+        MACRO_eon_MatrixApply(rend->CMatrix,xp,yp,zp,pl[0],pl[1],pl[2]);
     }
-    _lights[_numlights++].light = light;
+    rend->Lights[rend->NumLights++].light = light;
 }
 
 static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
@@ -3005,13 +2998,16 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
   if (bmatrix) EON_MatrixMultiply(oMatrix,bmatrix);
 
   for (i = 0; i < EON_MAX_CHILDREN; i ++)
-    if (obj->Children[i]) eon_RenderObj(obj->Children[i],oMatrix,nMatrix);
+    if (obj->Children[i])
+        eon_RenderObj(rend, obj->Children[i],
+                      oMatrix, nMatrix);
   if (!obj->NumFaces || !obj->NumVertices) return;
 
-  EON_MatrixTranslate(tempMatrix, -_cam->X, -_cam->Y, -_cam->Z);
-  EON_MatrixMultiply(oMatrix,tempMatrix);
-  EON_MatrixMultiply(oMatrix,_cMatrix);
-  EON_MatrixMultiply(nMatrix,_cMatrix);
+  EON_MatrixTranslate(tempMatrix,
+                      -rend->Cam->X, -rend->Cam->Y, -rend->Cam->Z);
+  EON_MatrixMultiply(oMatrix, tempMatrix);
+  EON_MatrixMultiply(oMatrix, rend->CMatrix);
+  EON_MatrixMultiply(nMatrix, rend->CMatrix);
 
   x = obj->NumVertices;
   vertex = obj->Vertices;
@@ -3025,15 +3021,15 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
   } while (--x);
 
   face = obj->Faces;
-  facepos = _numfaces;
+  facepos = rend->NumFaces;
 
-  if (_numfaces + obj->NumFaces >= EON_MAX_TRIANGLES) // exceeded maximum face coutn
+  if (rend->NumFaces + obj->NumFaces >= EON_MAX_TRIANGLES) // exceeded maximum face coutn
   {
     return;
   }
 
   EON_Render_TriStats[0] += obj->NumFaces;
-  _numfaces += obj->NumFaces;
+  rend->NumFaces += obj->NumFaces;
   x = obj->NumFaces;
 
   do {
@@ -3044,24 +3040,24 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
     if (!obj->BackfaceCull || (MACRO_eon_DotProduct(nx,ny,nz,
         face->Vertices[0]->xformedx, face->Vertices[0]->xformedy,
         face->Vertices[0]->xformedz) < 0.0000001)) {
-      if (EON_ClipNeeded(face)) {
+      if (EON_ClipNeeded(NULL/* FIXME */, face)) {
         if (face->Material->_st & (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE)) {
           tmp = face->sLighting;
           if (face->Material->_st & EON_SHADE_FLAT) {
-            for (i = 0; i < _numlights; i ++) {
+            for (i = 0; i < rend->NumLights; i ++) {
               tmp2 = 0.0;
-              light = _lights[i].light;
+              light = rend->Lights[i].light;
               if (light->Type & EON_LIGHT_POINT_ANGLE) {
-                double nx2 = _lights[i].l[0] - face->Vertices[0]->xformedx;
-                double ny2 = _lights[i].l[1] - face->Vertices[0]->xformedy;
-                double nz2 = _lights[i].l[2] - face->Vertices[0]->xformedz;
+                double nx2 = rend->Lights[i].l[0] - face->Vertices[0]->xformedx;
+                double ny2 = rend->Lights[i].l[1] - face->Vertices[0]->xformedy;
+                double nz2 = rend->Lights[i].l[2] - face->Vertices[0]->xformedz;
                 MACRO_eon_NormalizeVector(nx2,ny2,nz2);
                 tmp2 = MACRO_eon_DotProduct(nx,ny,nz,nx2,ny2,nz2)*light->Intensity;
               }
               if (light->Type & EON_LIGHT_POINT_DISTANCE) {
-                double nx2 = _lights[i].l[0] - face->Vertices[0]->xformedx;
-                double ny2 = _lights[i].l[1] - face->Vertices[0]->xformedy;
-                double nz2 = _lights[i].l[2] - face->Vertices[0]->xformedz;
+                double nx2 = rend->Lights[i].l[0] - face->Vertices[0]->xformedx;
+                double ny2 = rend->Lights[i].l[1] - face->Vertices[0]->xformedy;
+                double nz2 = rend->Lights[i].l[2] - face->Vertices[0]->xformedz;
                 if (light->Type & EON_LIGHT_POINT_ANGLE) {
                    nx2 = (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/
                            light->HalfDistSquared));
@@ -3073,8 +3069,9 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                 }
               }
               if (light->Type == EON_LIGHT_VECTOR)
-                tmp2 = MACRO_eon_DotProduct(nx,ny,nz,_lights[i].l[0],_lights[i].l[1],_lights[i].l[2])
-                  * light->Intensity;
+                tmp2 = MACRO_eon_DotProduct(nx,ny,nz,
+                                            rend->Lights[i].l[0], rend->Lights[i].l[1], rend->Lights[i].l[2])
+                      * light->Intensity;
               if (tmp2 > 0.0) tmp += tmp2;
               else if (obj->BackfaceIllumination) tmp -= tmp2;
             } /* End of light loop */
@@ -3098,13 +3095,13 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
           for (a = 0; a < 3; a ++) {
             tmp = face->vsLighting[a];
             if (face->Material->_st & EON_SHADE_GOURAUD) {
-              for (i = 0; i < _numlights ; i++) {
+              for (i = 0; i < rend->NumLights ; i++) {
                 tmp2 = 0.0;
-                light = _lights[i].light;
+                light = rend->Lights[i].light;
                 if (light->Type & EON_LIGHT_POINT_ANGLE) {
-                  nx = _lights[i].l[0] - face->Vertices[a]->xformedx;
-                  ny = _lights[i].l[1] - face->Vertices[a]->xformedy;
-                  nz = _lights[i].l[2] - face->Vertices[a]->xformedz;
+                  nx = rend->Lights[i].l[0] - face->Vertices[a]->xformedx;
+                  ny = rend->Lights[i].l[1] - face->Vertices[a]->xformedy;
+                  nz = rend->Lights[i].l[2] - face->Vertices[a]->xformedz;
                   MACRO_eon_NormalizeVector(nx,ny,nz);
                   tmp2 = MACRO_eon_DotProduct(face->Vertices[a]->xformednx,
                                       face->Vertices[a]->xformedny,
@@ -3112,9 +3109,9 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                                       nx,ny,nz) * light->Intensity;
                 }
                 if (light->Type & EON_LIGHT_POINT_DISTANCE) {
-                  double nx2 = _lights[i].l[0] - face->Vertices[a]->xformedx;
-                  double ny2 = _lights[i].l[1] - face->Vertices[a]->xformedy;
-                  double nz2 = _lights[i].l[2] - face->Vertices[a]->xformedz;
+                  double nx2 = rend->Lights[i].l[0] - face->Vertices[a]->xformedx;
+                  double ny2 = rend->Lights[i].l[1] - face->Vertices[a]->xformedy;
+                  double nz2 = rend->Lights[i].l[2] - face->Vertices[a]->xformedz;
                   if (light->Type & EON_LIGHT_POINT_ANGLE) {
                      double t= (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/light->HalfDistSquared));
                      tmp2 *= EON_Max(0,EON_Min(1.0,t))*light->Intensity;
@@ -3127,7 +3124,7 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                   tmp2 = MACRO_eon_DotProduct(face->Vertices[a]->xformednx,
                                       face->Vertices[a]->xformedny,
                                       face->Vertices[a]->xformednz,
-                                      _lights[i].l[0],_lights[i].l[1],_lights[i].l[2])
+                                      rend->Lights[i].l[0], rend->Lights[i].l[1], rend->Lights[i].l[2])
                                         * light->Intensity;
                 if (tmp2 > 0.0) tmp += tmp2;
                 else if (obj->BackfaceIllumination) tmp -= tmp2;
@@ -3138,38 +3135,38 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
             face->Shades[a] = (EON_Float) tmp;
           } /* End of vertex loop for */
         } /* End of gouraud shading mask if */
-        _faces[facepos].zd = face->Vertices[0]->xformedz+
+        rend->Faces[facepos].zd = face->Vertices[0]->xformedz+
         face->Vertices[1]->xformedz+face->Vertices[2]->xformedz;
-        _faces[facepos++].face = face;
+        rend->Faces[facepos++].face = face;
         EON_Render_TriStats[1] ++;
       } /* Is it in our area Check */
     } /* Backface Check */
-    _numfaces = facepos;
+    rend->NumFaces = facepos;
     face++;
   } while (--x); /* Face loop */
 }
 
 void EON_RenderObj(EON_Rend *rend, EON_Obj *obj)
 {
-    eon_RenderObj(obj,0,0);
+    eon_RenderObj(rend, obj, 0, 0);
 }
 
 void EON_RenderEnd(EON_Rend *rend)
 {
     EON_FaceInfo *f;
-    if (_cam->Sort > 0)
-        _hsort(_faces,_numfaces, 0);
-    else if (_cam->Sort < 0)
-        _hsort(_faces,_numfaces, 1);
-    f = _faces;
-    while (_numfaces--) {
+    if (rend->Cam->Sort > 0)
+        _hsort(rend->Faces, rend->NumFaces, 0);
+    else if (rend->Cam->Sort < 0)
+        _hsort(rend->Faces,rend->NumFaces, 1);
+    f = rend->Faces;
+    while (rend->NumFaces--) {
         if (f->face->Material && f->face->Material->_PutFace) {
-            EON_ClipRenderFace(f->face);
+            EON_ClipRenderFace(NULL/* FIXME */, f->face);
         }
         f++;
     }
-    _numfaces=0;
-    _numlights = 0;
+    rend->NumFaces=0;
+    rend->NumLights = 0;
 }
 
 static EON_FaceInfo *Base, tmp;
