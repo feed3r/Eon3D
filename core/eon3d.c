@@ -38,6 +38,7 @@
 ** Built-in Rasterizers
 ******************************************************************************/
 
+static void EON_PF_Null(EON_Cam *, EON_Face *);
 static void EON_PF_SolidF(EON_Cam *, EON_Face *);
 static void EON_PF_SolidG(EON_Cam *, EON_Face *);
 static void EON_PF_TexF(EON_Cam *, EON_Face *);
@@ -684,7 +685,7 @@ static void eon_GenerateTransparentPalette(EON_Mat *m)
 
 static void eon_SetMaterialPutFace(EON_Mat *m)
 {
-    m->_PutFace = 0;
+    m->_PutFace = EON_PF_Null;
     switch (m->_ft) {
     case EON_FILL_TRANSPARENT:
         switch(m->_st) {
@@ -1303,6 +1304,11 @@ void EON_TexDelete(EON_Texture *t)
               TriFace->Material->TexScaling;\
     MappingV3=TriFace->MappingV[i2]*Texture->vScale*\
               TriFace->Material->TexScaling;
+
+static void EON_PF_Null(EON_Cam *cam, EON_Face *TriFace)
+{
+    return; /* nothing to do */
+}
 
 // pf_solid.c
 //
@@ -2969,70 +2975,72 @@ void EON_RenderLight(EON_Rend *rend, EON_Light *light)
 static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                           EON_Float *bmatrix, EON_Float *bnmatrix)
 {
-  EON_uInt32 i, x, facepos;
-  EON_Float nx = 0.0, ny = 0.0, nz = 0.0;
-  double tmp, tmp2;
-  EON_Float oMatrix[16], nMatrix[16], tempMatrix[16];
+    EON_uInt32 i, x, facepos;
+    EON_Float nx = 0.0, ny = 0.0, nz = 0.0;
+    double tmp, tmp2;
+    EON_Float oMatrix[16], nMatrix[16], tempMatrix[16];
 
-  EON_Vertex *vertex;
-  EON_Face *face;
-  EON_Light *light;
+    EON_Vertex *vertex;
+    EON_Face *face;
+    EON_Light *light;
 
-  if (obj->GenMatrix) {
-    EON_MatrixRotate(nMatrix,1,obj->Xa);
-    EON_MatrixRotate(tempMatrix,2,obj->Ya);
-    EON_MatrixMultiply(nMatrix,tempMatrix);
-    EON_MatrixRotate(tempMatrix,3,obj->Za);
-    EON_MatrixMultiply(nMatrix,tempMatrix);
-    memcpy(oMatrix,nMatrix,sizeof(EON_Float)*16);
-  } else memcpy(nMatrix,obj->RotMatrix,sizeof(EON_Float)*16);
+    if (obj->GenMatrix) {
+        EON_MatrixRotate(nMatrix,1,obj->Xa);
+        EON_MatrixRotate(tempMatrix,2,obj->Ya);
+        EON_MatrixMultiply(nMatrix,tempMatrix);
+        EON_MatrixRotate(tempMatrix,3,obj->Za);
+        EON_MatrixMultiply(nMatrix,tempMatrix);
+        memcpy(oMatrix,nMatrix,sizeof(EON_Float)*16);
+    } else
+        memcpy(nMatrix,obj->RotMatrix,sizeof(EON_Float)*16);
 
-  if (bnmatrix) EON_MatrixMultiply(nMatrix,bnmatrix);
+    if (bnmatrix) EON_MatrixMultiply(nMatrix,bnmatrix);
 
-  if (obj->GenMatrix) {
-    EON_MatrixTranslate(tempMatrix, obj->Xp, obj->Yp, obj->Zp);
-    EON_MatrixMultiply(oMatrix,tempMatrix);
-  } else memcpy(oMatrix,obj->Matrix,sizeof(EON_Float)*16);
-  if (bmatrix) EON_MatrixMultiply(oMatrix,bmatrix);
+    if (obj->GenMatrix) {
+        EON_MatrixTranslate(tempMatrix, obj->Xp, obj->Yp, obj->Zp);
+        EON_MatrixMultiply(oMatrix,tempMatrix);
+    } else
+        memcpy(oMatrix,obj->Matrix,sizeof(EON_Float)*16);
+    if (bmatrix)
+        EON_MatrixMultiply(oMatrix,bmatrix);
 
-  for (i = 0; i < EON_MAX_CHILDREN; i ++)
-    if (obj->Children[i])
-        eon_RenderObj(rend, obj->Children[i],
-                      oMatrix, nMatrix);
-  if (!obj->NumFaces || !obj->NumVertices) return;
+    for (i = 0; i < EON_MAX_CHILDREN; i ++)
+        if (obj->Children[i])
+            eon_RenderObj(rend, obj->Children[i],
+                          oMatrix, nMatrix);
+    if (!obj->NumFaces || !obj->NumVertices)
+        return;
 
-  EON_MatrixTranslate(tempMatrix,
-                      -rend->Cam->X, -rend->Cam->Y, -rend->Cam->Z);
-  EON_MatrixMultiply(oMatrix, tempMatrix);
-  EON_MatrixMultiply(oMatrix, rend->CMatrix);
-  EON_MatrixMultiply(nMatrix, rend->CMatrix);
+    EON_MatrixTranslate(tempMatrix,
+                        -rend->Cam->X, -rend->Cam->Y, -rend->Cam->Z);
+    EON_MatrixMultiply(oMatrix, tempMatrix);
+    EON_MatrixMultiply(oMatrix, rend->CMatrix);
+    EON_MatrixMultiply(nMatrix, rend->CMatrix);
 
-  x = obj->NumVertices;
-  vertex = obj->Vertices;
+    x = obj->NumVertices;
+    vertex = obj->Vertices;
+
+    do {
+        MACRO_eon_MatrixApply(oMatrix,vertex->x,vertex->y,vertex->z,
+                              vertex->xformedx, vertex->xformedy, vertex->xformedz);
+        MACRO_eon_MatrixApply(nMatrix,vertex->nx,vertex->ny,vertex->nz,
+                              vertex->xformednx,vertex->xformedny,vertex->xformednz);
+        vertex++;
+    } while (--x);
+
+    face = obj->Faces;
+    facepos = rend->NumFaces;
+
+    if (rend->NumFaces + obj->NumFaces >= EON_MAX_TRIANGLES) {// exceeded maximum face coutn
+        return;
+    }
+
+    rend->Info.TriStats[0] += obj->NumFaces;
+    rend->NumFaces += obj->NumFaces;
+    x = obj->NumFaces;
 
   do {
-    MACRO_eon_MatrixApply(oMatrix,vertex->x,vertex->y,vertex->z,
-                  vertex->xformedx, vertex->xformedy, vertex->xformedz);
-    MACRO_eon_MatrixApply(nMatrix,vertex->nx,vertex->ny,vertex->nz,
-                  vertex->xformednx,vertex->xformedny,vertex->xformednz);
-    vertex++;
-  } while (--x);
-
-  face = obj->Faces;
-  facepos = rend->NumFaces;
-
-  if (rend->NumFaces + obj->NumFaces >= EON_MAX_TRIANGLES) // exceeded maximum face coutn
-  {
-    return;
-  }
-
-  rend->Info.TriStats[0] += obj->NumFaces;
-  rend->NumFaces += obj->NumFaces;
-  x = obj->NumFaces;
-
-  do {
-    if (obj->BackfaceCull || face->Material->_st & EON_SHADE_FLAT)
-    {
+    if (obj->BackfaceCull || face->Material->_st & EON_SHADE_FLAT) {
       MACRO_eon_MatrixApply(nMatrix,face->nx,face->ny,face->nz,nx,ny,nz);
     }
     if (!obj->BackfaceCull || (MACRO_eon_DotProduct(nx,ny,nz,
@@ -3153,7 +3161,7 @@ void EON_RenderEnd(EON_Rend *rend)
 {
     EON_FaceInfo *f = rend->Faces;
     while (rend->NumFaces--) {
-        if (f->face->Material && f->face->Material->_PutFace) {
+        if (f->face->Material) {
             EON_ClipRenderFace(&rend->Clip, f->face);
         }
         f++;

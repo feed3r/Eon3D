@@ -93,7 +93,7 @@ enum {
     EON_SHADE_FLAT_DISTANCE    = 4,
     EON_SHADE_GOURAUD          = 8,
     EON_SHADE_GOURAUD_DISTANCE = 16
-}'
+};
 
 /*
 ** Light modes. Used with EON_Light.Type or EON_LightSet().
@@ -118,6 +118,10 @@ enum {
     EON_TEXENV_MIN         = 5,
     EON_TEXENV_MAX         = 6
 };
+
+/* Forward declarations needed for _PutFace */
+typedef struct _EON_Face EON_Face;
+typedef struct _EON_Cam EON_Cam;
 
 /*
 ** Texture type. Read textures with EON_ReadPCXTex(), and assign them to
@@ -153,15 +157,15 @@ typedef struct _EON_Mat {
   EON_uChar TexEnvMode;         /* TexEnv combining mode (EON_TEXENV_*) */
   EON_Bool zBufferable;         /* Can this material be zbuffered? */
   EON_uInt NumGradients;        /* Desired number of gradients to be used */
-                 /* The following are used mostly internally */
+  /* The following are used mostly internally */
   EON_uInt _ColorsUsed;         /* Number of colors actually used */
   EON_uChar _st, _ft;           /* The shadetype and filltype */
   EON_uInt _tsfact;             /* Translucent shading factor */
   EON_uInt16 *_AddTable;        /* Shading/Translucent/etc table */
   EON_uChar *_ReMapTable;       /* Table to remap colors to palette */
   EON_uChar *_RequestedColors;  /* _ColorsUsed colors, desired colors */
-  void (*_PutFace)();          /* Function that renders the triangle with this
-                                  material */
+  void (*_PutFace)(EON_Cam *, EON_Face *);
+  /* Renders the triangle with this material */
 } EON_Mat;
 
 /*
@@ -181,7 +185,7 @@ typedef struct _EON_Vertex {
 /*
 ** Face
 */
-typedef struct _EON_Face {
+struct _EON_Face {
   EON_Vertex *Vertices[3];      /* Vertices of triangle */
   EON_Float nx, ny, nz;         /* Normal of triangle (object space) */
   EON_Mat *Material;            /* Material of triangle */
@@ -196,7 +200,7 @@ typedef struct _EON_Face {
   EON_Float sLighting;          /* Face static lighting. Should usually be 0.0 */
   EON_Float Shades[3];          /* Vertex intensity */
   EON_Float vsLighting[3];      /* Vertex static lighting. Should be 0.0 */
-} EON_Face;
+};
 
 /*
 ** Object
@@ -248,7 +252,7 @@ typedef struct _EON_Light {
 /*
 ** Camera Type.
 */
-typedef struct _EON_Cam {
+struct _EON_Cam {
   EON_Float Fov;                  /* FOV in degrees valid range is 1-179 */
   EON_Float AspectRatio;          /* Aspect ratio (usually 1.0) */
   EON_Float ClipBack;             /* Far clipping ( < 0.0 is none) */
@@ -260,7 +264,7 @@ typedef struct _EON_Cam {
   EON_Float Pitch, Pan, Roll;     /* Camera angle in degrees in worldspace */
   EON_uChar *frameBuffer;         /* Framebuffer (ScreenWidth*ScreenHeight) */
   EON_ZBuffer *zBuffer;           /* Z Buffer */
-} EON_Cam;
+};
 
 typedef struct _EON_RenderInfo {
     EON_uInt32 TriStats[4];
