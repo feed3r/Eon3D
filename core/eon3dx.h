@@ -36,9 +36,6 @@
 
 #include <eon3d.h>
 
-/******************************************************************************/
-
-extern EON_uChar EON_Text_DefaultFont[256*16]; /* Default 8x16 font for EON_Text* */
 
 /******************************************************************************
 ** Object Primitives Code (make.c)
@@ -93,7 +90,7 @@ EON_Obj *EON_MakeCone(EON_Float r, EON_Float h, EON_uInt div, EON_Bool cap, EON_
     pointer to object created.
 */
 EON_Obj *EON_MakeCylinder(EON_Float r, EON_Float h, EON_uInt divr, EON_Bool captop,
-                       EON_Bool capbottom, EON_Mat *m);
+                          EON_Bool capbottom, EON_Mat *m);
 
 /*
   EON_MakeSphere() makes a sphere centered at the origin.
@@ -150,7 +147,7 @@ void EON_TextSetFont(EON_uChar *font, EON_uChar height);
 */
 
 void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                   EON_uChar color, EON_uChar c);
+                     EON_uChar color, EON_uChar c);
 
 /*
   EON_TextPutString() puts an array of characters to a camera
@@ -174,7 +171,7 @@ void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
     cam: The camera. If the camera has a zBuffer, it will be used.
     x: the x screen position of the left of the text
     y: the y screen position of the top of the text
-    z: the depth of the text (used when cam->zBuffer is set)
+    z: the depth of the text
     color: the color to make the text
     format:
       the characters to put, with printf() formatting codes.

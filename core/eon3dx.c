@@ -37,7 +37,7 @@
 // plush.c
 //
 
-EON_uChar EON_Text_DefaultFont[256*16] = {
+static const EON_uChar EON_Text_DefaultFont[256*16] = {
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 60, 66, 129, 231, 165, 153, 129, 153, 66, 60, 0, 0, 0, 0,
   0, 0, 60, 126, 255, 153, 219, 231, 255, 231, 126, 60, 0, 0, 0, 0,
@@ -300,8 +300,7 @@ EON_uChar EON_Text_DefaultFont[256*16] = {
 //
 
 static EON_uChar font_height = 16;
-
-static EON_uChar *current_font = EON_Text_DefaultFont;
+static const EON_uChar *current_font = EON_Text_DefaultFont;
 
 void EON_TextSetFont(EON_uChar *font, EON_uChar height)
 {
@@ -312,7 +311,7 @@ void EON_TextSetFont(EON_uChar *font, EON_uChar height)
 void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
                      EON_uChar color, EON_uChar c)
 {
-    EON_uChar *font = current_font + (c*font_height);
+    const EON_uChar *font = current_font + (c*font_height);
     EON_sInt offset = x+(y*cam->ScreenWidth);
     EON_ZBuffer zz = (EON_ZBuffer) (1.0/z);
     EON_sInt xx = x, a;
@@ -420,7 +419,7 @@ void EON_TextPrintf(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
 //
 
 EON_Obj *EON_MakeTorus(EON_Float r1, EON_Float r2, EON_uInt divrot, EON_uInt divrad,
-                    EON_Mat *m)
+                       EON_Mat *m)
 {
     EON_Obj *o;
     EON_Vertex *v;
