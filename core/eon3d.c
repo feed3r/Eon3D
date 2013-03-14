@@ -462,7 +462,7 @@ void EON_MatMapToPal(EON_Mat *m, EON_uChar *pal, EON_sInt pstart, EON_sInt pend)
         return;
     if (m->_ReMapTable)
         free(m->_ReMapTable);
-    m->_ReMapTable = (EON_uChar *) malloc(m->_ColorsUsed);
+    m->_ReMapTable = malloc(m->_ColorsUsed);
     for (i = 0; i < m->_ColorsUsed; i ++) {
         bestdiff = 1000000000;
         bestpos = pstart;
@@ -470,7 +470,7 @@ void EON_MatMapToPal(EON_Mat *m, EON_uChar *pal, EON_sInt pstart, EON_sInt pend)
         g = m->_RequestedColors[i*3+1];
         b = m->_RequestedColors[i*3+2];
         p = pal + pstart*3;
-        for (k = pstart; k <= (EON_sInt)pend; k ++) {
+        for (k = pstart; k <= (EON_sInt)pend; k++) {
             r2 = p[0] - r;
             g2 = p[1] - g;
             b2 = p[2] - b;
@@ -491,10 +491,10 @@ static void eon_GenerateSinglePalette(EON_Mat *m)
     m->_ColorsUsed = 1;
     if (m->_RequestedColors)
         free(m->_RequestedColors);
-    m->_RequestedColors = (EON_uChar *) malloc(3);
-    m->_RequestedColors[0] = EON_Min(EON_Max(m->Ambient[0],0),255);
-    m->_RequestedColors[1] = EON_Min(EON_Max(m->Ambient[1],0),255);
-    m->_RequestedColors[2] = EON_Min(EON_Max(m->Ambient[2],0),255);
+    m->_RequestedColors = malloc(3);
+    m->_RequestedColors[0] = EON_Clamp(m->Ambient[0],0,255);
+    m->_RequestedColors[1] = EON_Clamp(m->Ambient[1],0,255);
+    m->_RequestedColors[2] = EON_Clamp(m->Ambient[2],0,255);
 }
 
 static void eon_GeneratePhongPalette(EON_Mat *m)
@@ -524,7 +524,7 @@ static void eon_GeneratePhongPalette(EON_Mat *m)
         cb = pow((double) ca, (double) m->Shininess);
         for (x = 0; x < 3; x ++) {
             c = (EON_sInt) ((cb*m->Specular[x])+(ca*m->Diffuse[x])+m->Ambient[x]);
-            *(pal++) = EON_Max(0,EON_Min(c,255));
+            *(pal++) = EON_Clamp(c,0,255);
         }
     } while (--i);
 }
@@ -561,16 +561,16 @@ static void eon_GenerateTextureEnvPalette(EON_Mat *m)
             break;
         case EON_TEXENV_TEXMINUSENV: // tex-env
             for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
-                c = (EON_sInt) (*texpal++) - (EON_sInt) envpal[0]; *pal++ = EON_Max(0,EON_Min(255,c));
-                c = (EON_sInt) (*texpal++) - (EON_sInt) envpal[1]; *pal++ = EON_Max(0,EON_Min(255,c));
-                c = (EON_sInt) (*texpal++) - (EON_sInt) envpal[2]; *pal++ = EON_Max(0,EON_Min(255,c));
+                c = (EON_sInt) (*texpal++) - (EON_sInt) envpal[0]; *pal++ = EON_Clamp(c,0,255);
+                c = (EON_sInt) (*texpal++) - (EON_sInt) envpal[1]; *pal++ = EON_Clamp(c,0,255);
+                c = (EON_sInt) (*texpal++) - (EON_sInt) envpal[2]; *pal++ = EON_Clamp(c,0,255);
             }
             break;
         case EON_TEXENV_ENVMINUSTEX: // env-tex
             for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
-                c = -(EON_sInt) (*texpal++) - (EON_sInt) envpal[0]; *pal++ = EON_Max(0,EON_Min(255,c));
-                c = -(EON_sInt) (*texpal++) - (EON_sInt) envpal[1]; *pal++ = EON_Max(0,EON_Min(255,c));
-                c = -(EON_sInt) (*texpal++) - (EON_sInt) envpal[2]; *pal++ = EON_Max(0,EON_Min(255,c));
+                c = -(EON_sInt) (*texpal++) - (EON_sInt) envpal[0]; *pal++ = EON_Clamp(c,0,255);
+                c = -(EON_sInt) (*texpal++) - (EON_sInt) envpal[1]; *pal++ = EON_Clamp(c,0,255);
+                c = -(EON_sInt) (*texpal++) - (EON_sInt) envpal[2]; *pal++ = EON_Clamp(c,0,255);
             }
             break;
         case EON_TEXENV_MIN:
@@ -591,14 +591,14 @@ static void eon_GenerateTextureEnvPalette(EON_Mat *m)
             break;
         default: // add
             for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
-                c = (EON_sInt) (*texpal++) + (EON_sInt) envpal[0]; *pal++ = EON_Max(0,EON_Min(255,c));
-                c = (EON_sInt) (*texpal++) + (EON_sInt) envpal[1]; *pal++ = EON_Max(0,EON_Min(255,c));
-                c = (EON_sInt) (*texpal++) + (EON_sInt) envpal[2]; *pal++ = EON_Max(0,EON_Min(255,c));
+                c = (EON_sInt) (*texpal++) + (EON_sInt) envpal[0]; *pal++ = EON_Clamp(c,0,255);
+                c = (EON_sInt) (*texpal++) + (EON_sInt) envpal[1]; *pal++ = EON_Clamp(c,0,255);
+                c = (EON_sInt) (*texpal++) + (EON_sInt) envpal[2]; *pal++ = EON_Clamp(c,0,255);
             }
             break;
         }
         envpal += 3;
-         m->_AddTable[whichlevel] = whichlevel*m->Texture->NumColors;
+        m->_AddTable[whichlevel] = whichlevel*m->Texture->NumColors;
     }
 }
 
@@ -615,7 +615,7 @@ static void eon_GenerateTexturePalette(EON_Mat *m, EON_Texture *t)
     do {
         for (x = 0; x < 3; x ++) {
             c = m->Ambient[x] + *ppal++;
-            *(pal++) = EON_Max(0,EON_Min(c,255));
+            *(pal++) = EON_Clamp(c,0,255);
         }
     } while (--i);
 }
@@ -654,7 +654,7 @@ static void eon_GeneratePhongTexturePalette(EON_Mat *m, EON_Texture *t)
         do {
             for (x = 0; x < 3; x ++) {
                 c = (EON_sInt) ((cb*m->Specular[x])+(ca*m->Diffuse[x])+m->Ambient[x] + *ppal++);
-                *(pal++) = EON_Max(0,EON_Min(c,255));
+                *(pal++) = EON_Clamp(c,0,255);
             }
         } while (--i);
     } while (--i2);
@@ -978,7 +978,7 @@ static EON_uInt eon_ClipToPlane(EON_Clip *clip, EON_uInt numVerts, double *plane
 void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam)
 {
     clip->AdjAsp = 1.0 / cam->AspectRatio;
-    clip->Fov = EON_Min(EON_Max(cam->Fov,1.0),179.0);
+    clip->Fov = EON_Clamp(cam->Fov,1.0,179.0);
     clip->Fov = (1.0/tan(clip->Fov*(EON_PI/360.0)))*(double) (cam->ClipRight-cam->ClipLeft);
     clip->Cx = cam->CenterX<<20;
     clip->Cy = cam->CenterY<<20;
@@ -1076,7 +1076,7 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face)
     if (numVerts > 2) {
         memcpy(&newface,face,sizeof(EON_Face));
         for (k = 2; k < numVerts; k ++) {
-            newface.fShade = EON_Max(0,EON_Min(face->fShade,1));
+            newface.fShade = EON_Clamp(face->fShade,0,1);
             for (a = 0; a < 3; a ++) {
                 if (a == 0)
                     w = 0;
@@ -3067,11 +3067,11 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                 if (light->Type & EON_LIGHT_POINT_ANGLE) {
                    nx2 = (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/
                            light->HalfDistSquared));
-                  tmp2 *= EON_Max(0,EON_Min(1.0,nx2))*light->Intensity;
+                  tmp2 *= EON_Clamp(nx2,0,1.0)*light->Intensity;
                 } else {
                   tmp2 = (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/
                     light->HalfDistSquared));
-                  tmp2 = EON_Max(0,EON_Min(1.0,tmp2))*light->Intensity;
+                  tmp2 = EON_Clamp(tmp2,0,1.0)*light->Intensity;
                 }
               }
               if (light->Type == EON_LIGHT_VECTOR)
@@ -3120,10 +3120,10 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                   double nz2 = rend->Lights[i].l[2] - face->Vertices[a]->xformedz;
                   if (light->Type & EON_LIGHT_POINT_ANGLE) {
                      double t= (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/light->HalfDistSquared));
-                     tmp2 *= EON_Max(0,EON_Min(1.0,t))*light->Intensity;
+                     tmp2 *= EON_Clamp(t,0,1.0)*light->Intensity;
                   } else {
                     tmp2 = (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/light->HalfDistSquared));
-                    tmp2 = EON_Max(0,EON_Min(1.0,tmp2))*light->Intensity;
+                    tmp2 = EON_Clamp(tmp2,0,1.0)*light->Intensity;
                   }
                 }
                 if (light->Type == EON_LIGHT_VECTOR)
