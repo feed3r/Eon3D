@@ -49,7 +49,7 @@
 
 enum {
     /* Maximum children per object */
-    EON_MAX_CHILDREN = 128,
+    EON_MAX_CHILDREN = 4096,
     /* Maximum lights per scene -- if you exceed this, they will be ignored */
     EON_MAX_LIGHTS = 32,
     /* Maximum number of triangles per scene -- if you exceed this, entire
