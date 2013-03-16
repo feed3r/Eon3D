@@ -388,7 +388,7 @@ void EON_MatMapToPal(EON_Mat *m, EON_uChar *pal, EON_sInt pstart, EON_sInt pend)
     nothing
 */
 void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
-                     EON_sInt pend, EON_Mat **materials, EON_sInt nmats);
+                       EON_sInt pend, EON_Mat **materials, EON_sInt nmats);
 
 
 /******************************************************************************
