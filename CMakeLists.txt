@@ -13,8 +13,15 @@ set(CMAKE_REQUIRED_INCLUDES 	stdlib.h)
 set(CMAKE_REQUIRED_INCLUDES 	stdint.h)
 set(CMAKE_REQUIRED_INCLUDES 	inttypes.h)
 
+option(ENABLE_PROFILE "enable the gprof instrumentation" OFF)
+
 if(CMAKE_COMPILER_IS_GNUCC)
-    add_definitions(-g -Os -Wall)# -Werror
+    add_definitions(-g -O2 -Wall)
+    if(ENABLE_PROFILE)
+         message(STATUS "Enabling the profiling instrumentation")
+         add_definitions(-pg)
+         set(CMAKE_EXE_LINKER_FLAGS -pg)
+    endif(ENABLE_PROFILE)
 endif(CMAKE_COMPILER_IS_GNUCC)
 
 configure_file(${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_BINARY_DIR}/config.h)
