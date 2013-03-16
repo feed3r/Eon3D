@@ -147,7 +147,7 @@ void EON_TextSetFont(EON_uChar *font, EON_uChar height);
 */
 
 void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                     EON_uChar color, EON_uChar c);
+                     EON_uChar color, char c);
 
 /*
   EON_TextPutString() puts an array of characters to a camera
@@ -163,7 +163,7 @@ void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
     nothing
 */
 void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                    EON_uChar color, EON_sChar *string);
+                    EON_uChar color, const char *string);
 
 /*
   EON_TextPrintf() is printf() for graphics
@@ -181,7 +181,7 @@ void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
     nothing
 */
 void EON_TextPrintf(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                    EON_uChar color, EON_sChar *format, ...);
+                    EON_uChar color, const char *format, ...);
 
 /*************************************************************************/
 

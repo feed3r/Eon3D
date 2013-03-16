@@ -309,7 +309,7 @@ void EON_TextSetFont(EON_uChar *font, EON_uChar height)
 }
 
 void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                     EON_uChar color, EON_uChar c)
+                     EON_uChar color, char c)
 {
     const EON_uChar *font = current_font + (c*font_height);
     EON_sInt offset = x+(y*cam->ScreenWidth);
@@ -378,7 +378,7 @@ void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
 }
 
 void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                    EON_uChar color, EON_sChar *string)
+                    EON_uChar color, const char *string)
 {
     EON_sInt xx = x;
     while (*string) {
@@ -396,7 +396,7 @@ void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
             xx += 8*5;
             break;
         default:
-            EON_TextPutChar(cam,xx,y,z,color,(EON_uChar) *string);
+            EON_TextPutChar(cam,xx,y,z,color, *string);
             xx += 8;
         break;
         }
@@ -405,12 +405,12 @@ void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
 }
 
 void EON_TextPrintf(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                    EON_uChar color, EON_sChar *format, ...)
+                    EON_uChar color, const char *format, ...)
 {
     va_list arglist;
-    EON_sChar str[256];
+    char str[256];
     va_start(arglist, format);
-    vsprintf((char *)str, (char *) format,arglist);
+    vsnprintf(str, sizeof(str), format,arglist);
     va_end(arglist);
     EON_TextPutStr(cam, x, y, z, color, str);
 }
