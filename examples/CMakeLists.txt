@@ -32,3 +32,5 @@ target_link_libraries(example02_cube_torus eon3dx_console)
 target_link_libraries(example02_cube_torus eon3d_kit)
 target_link_libraries(example02_cube_torus m)
 
+add_subdirectory(fly)
+
