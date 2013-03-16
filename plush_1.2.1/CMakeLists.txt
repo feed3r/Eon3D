@@ -16,6 +16,6 @@ if(ENABLE_PLUSH)
     add_library(plush SHARED ${LIBPLUSH_SOURCES})
 
     target_link_libraries(plush_s m)
-	target_link_libraries(plush m)
+    target_link_libraries(plush m)
 endif(ENABLE_PLUSH)
 
