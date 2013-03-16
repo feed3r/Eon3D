@@ -122,57 +122,71 @@ EON_Obj *EON_MakeTorus(EON_Float r1, EON_Float r2, EON_uInt divrot,
 /******************************************************************************
 ** 8xX  Bitmapped Text (text.c)
 ******************************************************************************/
+
+typedef struct _EON_Font {
+    const EON_uChar *Face;
+    EON_uChar Height;
+    EON_uChar Color;
+} EON_Font;
+
 /*
-  EON_TextSetFont() sets the font to be used by the EON_Text*() functions.
+  EON_TextDefaultFont() gets the default builtin EON font.
     Parameters:
-      font: a pointer to a 8xX bitmapped font
-      height: the height of the font (X)
+      nothing.
     Returns:
-      nothing
+      a pointer to a Font object to be initialized.
 */
 
-void EON_TextSetFont(EON_uChar *font, EON_uChar height);
+EON_Font *EON_TextDefaultFont();
+
+/*
+  EON_FontDelete() frees all memory associated with "font"
+*/
+
+void EON_FontDelete(EON_Font *font);
 
 /*
   EON_TextPutChar() puts a character to a camera
   Parameters:
-    cam: The camera. If the camera has a zBuffer, it will be used.
+    font: the Font object to be used.
+    cam: the camera. If the camera has a zBuffer, it will be used.
     x: the x screen position of the left of the text
     y: the y screen position of the top of the text
     z: the depth of the text (used when cam->zBuffer is set)
-    color: the color to make the text
     c: the character to put. Special characters such as '\n' aren't handled.
   Returns:
     nothing
 */
 
-void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                     EON_uChar color, char c);
+void EON_TextPutChar(EON_Font *font,
+                     EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+                     char c);
 
 /*
   EON_TextPutString() puts an array of characters to a camera
   Parameters:
+    font: the Font object to be used.
     cam: The camera. If the camera has a zBuffer, it will be used.
     x: the x screen position of the left of the text
     y: the y screen position of the top of the text
     z: the depth of the text (used when cam->zBuffer is set)
-    color: the color to make the text
     string:
       the characters to put. '\n' and '\t' are handled as one would expect
   Returns:
     nothing
 */
-void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                    EON_uChar color, const char *string);
+void EON_TextPutStr(EON_Font *font,
+                    EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+                    const char *string);
 
 /*
   EON_TextPrintf() is printf() for graphics
   Parameters:
+    font: the Font object to be used.
     cam: The camera. If the camera has a zBuffer, it will be used.
     x: the x screen position of the left of the text
     y: the y screen position of the top of the text
     z: the depth of the text
-    color: the color to make the text
     format:
       the characters to put, with printf() formatting codes.
       '\n' and '\t' are handled as one would expect
@@ -180,8 +194,9 @@ void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
   Returns:
     nothing
 */
-void EON_TextPrintf(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                    EON_uChar color, const char *format, ...);
+void EON_TextPrintf(EON_Font *font,
+                    EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+                    const char *format, ...);
 
 /*************************************************************************/
 

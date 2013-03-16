@@ -131,6 +131,7 @@ int main(int argc, char *argv[])
     EON_Obj *sky, *sky2;
     EONx_Console *con;
     EON_Rend *rend;
+    EON_Font *font;
     uint64_t ts = 0;
 
     uint8_t pal[3 * 256]; // our palette
@@ -145,6 +146,8 @@ int main(int argc, char *argv[])
     cam = EONx_ConsoleGetCamera(con);
     rend = EON_RendCreate(cam);
     cam->Y = 800; // move the camera up from the ground
+
+    font = EON_TextDefaultFont();
 
     setup_materials(con,mat,pal); // intialize materials and palette
 
@@ -183,7 +186,8 @@ int main(int argc, char *argv[])
         EON_RenderEnd(rend);
 
         elapsed = (eon_gettime_ms() - ts) / 1000000;
-        EON_TextPrintf(cam,cam->ClipLeft+5,cam->ClipTop,0.0,156,
+        EON_TextPrintf(font, cam,
+                       cam->ClipLeft+5, cam->ClipTop, 0.0,
                       "%.3f FPS",
                       (frames/ (double) elapsed));
         fprintf(stderr, 
@@ -203,6 +207,7 @@ int main(int argc, char *argv[])
         if (cam->Y >  8999       ) cam->Y =  0;
     }
 
+    EON_FontDelete(font);
     EON_ObjDelete(land);
     EON_ObjDelete(sky);
     EON_ObjDelete(sky2);

@@ -299,35 +299,43 @@ static const EON_uChar EON_Text_DefaultFont[256*16] = {
 // text.c
 //
 
-static EON_uChar font_height = 16;
-static const EON_uChar *current_font = EON_Text_DefaultFont;
-
-void EON_TextSetFont(EON_uChar *font, EON_uChar height)
+void EON_FontDelete(EON_Font *font)
 {
-    current_font = font;
-    font_height = height;
+    free(font);
 }
 
-void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                     EON_uChar color, char c)
+EON_Font *EON_TextDefaultFont()
 {
-    const EON_uChar *font = current_font + (c*font_height);
+    EON_Font *font = calloc(1, sizeof(EON_Font));
+    if (font) {
+        font->Face = EON_Text_DefaultFont;
+        font->Height = 16;
+        font->Color = 156;
+    }
+    return font;
+}
+
+void EON_TextPutChar(EON_Font *font,
+                     EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+                     char c)
+{
+    const EON_uChar *face = font->Face + (c * font->Height);
     EON_sInt offset = x+(y*cam->ScreenWidth);
     EON_ZBuffer zz = (EON_ZBuffer) (1.0/z);
     EON_sInt xx = x, a;
-    EON_uChar len = font_height;
+    EON_uChar len = font->Height;
     EON_uChar ch;
     EON_uChar *outmem;
     EON_ZBuffer *zbuffer;
-    if (y+font_height < cam->ClipTop || y >= cam->ClipBottom)
+    if (y+font->Height < cam->ClipTop || y >= cam->ClipBottom)
         return;
     if (y < cam->ClipTop) {
-        font += (cam->ClipTop-y);
+        face += (cam->ClipTop-y);
         offset += (cam->ClipTop-y)*cam->ScreenWidth;
         len -= (cam->ClipTop-y);
         y = cam->ClipTop;
     }
-    if (y+font_height >= cam->ClipBottom) {
+    if (y+font->Height >= cam->ClipBottom) {
         len = cam->ClipBottom-y;
     }
     if (len > 0) {
@@ -337,7 +345,7 @@ void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
                 zbuffer = cam->zBuffer + offset;
                 offset += cam->ScreenWidth;
                 xx = x;
-                ch = *font++;
+                ch = *face++;
                 a = 128;
                 while (a) {
                     if (xx >= cam->ClipRight)
@@ -346,7 +354,7 @@ void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
                         if (ch & a)
                             if (zz > *zbuffer) {
                                 *zbuffer = zz;
-                                *outmem = color;
+                                *outmem = font->Color;
                             }
                     zbuffer++;
                     outmem++;
@@ -360,14 +368,14 @@ void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
                 outmem = cam->frameBuffer + offset;
                 offset += cam->ScreenWidth;
                 xx = x;
-                ch = *font++;
+                ch = *face++;
                 a = 128;
                 while (a) {
                     if (xx >= cam->ClipRight)
                         break;
                     if (xx++ >= cam->ClipLeft)
                         if (ch & a)
-                            *outmem = color;
+                            *outmem = font->Color;
                     outmem++;
                     a >>= 1;
                 }
@@ -377,14 +385,15 @@ void EON_TextPutChar(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
     }
 }
 
-void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                    EON_uChar color, const char *string)
+void EON_TextPutStr(EON_Font *font, 
+                    EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+                    const char *string)
 {
     EON_sInt xx = x;
     while (*string) {
         switch (*string) {
         case '\n':
-            y += font_height;
+            y += font->Height;
             xx = x;
             break;
         case ' ':
@@ -396,7 +405,7 @@ void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
             xx += 8*5;
             break;
         default:
-            EON_TextPutChar(cam,xx,y,z,color, *string);
+            EON_TextPutChar(font, cam, xx, y, z, *string);
             xx += 8;
         break;
         }
@@ -404,15 +413,16 @@ void EON_TextPutStr(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
     }
 }
 
-void EON_TextPrintf(EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
-                    EON_uChar color, const char *format, ...)
+void EON_TextPrintf(EON_Font *font,
+                    EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+                    const char *format, ...)
 {
     va_list arglist;
     char str[256];
     va_start(arglist, format);
     vsnprintf(str, sizeof(str), format,arglist);
     va_end(arglist);
-    EON_TextPutStr(cam, x, y, z, color, str);
+    EON_TextPutStr(font, cam, x, y, z, str);
 }
 
 // make.c
