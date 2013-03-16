@@ -161,7 +161,6 @@ int main(int argc, char *argv[])
     ts = eon_gettime_ms();
     while (!EONx_ConsoleWaitKey(con)) {
         // save time when the frame began, to be used later.
-        uint64_t prevts = eon_gettime_ms();
         uint64_t elapsed = 0;
         frames++;
 
@@ -215,9 +214,6 @@ int main(int argc, char *argv[])
     EON_MatDelete(mat[1]);
     EON_MatDelete(mat[2]);
 
-    printf("\nThis has been a Plush demo app.\n"
-           "Visit the Plush 3D homepage at: \n"
-           "  http://nullsoft.home.ml.org/plush/\n\n");
     return EONx_ConsoleShutdown();
 }
 
