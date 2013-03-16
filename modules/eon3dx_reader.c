@@ -324,7 +324,7 @@ static void eon_RescaleImage(EON_uChar *in, EON_uChar *out, EON_uInt inx,
 }
 
 
-EON_Texture *EON_ReadPCXTex(char *fn, EON_Bool rescale, EON_Bool optimize)
+EON_Texture *EONx_ReadPCXTex(char *fn, EON_Bool rescale, EON_Bool optimize)
 {
     EON_uChar *data, *pal;
     EON_uInt16 x, y;
