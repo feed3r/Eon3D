@@ -1,5 +1,5 @@
 
-set(EON3D_LIBS eon3d eon3dx eon3dx_console eon3d_kit m)
+set(EON3D_LIBS eon3d eon3dx eon3dx_console m)
 
 add_executable(example00_load example00_load.c)
 add_executable(example01_cube example01_cube.c)

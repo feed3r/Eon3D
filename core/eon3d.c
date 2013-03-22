@@ -31,6 +31,7 @@
  *                                                                        *
  **************************************************************************/
 
+#include "memorykit.h"
 #include "eon3d.h"
 
 
@@ -214,35 +215,32 @@ void EON_ObjDelete(EON_Obj *o)
             if (o->Children[i])
                 EON_ObjDelete(o->Children[i]);
             if (o->Vertices)
-                free(o->Vertices);
+                CX_free(o->Vertices);
             if (o->Faces)
-                free(o->Faces);
-        free(o);
+                CX_free(o->Faces);
+        CX_free(o);
     }
     return;
 }
 
 EON_Obj *EON_ObjCreate(EON_uInt32 nv, EON_uInt32 nf)
 {
-    EON_Obj *o;
-    if (!(o = (EON_Obj *) malloc(sizeof(EON_Obj))))
+    EON_Obj *o = CX_zalloc(sizeof(EON_Obj));
+    if (!o)
         return 0;
-    memset(o,0,sizeof(EON_Obj));
     o->GenMatrix = 1;
     o->BackfaceCull = 1;
     o->NumVertices = nv;
     o->NumFaces = nf;
-    if (nv && !(o->Vertices=(EON_Vertex *) malloc(sizeof(EON_Vertex)*nv))) {
-        free(o);
+    if (nv && !(o->Vertices = CX_zalloc(sizeof(EON_Vertex)*nv))) {
+        CX_free(o);
         return 0;
     }
-    if (nf && !(o->Faces = (EON_Face *) malloc(sizeof(EON_Face)*nf))) {
-        free(o->Vertices);
-        free(o);
+    if (nf && !(o->Faces = CX_zalloc(sizeof(EON_Face)*nf))) {
+        CX_free(o->Vertices);
+        CX_free(o);
         return 0;
     }
-    memset(o->Vertices,0,sizeof(EON_Vertex)*nv);
-    memset(o->Faces,0,sizeof(EON_Face)*nf);
     return o;
 }
 
@@ -362,20 +360,18 @@ static void eon_MatSetupTransparent(EON_Mat *m, EON_uChar *pal);
 
 EON_Mat *EON_MatCreate()
 {
-    EON_Mat *m;
-    m = (EON_Mat *) malloc(sizeof(EON_Mat));
-    if (!m)
-        return 0;
-    memset(m,0,sizeof(EON_Mat));
-    m->EnvScaling = 1.0f;
-    m->TexScaling = 1.0f;
-    m->Ambient[0] = m->Ambient[1] = m->Ambient[2] = 0;
-    m->Diffuse[0] = m->Diffuse[1] = m->Diffuse[2] = 128;
-    m->Specular[0] = m->Specular[1] = m->Specular[2] = 128;
-    m->Shininess = 4;
-    m->NumGradients = 32;
-    m->FadeDist = 1000.0;
-    m->zBufferable = 1;
+    EON_Mat *m = CX_zalloc(sizeof(EON_Mat));
+    if (m) {
+        m->EnvScaling = 1.0f;
+        m->TexScaling = 1.0f;
+        m->Ambient[0] = m->Ambient[1] = m->Ambient[2] = 0;
+        m->Diffuse[0] = m->Diffuse[1] = m->Diffuse[2] = 128;
+        m->Specular[0] = m->Specular[1] = m->Specular[2] = 128;
+        m->Shininess = 4;
+        m->NumGradients = 32;
+        m->FadeDist = 1000.0;
+        m->zBufferable = 1;
+    }
     return m;
 }
 
@@ -383,12 +379,12 @@ void EON_MatDelete(EON_Mat *m)
 {
     if (m) {
         if (m->_ReMapTable)
-            free(m->_ReMapTable);
+            CX_free(m->_ReMapTable);
         if (m->_RequestedColors)
-            free(m->_RequestedColors);
+            CX_free(m->_RequestedColors);
         if (m->_AddTable)
-            free(m->_AddTable);
-        free(m);
+            CX_free(m->_AddTable);
+        CX_free(m);
     }
     return;
 }
@@ -438,8 +434,8 @@ static void eon_MatSetupTransparent(EON_Mat *m, EON_uChar *pal)
     EON_uInt x, intensity;
     if (m->Transparent) {
         if (m->_AddTable)
-            free(m->_AddTable);
-        m->_AddTable = (EON_uInt16 *) malloc(256*sizeof(EON_uInt16));
+            CX_free(m->_AddTable);
+        m->_AddTable = CX_malloc(256 * sizeof(EON_uInt16));
         for (x = 0; x < 256; x ++) {
             intensity = *pal++;
             intensity += *pal++;
@@ -461,8 +457,8 @@ void EON_MatMapToPal(EON_Mat *m, EON_uChar *pal, EON_sInt pstart, EON_sInt pend)
     if (!m->_RequestedColors)
         return;
     if (m->_ReMapTable)
-        free(m->_ReMapTable);
-    m->_ReMapTable = malloc(m->_ColorsUsed);
+        CX_free(m->_ReMapTable);
+    m->_ReMapTable = CX_malloc(m->_ColorsUsed);
     for (i = 0; i < m->_ColorsUsed; i ++) {
         bestdiff = 1000000000;
         bestpos = pstart;
@@ -490,8 +486,8 @@ static void eon_GenerateSinglePalette(EON_Mat *m)
 {
     m->_ColorsUsed = 1;
     if (m->_RequestedColors)
-        free(m->_RequestedColors);
-    m->_RequestedColors = malloc(3);
+        CX_free(m->_RequestedColors);
+    m->_RequestedColors = CX_malloc(3); // FIXME
     m->_RequestedColors[0] = EON_Clamp(m->Ambient[0],0,255);
     m->_RequestedColors[1] = EON_Clamp(m->Ambient[1],0,255);
     m->_RequestedColors[2] = EON_Clamp(m->Ambient[2],0,255);
@@ -505,8 +501,8 @@ static void eon_GeneratePhongPalette(EON_Mat *m)
     double a, da, ca, cb;
     m->_ColorsUsed = m->NumGradients;
     if (m->_RequestedColors)
-        free(m->_RequestedColors);
-    pal =  m->_RequestedColors = (EON_uChar *) malloc(m->_ColorsUsed*3);
+        CX_free(m->_RequestedColors);
+    pal =  m->_RequestedColors = CX_malloc(m->_ColorsUsed*3);
     a = EON_PI/2.0;
 
     if (m->NumGradients > 1)
@@ -536,12 +532,12 @@ static void eon_GenerateTextureEnvPalette(EON_Mat *m)
     EON_uChar *texpal, *envpal, *pal;
     m->_ColorsUsed = m->Texture->NumColors*m->Environment->NumColors;
     if (m->_RequestedColors)
-        free(m->_RequestedColors);
-    pal = m->_RequestedColors = (EON_uChar *) malloc(m->_ColorsUsed*3);
+        CX_free(m->_RequestedColors);
+    pal = m->_RequestedColors = CX_malloc(m->_ColorsUsed*3);
     envpal = m->Environment->PaletteData;
     if (m->_AddTable)
-        free(m->_AddTable);
-    m->_AddTable = (EON_uInt16 *) malloc(m->Environment->NumColors*sizeof(EON_uInt16));
+        CX_free(m->_AddTable);
+    m->_AddTable = CX_malloc(m->Environment->NumColors*sizeof(EON_uInt16));
     for (whichlevel = 0; whichlevel < m->Environment->NumColors; whichlevel++) {
         texpal = m->Texture->PaletteData;
         switch (m->TexEnvMode) {
@@ -608,8 +604,8 @@ static void eon_GenerateTexturePalette(EON_Mat *m, EON_Texture *t)
     EON_sInt c, i, x;
     m->_ColorsUsed = t->NumColors;
     if (m->_RequestedColors)
-        free(m->_RequestedColors);
-    pal = m->_RequestedColors = (EON_uChar *) malloc(m->_ColorsUsed*3);
+        CX_free(m->_RequestedColors);
+    pal = m->_RequestedColors = CX_malloc(m->_ColorsUsed * 3);
     ppal = t->PaletteData;
     i = t->NumColors;
     do {
@@ -637,8 +633,8 @@ static void eon_GeneratePhongTexturePalette(EON_Mat *m, EON_Texture *t)
         num_shades = 1;
     m->_ColorsUsed = num_shades*t->NumColors;
     if (m->_RequestedColors)
-        free(m->_RequestedColors);
-    pal = m->_RequestedColors = (EON_uChar *) malloc(m->_ColorsUsed*3);
+        CX_free(m->_RequestedColors);
+    pal = m->_RequestedColors = CX_malloc(m->_ColorsUsed * 3);
     a = EON_PI/2.0;
     if (num_shades > 1)
         da = (-EON_PI/2.0)/(num_shades-1);
@@ -660,8 +656,8 @@ static void eon_GeneratePhongTexturePalette(EON_Mat *m, EON_Texture *t)
     } while (--i2);
     ca = 0;
     if (m->_AddTable)
-        free(m->_AddTable);
-    m->_AddTable = (EON_uInt16 *) malloc(256*sizeof(EON_uInt16));
+        CX_free(m->_AddTable);
+    m->_AddTable = CX_malloc(256 * sizeof(EON_uInt16));
     addtable = m->_AddTable;
     i = 256;
     do {
@@ -785,8 +781,8 @@ void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
     if (!numColors)
         return;
 
-    allColors=(EON_uChar*)malloc(numColors*3);
-    numColors=0;
+    allColors = CX_malloc(numColors * 3);
+    numColors = 0;
 
     for (x = 0; x < nmats; x ++) {
         if (materials[x]) {
@@ -799,11 +795,11 @@ void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
 
     if (numColors <= len) {
         memcpy(p+pstart*3,allColors,numColors*3);
-        free(allColors);
+        CX_free(allColors);
         return;
     }
 
-    colorBlock = (_ct *) malloc(sizeof(_ct)*numColors);
+    colorBlock = CX_malloc(sizeof(_ct) * numColors);
     for (x = 0; x < numColors; x++) {
         colorBlock[x].r = allColors[x*3];
         colorBlock[x].g = allColors[x*3+1];
@@ -811,7 +807,7 @@ void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
         colorBlock[x].visited = 0;
         colorBlock[x].next = 0;
     }
-    free(allColors);
+    CX_free(allColors);
 
     /* Build a list, starting at color 0 */
     current = 0;
@@ -862,7 +858,7 @@ void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
         p[x++] = cp->g;
         p[x++] = cp->b;
     }
-    free(colorBlock);
+    CX_free(colorBlock);
 }
 
 // light.c
@@ -898,12 +894,12 @@ EON_Light *EON_LightSet(EON_Light *light, EON_uChar mode, EON_Float x, EON_Float
 
 EON_Light *EON_LightCreate()
 {
-    return calloc(1, sizeof(EON_Light));
+    return CX_zalloc(sizeof(EON_Light));
 }
 
 void EON_LightDelete(EON_Light *l)
 {
-    free(l);
+    CX_free(l);
 }
 
 EON_Light *EON_LightNew(EON_uChar mode, EON_Float x, EON_Float y, EON_Float z,
@@ -921,7 +917,7 @@ EON_Light *EON_LightNew(EON_uChar mode, EON_Float x, EON_Float y, EON_Float z,
 
 void EON_CamDelete(EON_Cam *c)
 {
-    free(c);
+    CX_free(c);
     return;
 }
 
@@ -949,7 +945,7 @@ void EON_CamSetTarget(EON_Cam *c, EON_Float x, EON_Float y, EON_Float z)
 EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov,
                        EON_uChar *fb, EON_ZBuffer *zb)
 {
-    EON_Cam *c = calloc(1, sizeof(EON_Cam));
+    EON_Cam *c = CX_zalloc(sizeof(EON_Cam));
     if (c) {
         c->Fov = fov;
         c->AspectRatio = ar;
@@ -1252,10 +1248,10 @@ void EON_TexDelete(EON_Texture *t)
 {
     if (t) {
         if (t->Data)
-            free(t->Data);
+            CX_free(t->Data);
         if (t->PaletteData)
-            free(t->PaletteData);
-        free(t);
+            CX_free(t->PaletteData);
+        CX_free(t);
     }
 }
 
@@ -2923,7 +2919,7 @@ static void eon_RendReset(EON_Rend *rend)
 
 EON_Rend *EON_RendCreate(EON_Cam *Camera)
 {
-    EON_Rend *rend = malloc(sizeof(*rend));
+    EON_Rend *rend = CX_malloc(sizeof(EON_Rend));
     if (rend) {
         eon_RendReset(rend);
         rend->Cam = Camera;
@@ -2934,7 +2930,7 @@ EON_Rend *EON_RendCreate(EON_Cam *Camera)
 
 void EON_RendDelete(EON_Rend *rend)
 {
-    free(rend);
+    CX_free(rend);
     return;
 }
 
