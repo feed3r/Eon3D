@@ -2892,8 +2892,8 @@ static void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace)
 //
 
 #define MACRO_eon_MatrixApply(m,x,y,z,outx,outy,outz) \
-      ( outx ) = ( x )*( m )[0] + ( y )*( m )[1] + ( z )*( m )[2] + ( m )[3];\
-      ( outy ) = ( x )*( m )[4] + ( y )*( m )[5] + ( z )*( m )[6] + ( m )[7];\
+      ( outx ) = ( x )*( m )[0] + ( y )*( m )[1] + ( z )*( m )[2 ] + ( m )[3 ];\
+      ( outy ) = ( x )*( m )[4] + ( y )*( m )[5] + ( z )*( m )[6 ] + ( m )[7 ];\
       ( outz ) = ( x )*( m )[8] + ( y )*( m )[9] + ( z )*( m )[10] + ( m )[11]
 
 #define MACRO_eon_DotProduct(x1,y1,z1,x2,y2,z2) \
@@ -2973,17 +2973,110 @@ void EON_RenderLight(EON_Rend *rend, EON_Light *light)
     rend->NumLights++;
 }
 
+static inline EON_Double eon_RenderVertexLights(EON_Rend *rend, EON_Vertex *vertex,
+                                                EON_Double BaseShade, EON_Bool BackfaceIllumination,
+                                                EON_Float nx, EON_Float ny, EON_Float nz)
+{
+    EON_Double shade = BaseShade;
+    EON_uInt32 i;
+    for (i = 0; i < rend->NumLights; i ++) {
+        EON_Double CurShade = 0.0;
+        EON_Light *light = rend->Lights[i].light;
+        if (light->Type & EON_LIGHT_POINT_ANGLE) {
+            EON_Double nx2 = rend->Lights[i].l[0] - vertex->xformedx;
+            EON_Double ny2 = rend->Lights[i].l[1] - vertex->xformedy;
+            EON_Double nz2 = rend->Lights[i].l[2] - vertex->xformedz;
+            MACRO_eon_NormalizeVector(nx2,ny2,nz2);
+            CurShade = MACRO_eon_DotProduct(nx,ny,nz,nx2,ny2,nz2)*light->Intensity;
+        }
+        if (light->Type & EON_LIGHT_POINT_DISTANCE) {
+            EON_Double nx2 = rend->Lights[i].l[0] - vertex->xformedx;
+            EON_Double ny2 = rend->Lights[i].l[1] - vertex->xformedy;
+            EON_Double nz2 = rend->Lights[i].l[2] - vertex->xformedz;
+            EON_Double t = (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/light->HalfDistSquared));
+            CurShade *= EON_Clamp(t,0,1.0)*light->Intensity;
+        }
+        if (light->Type == EON_LIGHT_VECTOR) {
+            CurShade = MACRO_eon_DotProduct(nx,ny,nz,
+                                            rend->Lights[i].l[0],
+                                            rend->Lights[i].l[1],
+                                            rend->Lights[i].l[2]);
+            CurShade *= light->Intensity;
+        }
+        if (CurShade > 0.0) {
+            shade += CurShade;
+        } else if (BackfaceIllumination) {
+            shade -= CurShade;
+        }
+    } /* End of light loop */
+    return shade;
+}
+
+static inline void eon_RenderShadeObjFlat(EON_Rend *rend, EON_Face *face,
+                                          EON_Float nx, EON_Float ny, EON_Float nz,
+                                          EON_Bool BackfaceIllumination)
+{
+    EON_Double shade = face->sLighting;
+    if (face->Material->_st & EON_SHADE_FLAT) {
+        shade = eon_RenderVertexLights(rend,
+                                       face->Vertices[0],
+                                       face->sLighting,
+                                       BackfaceIllumination,
+                                       nx,
+                                       ny,
+                                       nz);
+    }
+    if (face->Material->_st & EON_SHADE_FLAT_DISTANCE) {
+        EON_Double avg = (face->Vertices[0]->xformedz +
+                          face->Vertices[1]->xformedz +
+                          face->Vertices[2]->xformedz) / 3.0;
+        shade += 1.0 - (avg / face->Material->FadeDist);
+    }
+    face->fShade = (EON_Float)shade;
+    return;
+}
+
+static inline void eon_RenderShadeObjGourad(EON_Rend *rend, EON_Face *face,
+                                            EON_uInt32 VertexNum,
+                                            EON_Bool BackfaceIllumination)
+{
+    EON_Double shade = face->vsLighting[VertexNum];
+    if (face->Material->_st & EON_SHADE_GOURAUD) {
+        shade = eon_RenderVertexLights(rend,
+                                       face->Vertices[VertexNum],
+                                       face->vsLighting[VertexNum],
+                                       BackfaceIllumination,
+                                       face->Vertices[VertexNum]->xformednx,
+                                       face->Vertices[VertexNum]->xformedny,
+                                       face->Vertices[VertexNum]->xformednz);
+    }
+    if (face->Material->_st & EON_SHADE_GOURAUD_DISTANCE) {
+        shade += 1.0 - face->Vertices[VertexNum]->xformedz/face->Material->FadeDist;
+    }
+    face->Shades[VertexNum] = (EON_Float)shade;
+    return;
+}
+
+static inline void eon_RenderShadeObjEnviron(EON_Rend *rend, EON_Face *face)
+{
+    face->eMappingU[0] = 32768 + (EON_sInt32) (face->Vertices[0]->xformednx*32768.0);
+    face->eMappingV[0] = 32768 - (EON_sInt32) (face->Vertices[0]->xformedny*32768.0);
+    face->eMappingU[1] = 32768 + (EON_sInt32) (face->Vertices[1]->xformednx*32768.0);
+    face->eMappingV[1] = 32768 - (EON_sInt32) (face->Vertices[1]->xformedny*32768.0);
+    face->eMappingU[2] = 32768 + (EON_sInt32) (face->Vertices[2]->xformednx*32768.0);
+    face->eMappingV[2] = 32768 - (EON_sInt32) (face->Vertices[2]->xformedny*32768.0);
+    return;
+}
+
 static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                           EON_Float *bmatrix, EON_Float *bnmatrix)
 {
     EON_uInt32 i, x, facepos;
     EON_Float nx = 0.0, ny = 0.0, nz = 0.0;
-    double tmp, tmp2;
     EON_Float oMatrix[16], nMatrix[16], tempMatrix[16];
 
-    EON_Vertex *vertex;
-    EON_Face *face;
-    EON_Light *light;
+    EON_Vertex *vertex = NULL;
+    EON_Face *face = NULL;
 
     if (obj->GenMatrix) {
         EON_MatrixRotate(nMatrix,1,obj->Xa);
@@ -3045,121 +3138,41 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
     rend->NumFaces += obj->NumFaces;
     x = obj->NumFaces;
 
-  do {
-    if (obj->BackfaceCull || face->Material->_st & EON_SHADE_FLAT) {
-      MACRO_eon_MatrixApply(nMatrix,face->nx,face->ny,face->nz,nx,ny,nz);
-    }
-    if (!obj->BackfaceCull || (MACRO_eon_DotProduct(nx,ny,nz,
-        face->Vertices[0]->xformedx, face->Vertices[0]->xformedy,
-        face->Vertices[0]->xformedz) < 0.0000001)) {
-      if (EON_ClipNeeded(&rend->Clip, face)) {
-        if (face->Material->_st & (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE)) {
-          tmp = face->sLighting;
-          if (face->Material->_st & EON_SHADE_FLAT) {
-            for (i = 0; i < rend->NumLights; i ++) {
-              tmp2 = 0.0;
-              light = rend->Lights[i].light;
-              if (light->Type & EON_LIGHT_POINT_ANGLE) {
-                double nx2 = rend->Lights[i].l[0] - face->Vertices[0]->xformedx;
-                double ny2 = rend->Lights[i].l[1] - face->Vertices[0]->xformedy;
-                double nz2 = rend->Lights[i].l[2] - face->Vertices[0]->xformedz;
-                MACRO_eon_NormalizeVector(nx2,ny2,nz2);
-                tmp2 = MACRO_eon_DotProduct(nx,ny,nz,nx2,ny2,nz2)*light->Intensity;
-              }
-              if (light->Type & EON_LIGHT_POINT_DISTANCE) {
-                double nx2 = rend->Lights[i].l[0] - face->Vertices[0]->xformedx;
-                double ny2 = rend->Lights[i].l[1] - face->Vertices[0]->xformedy;
-                double nz2 = rend->Lights[i].l[2] - face->Vertices[0]->xformedz;
-                if (light->Type & EON_LIGHT_POINT_ANGLE) {
-                   nx2 = (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/
-                           light->HalfDistSquared));
-                  tmp2 *= EON_Clamp(nx2,0,1.0)*light->Intensity;
-                } else {
-                  tmp2 = (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/
-                    light->HalfDistSquared));
-                  tmp2 = EON_Clamp(tmp2,0,1.0)*light->Intensity;
-                }
-              }
-              if (light->Type == EON_LIGHT_VECTOR)
-                tmp2 = MACRO_eon_DotProduct(nx,ny,nz,
-                                            rend->Lights[i].l[0], rend->Lights[i].l[1], rend->Lights[i].l[2])
-                      * light->Intensity;
-              if (tmp2 > 0.0) tmp += tmp2;
-              else if (obj->BackfaceIllumination) tmp -= tmp2;
-            } /* End of light loop */
-          } /* End of flat shading if */
-          if (face->Material->_st & EON_SHADE_FLAT_DISTANCE)
-            tmp += 1.0-(face->Vertices[0]->xformedz+face->Vertices[1]->xformedz+
-                        face->Vertices[2]->xformedz) /
-                       (face->Material->FadeDist*3.0);
-          face->fShade = (EON_Float) tmp;
-        } else face->fShade = 0.0; /* End of flatmask lighting if */
-        if (face->Material->_ft & EON_FILL_ENVIRONMENT) {
-          face->eMappingU[0] = 32768 + (EON_sInt32) (face->Vertices[0]->xformednx*32768.0);
-          face->eMappingV[0] = 32768 - (EON_sInt32) (face->Vertices[0]->xformedny*32768.0);
-          face->eMappingU[1] = 32768 + (EON_sInt32) (face->Vertices[1]->xformednx*32768.0);
-          face->eMappingV[1] = 32768 - (EON_sInt32) (face->Vertices[1]->xformedny*32768.0);
-          face->eMappingU[2] = 32768 + (EON_sInt32) (face->Vertices[2]->xformednx*32768.0);
-          face->eMappingV[2] = 32768 - (EON_sInt32) (face->Vertices[2]->xformedny*32768.0);
+    do {
+        if (obj->BackfaceCull || face->Material->_st & EON_SHADE_FLAT) {
+            MACRO_eon_MatrixApply(nMatrix,face->nx,face->ny,face->nz,nx,ny,nz);
         }
-        if (face->Material->_st &(EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE)) {
-          register EON_uChar a;
-          for (a = 0; a < 3; a ++) {
-            tmp = face->vsLighting[a];
-            if (face->Material->_st & EON_SHADE_GOURAUD) {
-              for (i = 0; i < rend->NumLights ; i++) {
-                tmp2 = 0.0;
-                light = rend->Lights[i].light;
-                if (light->Type & EON_LIGHT_POINT_ANGLE) {
-                  nx = rend->Lights[i].l[0] - face->Vertices[a]->xformedx;
-                  ny = rend->Lights[i].l[1] - face->Vertices[a]->xformedy;
-                  nz = rend->Lights[i].l[2] - face->Vertices[a]->xformedz;
-                  MACRO_eon_NormalizeVector(nx,ny,nz);
-                  tmp2 = MACRO_eon_DotProduct(face->Vertices[a]->xformednx,
-                                      face->Vertices[a]->xformedny,
-                                      face->Vertices[a]->xformednz,
-                                      nx,ny,nz) * light->Intensity;
+        if (!obj->BackfaceCull || (MACRO_eon_DotProduct(nx,ny,nz,
+                face->Vertices[0]->xformedx, face->Vertices[0]->xformedy,
+                face->Vertices[0]->xformedz) < 0.0000001)) {
+            if (EON_ClipNeeded(&rend->Clip, face)) {
+                if (face->Material->_st & (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE)) {
+                    eon_RenderShadeObjFlat(rend, face, nx, ny, nz, obj->BackfaceIllumination);
                 }
-                if (light->Type & EON_LIGHT_POINT_DISTANCE) {
-                  double nx2 = rend->Lights[i].l[0] - face->Vertices[a]->xformedx;
-                  double ny2 = rend->Lights[i].l[1] - face->Vertices[a]->xformedy;
-                  double nz2 = rend->Lights[i].l[2] - face->Vertices[a]->xformedz;
-                  if (light->Type & EON_LIGHT_POINT_ANGLE) {
-                     double t= (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/light->HalfDistSquared));
-                     tmp2 *= EON_Clamp(t,0,1.0)*light->Intensity;
-                  } else {
-                    tmp2 = (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/light->HalfDistSquared));
-                    tmp2 = EON_Clamp(tmp2,0,1.0)*light->Intensity;
-                  }
+                if (face->Material->_ft & EON_FILL_ENVIRONMENT) {
+                    eon_RenderShadeObjEnviron(rend, face);
                 }
-                if (light->Type == EON_LIGHT_VECTOR)
-                  tmp2 = MACRO_eon_DotProduct(face->Vertices[a]->xformednx,
-                                      face->Vertices[a]->xformedny,
-                                      face->Vertices[a]->xformednz,
-                                      rend->Lights[i].l[0], rend->Lights[i].l[1], rend->Lights[i].l[2])
-                                        * light->Intensity;
-                if (tmp2 > 0.0) tmp += tmp2;
-                else if (obj->BackfaceIllumination) tmp -= tmp2;
-              } /* End of light loop */
-            } /* End of gouraud shading if */
-            if (face->Material->_st & EON_SHADE_GOURAUD_DISTANCE)
-              tmp += 1.0-face->Vertices[a]->xformedz/face->Material->FadeDist;
-            face->Shades[a] = (EON_Float) tmp;
-          } /* End of vertex loop for */
-        } /* End of gouraud shading mask if */
-        rend->Faces[facepos].zd = face->Vertices[0]->xformedz + face->Vertices[1]->xformedz + face->Vertices[2]->xformedz;
-        rend->Faces[facepos++].face = face;
-        rend->Info.TriStats[1] ++;
-      } /* Is it in our area Check */
-    } /* Backface Check */
-    rend->NumFaces = facepos;
-    face++;
-  } while (--x); /* Face loop */
+                if (face->Material->_st &(EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE)) {
+                    eon_RenderShadeObjGourad(rend, face, 0, obj->BackfaceIllumination);
+                    eon_RenderShadeObjGourad(rend, face, 1, obj->BackfaceIllumination);
+                    eon_RenderShadeObjGourad(rend, face, 2, obj->BackfaceIllumination);
+                }
+                rend->Faces[facepos].zd = face->Vertices[0]->xformedz + face->Vertices[1]->xformedz + face->Vertices[2]->xformedz;
+                rend->Faces[facepos].face = face;
+                facepos++;
+                rend->Info.TriStats[1] ++;
+            } /* Is it in our area Check */
+        } /* Backface Check */
+        rend->NumFaces = facepos;
+        face++;
+    } while (--x); /* Face loop */
+    return;
 }
 
 void EON_RenderObj(EON_Rend *rend, EON_Obj *obj)
 {
     eon_RenderObj(rend, obj, 0, 0);
+    return;
 }
 
 void EON_RenderEnd(EON_Rend *rend)
@@ -3171,6 +3184,7 @@ void EON_RenderEnd(EON_Rend *rend)
     }
     rend->NumFaces = 0;
     rend->NumLights = 0;
+    return;
 }
 
 /*************************************************************************/
