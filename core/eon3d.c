@@ -3013,8 +3013,8 @@ static inline EON_Double eon_RenderVertexLights(EON_Rend *rend, EON_Vertex *vert
 }
 
 static inline void eon_RenderShadeObjFlat(EON_Rend *rend, EON_Face *face,
-                                          EON_Float nx, EON_Float ny, EON_Float nz,
-                                          EON_Bool BackfaceIllumination)
+                                          EON_Bool BackfaceIllumination,
+                                          EON_Float nx, EON_Float ny, EON_Float nz)
 {
     EON_Double shade = face->sLighting;
     if (face->Material->_st & EON_SHADE_FLAT) {
@@ -3037,8 +3037,8 @@ static inline void eon_RenderShadeObjFlat(EON_Rend *rend, EON_Face *face,
 }
 
 static inline void eon_RenderShadeObjGourad(EON_Rend *rend, EON_Face *face,
-                                            EON_uInt32 VertexNum,
-                                            EON_Bool BackfaceIllumination)
+                                            EON_Bool BackfaceIllumination,
+                                            EON_uInt32 VertexNum)
 {
     EON_Double shade = face->vsLighting[VertexNum];
     if (face->Material->_st & EON_SHADE_GOURAUD) {
@@ -3147,15 +3147,15 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                 face->Vertices[0]->xformedz) < 0.0000001)) {
             if (EON_ClipNeeded(&rend->Clip, face)) {
                 if (face->Material->_st & (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE)) {
-                    eon_RenderShadeObjFlat(rend, face, nx, ny, nz, obj->BackfaceIllumination);
+                    eon_RenderShadeObjFlat(rend, face, obj->BackfaceIllumination, nx, ny, nz);
                 }
                 if (face->Material->_ft & EON_FILL_ENVIRONMENT) {
                     eon_RenderShadeObjEnviron(rend, face);
                 }
                 if (face->Material->_st &(EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE)) {
-                    eon_RenderShadeObjGourad(rend, face, 0, obj->BackfaceIllumination);
-                    eon_RenderShadeObjGourad(rend, face, 1, obj->BackfaceIllumination);
-                    eon_RenderShadeObjGourad(rend, face, 2, obj->BackfaceIllumination);
+                    eon_RenderShadeObjGourad(rend, face, obj->BackfaceIllumination, 0);
+                    eon_RenderShadeObjGourad(rend, face, obj->BackfaceIllumination, 1);
+                    eon_RenderShadeObjGourad(rend, face, obj->BackfaceIllumination, 2);
                 }
                 rend->Faces[facepos].zd = face->Vertices[0]->xformedz + face->Vertices[1]->xformedz + face->Vertices[2]->xformedz;
                 rend->Faces[facepos].face = face;
