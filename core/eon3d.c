@@ -2992,25 +2992,30 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
         EON_MatrixRotate(tempMatrix,3,obj->Za);
         EON_MatrixMultiply(nMatrix,tempMatrix);
         memcpy(oMatrix,nMatrix,sizeof(EON_Float)*16);
-    } else
+    } else {
         memcpy(nMatrix,obj->RotMatrix,sizeof(EON_Float)*16);
-
-    if (bnmatrix) EON_MatrixMultiply(nMatrix,bnmatrix);
-
+    }
+    if (bnmatrix) {
+        EON_MatrixMultiply(nMatrix,bnmatrix);
+    }
     if (obj->GenMatrix) {
         EON_MatrixTranslate(tempMatrix, obj->Xp, obj->Yp, obj->Zp);
         EON_MatrixMultiply(oMatrix,tempMatrix);
-    } else
+    } else {
         memcpy(oMatrix,obj->Matrix,sizeof(EON_Float)*16);
-    if (bmatrix)
+    }
+    if (bmatrix) {
         EON_MatrixMultiply(oMatrix,bmatrix);
-
-    for (i = 0; i < EON_MAX_CHILDREN; i ++)
-        if (obj->Children[i])
+    }
+    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
+        if (obj->Children[i]) {
             eon_RenderObj(rend, obj->Children[i],
                           oMatrix, nMatrix);
-    if (!obj->NumFaces || !obj->NumVertices)
+        }
+    }
+    if (!obj->NumFaces || !obj->NumVertices) {
         return;
+    }
 
     EON_MatrixTranslate(tempMatrix,
                         -rend->Cam->X, -rend->Cam->Y, -rend->Cam->Z);
@@ -3032,7 +3037,7 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
     face = obj->Faces;
     facepos = rend->NumFaces;
 
-    if (rend->NumFaces + obj->NumFaces >= EON_MAX_TRIANGLES) {// exceeded maximum face coutn
+    if (rend->NumFaces + obj->NumFaces >= EON_MAX_TRIANGLES) {// exceeded maximum face count
         return;
     }
 
@@ -3142,8 +3147,7 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
             face->Shades[a] = (EON_Float) tmp;
           } /* End of vertex loop for */
         } /* End of gouraud shading mask if */
-        rend->Faces[facepos].zd = face->Vertices[0]->xformedz+
-        face->Vertices[1]->xformedz+face->Vertices[2]->xformedz;
+        rend->Faces[facepos].zd = face->Vertices[0]->xformedz + face->Vertices[1]->xformedz + face->Vertices[2]->xformedz;
         rend->Faces[facepos++].face = face;
         rend->Info.TriStats[1] ++;
       } /* Is it in our area Check */
