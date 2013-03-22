@@ -2969,7 +2969,8 @@ void EON_RenderLight(EON_Rend *rend, EON_Light *light)
         zp = light->Zp - rend->Cam->Z;
         MACRO_eon_MatrixApply(rend->CMatrix,xp,yp,zp,pl[0],pl[1],pl[2]);
     }
-    rend->Lights[rend->NumLights++].light = light;
+    rend->Lights[rend->NumLights].light = light;
+    rend->NumLights++;
 }
 
 static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
@@ -3161,9 +3162,7 @@ void EON_RenderEnd(EON_Rend *rend)
 {
     EON_FaceInfo *f = rend->Faces;
     while (rend->NumFaces--) {
-        if (f->face->Material) {
-            EON_ClipRenderFace(&rend->Clip, f->face);
-        }
+        EON_ClipRenderFace(&rend->Clip, f->face);
         f++;
     }
     rend->NumFaces = 0;
