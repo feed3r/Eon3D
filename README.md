@@ -72,63 +72,54 @@ Components
 
 The modules breakdown of Eon3D follows.
 
-* `core`
-
-  - License: `ZLIB`;
-  - Status: In Development;
+* core
+  - License: ZLIB;
   - Dependencies: None;
   - Description: The core renderer library.
 
-* `console`
-
-  - License: `ZLIB`;
-  - Status: In Development;
-  - Dependencies: `libSDL` (LGPL, not bundled);
+* console
+  - License: ZLIB;
+  - Dependencies: libSDL (LGPL, not bundled);
   - Description: Simple graphical I/O console.
 
-* `model`
-
-  - License: `ZLIB`;
-  - Status: In Development;
-  - Dependencies: `rply` (MIT, bundled);
+* model
+  - License: ZLIB;
+  - Dependencies: rply (MIT, bundled);
   - Description: Simple model file loader.
 
-* `png`
-
-  - License: `ZLIB`;
+* png (planned)
+  - License: ZLIB;
   - Status: Planned;
-  - Dependencies: `libPNG` (not bundled);
+  - Dependencies: libPNG (not bundled);
   - Description: Saves frame to PNG images.
 
-* `avi`
-
-  - License: `GPL2`;
-  - Status: Planned;
-  - Dependencies: `avilib` (bundled);
+* avi (planned)
+  - License: GPL2;
+  - Dependencies: avilib (bundled);
   - Description: Save renders to raw AVI files.
 
 
 Getting Started
 ---------------
 
-Assumptions: you got a *nix-like (linux) shell running
+Assumptions: you got a unix-like (linux) shell running
 and you are positioned into the eon3d source tree root.
 `$` represents the command prompt. The eon3d source tree root
 it is supposed to be named `eon3d`.
 
-First, you need to build the software. While in-tree builds
-are supported, out of tree builds are recommended.
-To create the binaries dir: `mkdir ../build_eon3d`.
-Then move into it: `cd ../build_eon3d`.
-Run cmake to configure the build environment: `cmake ../eon3d`.
-If you need to specify some configuration options, you
-can check out the 
-[cmake docs](http://www.cmake.org/cmake/help/runningcmake.html).
-Now you can build the package: `make`.
-If you want to install the software: `make install`.
+To build the software. 
+* in-tree builds are supported, but out of tree builds are recommended.
+* Create the binaries dir: `mkdir ../build_eon3d`.
+* Then move into it: `cd ../build_eon3d`.
+* Run cmake to configure the build environment: `cmake ../eon3d`.
+* If you need to specify some configuration options, you
+  can check out the 
+  [cmake docs](http://www.cmake.org/cmake/help/runningcmake.html).
+* Now you can build the package: `make`.
+* If you want to install the software: `make install`.
 
-Once Eon3D is built, you can start playing with the `tools` and/or
-the runnable `examples` (check the corresponding subdirectoris).
+Once Eon3D is built, you can start playing with the runnable `examples`
+(check the corresponding subdirectory).
 
 Eon3D comes with a (growing) set of tests. To build and run then,
 you need the [check package](http://check.sf.net) and [python >= 2.5](http://www.python.org).
@@ -150,6 +141,11 @@ The AVI output module uses (and embeds) AVILIB, which is released under
 the GPL2 license. If you enable the AVI output module, the license of
 Eon3D will thus become GPL2.
 
+TODO
+----
+
+* console: more input handling, logging, timestamping.
+* core: truecolor handling, drop the palette
 
 ### EOF ###
 
