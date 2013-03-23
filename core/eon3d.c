@@ -393,8 +393,8 @@ void EON_MatInit(EON_Mat *m)
 {
     if (m->Shininess < 1)
         m->Shininess = 1;
-    m->_ft = ((m->Environment ? EON_FILL_ENVIRONMENT : 0) |
-               (m->Texture ? EON_FILL_TEXTURE : 0));
+    m->_ft = ((m->Environment ? EON_FILL_ENVIRONMENT : EON_FILL_SOLID) |
+               (m->Texture ? EON_FILL_TEXTURE : EON_FILL_SOLID));
     m->_st = m->ShadeType;
 
     if (m->Transparent)
@@ -2990,7 +2990,7 @@ static inline EON_Double eon_RenderVertexLights(EON_Rend *rend, EON_Vertex *vert
             EON_Double ny2 = rend->Lights[i].l[1] - vertex->xformedy;
             EON_Double nz2 = rend->Lights[i].l[2] - vertex->xformedz;
             EON_Double t = (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/light->HalfDistSquared));
-            CurShade *= EON_Clamp(t,0,1.0)*light->Intensity;
+            CurShade *= EON_Clamp(t,0,1.0)*light->Intensity; // FIXME
         }
         if (light->Type == EON_LIGHT_VECTOR) {
             CurShade = MACRO_eon_DotProduct(nx,ny,nz,
