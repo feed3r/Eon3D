@@ -391,6 +391,8 @@ void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
                        EON_sInt pend, EON_Mat **materials, EON_sInt nmats);
 
 
+void EON_MatInfo(EON_Mat *m, void *Logger);
+
 /******************************************************************************
 ** Object Functions (obj.c)
 ******************************************************************************/
@@ -493,6 +495,8 @@ void EON_ObjSetMat(EON_Obj *o, EON_Mat *m, EON_Bool th);
      nothing
 */
 EON_Obj *EON_ObjCalcNormals(EON_Obj *obj);
+
+void EON_ObjInfo(EON_Obj *o, void *Logger);
 
 /******************************************************************************
 ** Frustum Clipping Functions (clip.c)

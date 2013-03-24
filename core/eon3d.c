@@ -32,7 +32,11 @@
  **************************************************************************/
 
 #include "memorykit.h"
+#include "logkit.h"
 #include "eon3d.h"
+
+
+#define EON_TAG "EON"
 
 
 /******************************************************************************
@@ -49,6 +53,34 @@ static void EON_PF_PTexF(EON_Cam *, EON_Face *);
 static void EON_PF_PTexG(EON_Cam *, EON_Face *);
 static void EON_PF_TransF(EON_Cam *, EON_Face *);
 static void EON_PF_TransG(EON_Cam *, EON_Face *);
+
+
+static const char *eon_PutFaceName(void *addr)
+{
+    const char *name = "N/A";
+    if (addr == EON_PF_Null) {
+        name = "Null";
+    } else if (addr == EON_PF_SolidF) {
+        name = "SolidF";
+    } else if (addr == EON_PF_SolidG) {
+        name = "SolidG";
+    } else if (addr == EON_PF_TexF) {
+        name = "TexF";
+    } else if (addr == EON_PF_TexG) {
+        name = "TexG";
+    } else if (addr == EON_PF_TexEnv) {
+        name = "TexEnv";
+    } else if (addr == EON_PF_PTexF) {
+        name = "PTexF";
+    } else if (addr == EON_PF_PTexG) {
+        name = "PTexG";
+    } else if (addr == EON_PF_TransF) {
+        name = "TransF";
+    } else if (addr == EON_PF_TransG) {
+        name = "TransG";
+    }
+    return name;
+}
 
 /* Used internally; EON_FILL_* are stored in EON_Mat._st. */
 enum {
@@ -242,6 +274,19 @@ EON_Obj *EON_ObjCreate(EON_uInt32 nv, EON_uInt32 nf)
         return 0;
     }
     return o;
+}
+
+void EON_ObjInfo(EON_Obj *o, void *Logger)
+{
+    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG, "Object (%p)", o);
+    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG,
+                 "* Vertices: %i", o->NumVertices);
+    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG,
+                 "* Faces: %i", o->NumFaces);
+    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG,
+                 "* Generate Matrix: %s", (o->GenMatrix) ?"Yes" :"No");
+    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG,
+                 "* Backface Cull: %s", (o->GenMatrix) ?"Yes" :"No");
 }
 
 EON_Obj *EON_ObjClone(EON_Obj *o) 
@@ -859,6 +904,17 @@ void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
         p[x++] = cp->b;
     }
     CX_free(colorBlock);
+}
+
+void EON_MatInfo(EON_Mat *m, void *Logger)
+{
+    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG, "Material (%p)", m);
+    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG,
+                 "* Colors: Grads=%i Used=%i Requested=%i",
+                 m->NumGradients, m->_ColorsUsed, m->_RequestedColors);
+    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG,
+                 "* Rasterizer: %s",
+                 eon_PutFaceName(m->_PutFace));
 }
 
 // light.c
@@ -2911,17 +2967,10 @@ static void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace)
 static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                           EON_Float *bmatrix, EON_Float *bnmatrix);
 
-static void eon_RendReset(EON_Rend *rend)
-{
-    memset(rend, 0, sizeof(*rend));
-    return;
-}
-
 EON_Rend *EON_RendCreate(EON_Cam *Camera)
 {
-    EON_Rend *rend = CX_malloc(sizeof(EON_Rend));
+    EON_Rend *rend = CX_zalloc(sizeof(EON_Rend));
     if (rend) {
-        eon_RendReset(rend);
         rend->Cam = Camera;
         rend->Clip.Info = &rend->Info;
     }

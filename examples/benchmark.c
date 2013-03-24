@@ -9,6 +9,9 @@
 #include <eon3dx.h>
 #include <eon3dx_reader.h>
 
+#include <logkit.h>
+
+
 typedef struct null_console_ {
     EON_Cam *cam;
     uint8_t *fb;
@@ -82,7 +85,7 @@ int NullConsoleClearFrame(NullConsole *ctx)
 
 static void usage(void)
 {
-    fprintf(stderr, "Usage: %s [options] model", EXE);
+    fprintf(stderr, "Usage: %s [options] model\n", EXE);
     fprintf(stderr, "    -d dist           Render at the `dist' view distance. Affects performance.\n");
     fprintf(stderr, "    -v verbosity      Verbosity mode.\n");
     fprintf(stderr, "    -n frames         Renders `frames' frames.\n");
@@ -108,6 +111,7 @@ int main(int argc, char *argv[])
     double distance = 50;
     int ch = -1;
     int verbose = 1;
+    CX_LogContext *Logger = CX_log_open_console(CX_LOG_MARK, stderr);
 
     while (1) {
         ch = getopt(argc, argv, "d:n:v:h?");
@@ -144,10 +148,12 @@ int main(int argc, char *argv[])
     filename = argv[0];
 
     if (verbose) {
-        fprintf(stderr, "[%s] settings> rendering model = %s\n",
-                EXE, filename);
-        fprintf(stderr, "[%s] settings> frame limit     = %i\n",
-                EXE, framenum);
+        CX_log_trace(Logger, CX_LOG_INFO, EXE,
+                     "settings> rendering model = %s",
+                     filename);
+        CX_log_trace(Logger, CX_LOG_INFO, EXE,
+                     "settings> frame limit     = %i",
+                     framenum);
     }
 
     ModelMat = EON_MatCreate(); 
@@ -162,7 +168,8 @@ int main(int argc, char *argv[])
     ModelMat->Diffuse[1] = 100; // Set green diffuse component
     ModelMat->Diffuse[2] = 100; // Set blue diffuse component
 
-    EON_MatInit(ModelMat);          // Initialize the material
+    EON_MatInit(ModelMat);      // Initialize the material
+    EON_MatInfo(ModelMat, Logger);
 
     AllMaterials[0] = ModelMat; // Make list of materials
     AllMaterials[1] = 0; // Null terminate list of materials
@@ -179,10 +186,13 @@ int main(int argc, char *argv[])
 
     TheModel = EONx_ReadPLYObj(filename, ModelMat);
     if (TheModel == NULL) {
-        fprintf(stderr, "[%s] failed to load model '%s', aborting\n",
-                EXE, filename);
+        CX_log_trace(Logger, CX_LOG_ERROR, EXE,
+                     "failed to load model '%s', aborting",
+                     filename);
         return 1;
     }
+
+    EON_ObjInfo(TheModel, Logger);
 
     TheCamera = TheConsole->cam;
     TheCamera->Z = -distance; // Back the camera up from the origin
@@ -209,11 +219,11 @@ int main(int argc, char *argv[])
     }
     stop = time(NULL);
 
-    fprintf(stderr, "[%s] %i frames in %f seconds: %.3f FPS\n",
-            EXE,
-            frames, (double)stop-(double)start,
-            (double)frames/((double)stop-(double)start));
+    CX_log_trace(Logger, CX_LOG_INFO, EXE,
+                 "%i frames in %f seconds: %.3f FPS",
+                 frames, (double)stop-(double)start,
+                 (double)frames/((double)stop-(double)start));
 
-    return 0;
+    return CX_log_close(Logger);
 }
 
