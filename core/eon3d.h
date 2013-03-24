@@ -560,13 +560,13 @@ EON_Light *EON_LightCreate();
     a pointer to light.
 */
 EON_Light *EON_LightSet(EON_Light *light, EON_uChar mode, EON_Float x, EON_Float y,
-                     EON_Float z, EON_Float intensity, EON_Float halfDist);
+                        EON_Float z, EON_Float intensity, EON_Float halfDist);
 
 /*
   WRITEME
 */
 EON_Light *EON_LightNew(EON_uChar mode, EON_Float x, EON_Float y, EON_Float z,
-                     EON_Float intensity, EON_Float halfDist);
+                        EON_Float intensity, EON_Float halfDist);
 
 /*
   EON_LightDelete() frees a light allocated with EON_LightCreate().
