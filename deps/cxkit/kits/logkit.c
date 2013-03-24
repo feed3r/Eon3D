@@ -1,11 +1,13 @@
 /* 
  * Logging kit - basic pluggable logging utilities.
- * (C) 2011 Francesco Romani - fromani at gmail dot com. ZLIB licensed.
+ * (C) 2011-2013 Francesco Romani - fromani at gmail dot com. ZLIB licensed.
  */
 
 /** \file logkit.h
     \brief the LOGging kit implementation.
 */
+
+#include "CX_config.h"
 
 #include "CX_kit.h"
 #include "memorykit.h"

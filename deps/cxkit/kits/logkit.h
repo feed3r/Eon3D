@@ -1,6 +1,6 @@
 /* 
  * Logging kit - basic pluggable logging utilities.
- * (C) 2011 Francesco Romani - fromani at gmail dot com. ZLIB licensed.
+ * (C) 2011-2013 Francesco Romani - fromani at gmail dot com. ZLIB licensed.
  */
 
 /** \file logkit.h
@@ -9,8 +9,6 @@
 
 #ifndef CX_LOGKIT_H
 #define CX_LOGKIT_H
-
-#include "CX_config.h"
 
 #include <stdarg.h>
 #include <stdio.h>
