@@ -30,5 +30,4 @@ add_subdirectory(core)
 add_subdirectory(modules)
 add_subdirectory(examples)
 #add_subdirectory(tests)
-add_subdirectory(plush_1.2.1)
 
