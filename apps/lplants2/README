@@ -1,0 +1,86 @@
+
+ LPLANTS 0.2.6
+
+ This is the Lindenmayer interpreter LPLANTS (Lindenmayer-plants).
+ You can generate beautiful pictures of plants with it.
+ It reads a input file with L-system description and
+ output postscript (2D, but 3D internally) and POVRAY files.
+ Future versions will export VRML and other formats
+ and generate complete landscapes.
+ You can use it for generate background pictures, textures, 3D-scenes etc.
+ Send your favourite L-system and image to me for the LPLANTS galery.
+
+newest version at:
+  http://www.uni-magdeburg.de/jschulen/lplants/
+
+start:
+  make demo
+   OR
+  lplants -v tmp/a.in tmp/a.pov
+
+format of input file:
+;
+;  The format could be changed until 1.0 version is reached.
+;  I try to find most simple (in interpretation and syntax)
+;  but maximum flexible syntax.
+;  initialisation can be done by start rule! (6 setlen)
+;
+; This is a simple L-system example 1.26!
+;
+camera= 0 300 400   0 300 0  ; location and look_at
+startpos=  0  0  0  ; start position (x y z)
+angle=  18          ; unit angle (0..360 degrees)
+unitlen=  7         ; unit length
+depth= 5            ; be careful! time=depth^6
+color= 1  0 100 0  10 20 10 ; idx=1 red=0..10 green=100..120 blue=0..10
+; list of rules (do not add spaces):
+S -> +++++1;                           start		necessary!
+1 -> 2+[1+5]--//[--4]2[++4]-[15]++15;  leaf ansatz
+2 -> F3[//&&4][//^^4]F3;               shaft f=1
+3 -> 3F3;                              grow
+4 -> ["{+f-ff-f+|+f-ff-f}];            leaf f=2
+5 -> [&&&6"/7////7////7////7////7];    blossom
+6 -> FF;                               stamp f=1
+7 -> ["^F][""{&&&&-f+f|-f+f}];         S+B-leaf f=3,4
+; -------------------- end ----------------------------------
+; ;   seperates comments
+; ->  L-rule (do not forget a space before and after "->"!)
+; +-  turtle z-rotation (turn left/right, used in 2D plants)
+; /\  turtle x-rotation (roll right/left)
+; ^&  turtle y-rotation (pitch up/down)
+; |   turtle 180deg-turn equal to (180)+
+; []  subtree (store/restore or push/pop turtle state)
+; {}  start/finish drawing a polygon
+; .   add a vertex to the current polygon
+; "   color          col++ (1..15)
+; !   line thickness ld--  (0..255)
+; LRF forward with drawing (x-direction)
+; lrf forward without drawing
+; ()  calculate expression between brackets (forth like postfix notation)
+;       used as parameter for next turtle-command
+;       no nesting possible, (30)+ and (30)- give same result 
+;      THIS WILL BE EXTENDED IN FUTURE TO POSTFIX SYNTAX ( 5 age + ).
+; 1..9A..Za..z usable for substitution rules
+; S   start rule
+X 70 -> F+ ; probability,  replace X by F+ if random(100)<70, default=100
+; g   gravity: rotate downwards (DOES NOT WORK!)
+; G   forward without storing polygon vertex
+; $   roll turtle, L to XZ plane
+; local  coordinates = turtles view: Head, Left, Up
+; global coordinates = your view:    X Y Z  (gravity directed to -Y)
+;
+; turtle-coordinates: x=forward, y=left, z=above
+; turtle-start:       x and y correspond to the screen coordinates
+;
+
+documentation:
+ http://algorithmicbotany.org/papers/#abop
+The Algorithmic Beauty of Plants was originally printed by Springer-Verlag
+in 1990 (second printing 1996). (See our list of known errors from the print
+version.) An electronic version has been produced using the original LaTeX
+files and digital illustrations.
+
+
+Send comments and bug reports to jschulen\{at}gmx\{dot}de.
+
+Have fun!
