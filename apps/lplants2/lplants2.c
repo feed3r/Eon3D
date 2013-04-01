@@ -1,6 +1,25 @@
 /*
-    LPLANTS  (see README)
-
+ *  lplants2. Based from
+ *  LPLANTS  (see README.lplants)
+ *
+ *  (C) jschulen\{at}gmx\{dot}de for lplants
+ *  (C) 2013 fromani\{at}gmail\{dot}com for lplants2
+ *    (cleanup, modernization, Eon3D port and much more)
+ *
+ * lplants/lplants2 is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * lplants/lplants2 is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*
     L-string is interpreted by a 3D-turtle
 
    local  = turtles coordinates: H=aHead, L=Left, U=Up (turtle->hlu)
