@@ -35,7 +35,19 @@ Overview
 --------
 
 Eon3D is a simplistic 3D software rendered derived by (now abandoned?)
-Plush3D by Nullsoft.
+Plush3D by Nullsoft. Eon3D originates from
+[my fork of plush](http://github.com/mojaves/plush)
+which is in turn (of course) a derived altered form of the plush codebase.
+Eon3D has its own roadmap and features (either implemented or planned), but
+being spawn from plush, the code closely resemble for obvious reasons
+the original codebase structure. However, this is a derived work and should
+not be considered representative of the original work.
+
+For references, the original, unaltered zipball of the last distribution of
+plush I was able to find is included in this source tree.
+For furthere references, however, see 
+[my fork of plush](http://github.com/mojaves/plush)
+mentioned above.
 
 Eon3D is an exploration and learning project on the branch of the 3D
 graphics; so, the maximum performance, and the implementation of the
