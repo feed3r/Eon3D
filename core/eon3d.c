@@ -3018,7 +3018,7 @@ void EON_RenderLight(EON_Rend *rend, EON_Light *light)
     rend->NumLights++;
 }
 
-static inline EON_Double eon_RenderVertexLights(EON_Rend *rend, EON_Vertex *vertex,
+inline static EON_Double eon_RenderVertexLights(EON_Rend *rend, EON_Vertex *vertex,
                                                 EON_Double BaseShade, EON_Bool BackfaceIllumination,
                                                 EON_Float nx, EON_Float ny, EON_Float nz)
 {
@@ -3057,7 +3057,7 @@ static inline EON_Double eon_RenderVertexLights(EON_Rend *rend, EON_Vertex *vert
     return shade;
 }
 
-static inline void eon_RenderShadeObjFlat(EON_Rend *rend, EON_Face *face,
+inline static void eon_RenderShadeObjFlat(EON_Rend *rend, EON_Face *face,
                                           EON_Bool BackfaceIllumination,
                                           EON_Float nx, EON_Float ny, EON_Float nz)
 {
@@ -3081,7 +3081,7 @@ static inline void eon_RenderShadeObjFlat(EON_Rend *rend, EON_Face *face,
     return;
 }
 
-static inline void eon_RenderShadeObjGourad(EON_Rend *rend, EON_Face *face,
+inline static void eon_RenderShadeObjGourad(EON_Rend *rend, EON_Face *face,
                                             EON_Bool BackfaceIllumination,
                                             EON_uInt32 VertexNum)
 {
@@ -3102,7 +3102,7 @@ static inline void eon_RenderShadeObjGourad(EON_Rend *rend, EON_Face *face,
     return;
 }
 
-static inline void eon_RenderShadeObjEnviron(EON_Rend *rend, EON_Face *face)
+inline static void eon_RenderShadeObjEnviron(EON_Rend *rend, EON_Face *face)
 {
     face->eMappingU[0] = 32768 + (EON_sInt32) (face->Vertices[0]->xformednx*32768.0);
     face->eMappingV[0] = 32768 - (EON_sInt32) (face->Vertices[0]->xformedny*32768.0);
