@@ -1312,7 +1312,7 @@ static void EON_PF_Null(EON_Cam *cam, EON_Face *TriFace)
     return; /* nothing to do */
 }
 
-static inline EON_uInt32 eon_PickColorP(EON_Cam *cam, EON_Byte value)
+inline static EON_uInt32 eon_PickColorP(EON_Cam *cam, EON_Byte value)
 {
     EON_uInt32 R = cam->Palette[3 * value + 0];
     EON_uInt32 G = cam->Palette[3 * value + 1];
@@ -1321,13 +1321,18 @@ static inline EON_uInt32 eon_PickColorP(EON_Cam *cam, EON_Byte value)
     return (A | R << 16 | G << 8| B);
 }
 
-static inline EON_uInt32 eon_PickColorF(const EON_Face *f)
+inline static EON_uInt32 eon_PickColorF(const EON_Face *f)
 {
     EON_uInt32 R = ((EON_sInt32)(f->Material->Ambient[0] * f->fShade)) & 0xFF;
     EON_uInt32 G = ((EON_sInt32)(f->Material->Ambient[1] * f->fShade)) & 0xFF;
     EON_uInt32 B = ((EON_sInt32)(f->Material->Ambient[2] * f->fShade)) & 0xFF;
     EON_uInt32 A = 0xFF000000;
     return (A | R << 16 | G << 8| B);
+}
+
+inline static EON_sInt32 eon_ToScreen(EON_sInt32 val)
+{
+    return (val + (1<<19)) >> 20;
 }
 
 // pf_solid.c
@@ -1340,8 +1345,11 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
     EON_uInt32 *gmem = (EON_uInt32 *)cam->frameBuffer;
     EON_ZBuffer *zbuf = cam->zBuffer;
 
-    EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
-    EON_ZBuffer dZL=0, dZ1=0, dZ2=0, Z1, ZL, Z2, Z3;
+    EON_sInt32 X1, X2;
+    EON_sInt32 XL1, XL2;
+    EON_sInt32 dX1=0, dX2=0;
+    EON_ZBuffer dZL=0, dZ1=0, dZ2=0;
+    EON_ZBuffer Z0, Z1, Z2, ZL;
     EON_sInt32 Y1, Y2, Y0, dY;
     EON_uChar stat;
     EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
@@ -1349,49 +1357,50 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
 
     PUTFACE_SORT();
 
-    X2 = X1 = TriFace->Scrx[i0];
-    Z1 = TriFace->Scrz[i0];
-    Z2 = TriFace->Scrz[i1];
-    Z3 = TriFace->Scrz[i2];
-    Y0 = (TriFace->Scry[i0]+(1<<19)) >> 20;
-    Y1 = (TriFace->Scry[i1]+(1<<19)) >> 20;
-    Y2 = (TriFace->Scry[i2]+(1<<19)) >> 20;
+    X1 = TriFace->Scrx[i0];
+    X2 = TriFace->Scrx[i0];
+    Z0 = TriFace->Scrz[i0];
+    Z1 = TriFace->Scrz[i1];
+    Z2 = TriFace->Scrz[i2];
+    Y0 = eon_ToScreen(TriFace->Scry[i0]);
+    Y1 = eon_ToScreen(TriFace->Scry[i1]);
+    Y2 = eon_ToScreen(TriFace->Scry[i2]);
 
     dY = Y2-Y0;
     if (dY) {
         dX2 = (TriFace->Scrx[i2] - X1) / dY;
-        dZ2 = (Z3 - Z1) / dY;
+        dZ2 = (Z2 - Z0) / dY;
     }
     dY = Y1-Y0;
     if (dY) {
         dX1 = (TriFace->Scrx[i1] - X1) / dY;
-        dZ1 = (Z2 - Z1) / dY;
+        dZ1 = (Z1 - Z0) / dY;
         if (dX2 < dX1) {
             dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
             dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
             stat = 2;
         } else
             stat = 1;
-        Z2 = Z1;
+        Z1 = Z0;
     } else {
         if (TriFace->Scrx[i1] > X1) {
             X2 = TriFace->Scrx[i1];
             stat = 2|4;
         } else {
             X1 = TriFace->Scrx[i1];
-            ZL = Z1; Z1 = Z2; Z2 = ZL;
+            ZL = Z0; Z0 = Z1; Z1 = ZL;
             stat = 1|8;
         }
     }
 
     if (zb) {
-        XL1 = ((dX1-dX2)*dY+(1<<19))>>20;
+        XL1 = eon_ToScreen((dX1-dX2)*dY);
         if (XL1)
             dZL = ((dZ1-dZ2)*dY)/XL1;
         else {
-            XL1 = (X2-X1+(1<<19))>>20;
+            XL1 = eon_ToScreen(X2-X1);
             if (zb && XL1)
-                dZL = (Z2-Z1)/XL1;
+                dZL = (Z1-Z0)/XL1;
             else
                 dZL = 0.0;
         }
@@ -1402,7 +1411,7 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
 
     while (Y0 < Y2) {
         if (Y0 == Y1) {
-            dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
+            dY = Y2 - eon_ToScreen(TriFace->Scry[i1]);
             if (dY) {
                 if (stat & 1) {
                     X1 = TriFace->Scrx[i1];
@@ -1420,12 +1429,12 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
                     X2 = TriFace->Scrx[i0];
                     dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
                 }
-                dZ1 = (Z3-Z1)/dY;
+                dZ1 = (Z2-Z0)/dY;
             }
         }
-        XL1 = (X1+(1<<19))>>20;
-        XL2 = (X2+(1<<19))>>20;
-        ZL = Z1;
+        XL1 = eon_ToScreen(X1);
+        XL2 = eon_ToScreen(X2);
+        ZL = Z0;
         XL2 -= XL1;
         if (XL2 > 0) {
             zbuf += XL1;
@@ -1451,7 +1460,7 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
         }
         gmem += cam->ScreenWidth;
         zbuf += cam->ScreenWidth;
-        Z1 += dZ1;
+        Z0 += dZ1;
         X1 += dX1;
         X2 += dX2;
         Y0++;
@@ -2739,7 +2748,7 @@ void EON_RenderLight(EON_Rend *rend, EON_Light *light)
     rend->NumLights++;
 }
 
-static inline EON_Double eon_RenderVertexLights(EON_Rend *rend, EON_Vertex *vertex,
+inline static EON_Double eon_RenderVertexLights(EON_Rend *rend, EON_Vertex *vertex,
                                                 EON_Double BaseShade, EON_Bool BackfaceIllumination,
                                                 EON_Float nx, EON_Float ny, EON_Float nz)
 {
@@ -2778,7 +2787,7 @@ static inline EON_Double eon_RenderVertexLights(EON_Rend *rend, EON_Vertex *vert
     return shade;
 }
 
-static inline void eon_RenderShadeObjFlat(EON_Rend *rend, EON_Face *face,
+inline static void eon_RenderShadeObjFlat(EON_Rend *rend, EON_Face *face,
                                           EON_Bool BackfaceIllumination,
                                           EON_Float nx, EON_Float ny, EON_Float nz)
 {
@@ -2802,7 +2811,7 @@ static inline void eon_RenderShadeObjFlat(EON_Rend *rend, EON_Face *face,
     return;
 }
 
-static inline void eon_RenderShadeObjGourad(EON_Rend *rend, EON_Face *face,
+inline static void eon_RenderShadeObjGourad(EON_Rend *rend, EON_Face *face,
                                             EON_Bool BackfaceIllumination,
                                             EON_uInt32 VertexNum)
 {
@@ -2823,7 +2832,7 @@ static inline void eon_RenderShadeObjGourad(EON_Rend *rend, EON_Face *face,
     return;
 }
 
-static inline void eon_RenderShadeObjEnviron(EON_Rend *rend, EON_Face *face)
+inline static void eon_RenderShadeObjEnviron(EON_Rend *rend, EON_Face *face)
 {
     face->eMappingU[0] = 32768 + (EON_sInt32) (face->Vertices[0]->xformednx*32768.0);
     face->eMappingV[0] = 32768 - (EON_sInt32) (face->Vertices[0]->xformedny*32768.0);
