@@ -45,13 +45,13 @@ int EONx_ConsoleStartup(const char *title, const char *icon);
 int EONx_ConsoleShutdown(void);
 
 enum {
-    EONx_CONSOLE_FLAG_NONE = 0,
+    EONx_CONSOLE_FLAG_NONE    = 0,
     EONx_CONSOLE_FLAG_ZBUFFER = 1
 };
 
 EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
                                  EON_Float ar, EON_Float fov,
-                                 EON_uInt flags);
+                                 EON_uInt32 flags);
 
 EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov);
 

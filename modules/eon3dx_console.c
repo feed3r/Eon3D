@@ -45,6 +45,13 @@
 
 #include <SDL.h>
 
+// FIXME BPP ambiguitiy (depth/BPP/bpp)
+
+enum {
+    TRUECOLOR_BPP   = 4,
+    TRUECOLOR_DEPTH = 32 // XXX
+};
+
 struct eonx_console_ {
     EON_Cam *cam;
     uint8_t *fb;
@@ -85,15 +92,7 @@ int EONx_ConsoleShutdown(void)
 
 int EONx_ConsoleSetPalette(EONx_Console *ctx, const uint8_t *palette, int numcolors)
 {
-    int i = 0;
-    SDL_Color colors[256];
-    /* Fill colors with color information */
-    for (i = 0; i < 256; i++){
-        colors[i].r = palette[i * 3 + 0];
-        colors[i].g = palette[i * 3 + 1];
-        colors[i].b = palette[i * 3 + 2];
-    }
-    SDL_SetPalette(ctx->frame, SDL_LOGPAL|SDL_PHYSPAL, colors, 0, 256);
+    EON_CamSetPalette(ctx->cam, palette, numcolors);
     return 0;
 }
 
@@ -101,17 +100,18 @@ static int EONx_ConsoleInitSurfaces(EONx_Console *ctx)
 {
     int err = -1;
     Uint32 flags = SDL_HWSURFACE|SDL_DOUBLEBUF|SDL_HWACCEL|SDL_ASYNCBLIT;
-    ctx->screen = SDL_SetVideoMode(ctx->width, ctx->height, 32, flags);
+    ctx->screen = SDL_SetVideoMode(ctx->width, ctx->height,
+                                   TRUECOLOR_DEPTH, flags);
+    /*
+     * always truecolor on screen, even if internally we use a palette.
+     * SDL blitting will take care of the conversion.
+     */
     if (ctx->screen) {
-        /* SDL interprets each pixel as a 32-bit number, so our masks must depend
-           on the endianness (byte order) of the machine */
-        Uint32 rmask = 0x000000ff;
-        Uint32 gmask = 0x0000ff00;
-        Uint32 bmask = 0x00ff0000;
-        Uint32 amask = 0xff000000;
-        ctx->frame = SDL_CreateRGBSurfaceFrom(ctx->fb, ctx->width, ctx->height,
-                                              ctx->bpp, ctx->width,
-                                              rmask, gmask, bmask, amask);
+        ctx->frame = SDL_CreateRGBSurfaceFrom(ctx->fb,
+                                              ctx->width, ctx->height,
+                                              ctx->bpp,
+                                              ctx->width * TRUECOLOR_BPP,
+                                              0, 0, 0, 0);
         if (ctx->frame) {
             err = 0;
         }
@@ -150,14 +150,14 @@ EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov)
 
 EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
                                  EON_Float ar, EON_Float fov,
-                                 EON_uInt flags)
+                                 EON_uInt32 flags)
 {
     int err = -1;
     EONx_Console *ctx = calloc(1, sizeof(*ctx));
     if (ctx) {
         ctx->width = sw;
         ctx->height = sh;
-        ctx->bpp = 8; // XXX
+        ctx->bpp = TRUECOLOR_DEPTH; // XXX
         if (flags & EONx_CONSOLE_FLAG_ZBUFFER) {
             ctx->zb = malloc(EONx_ConsoleZBufferSize(ctx));
         }

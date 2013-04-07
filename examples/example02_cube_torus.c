@@ -32,7 +32,7 @@ int main()
     CubeMat->NumGradients = 100; // Have it use 100 colors
     CubeMat->ShadeType = EON_SHADE_FLAT; // Make the cube flat shaded
 
-    CubeMat->Ambient[0] = 32; // Set red ambient component
+    CubeMat->Ambient[0] = 132; // Set red ambient component
     CubeMat->Ambient[1] = 0;  // Set green ambient component
     CubeMat->Ambient[2] = 16; // Set blue ambient component
 
@@ -48,7 +48,7 @@ int main()
     TorusMat->Shininess = 10; // Make the torus a bit more shiny
 
     TorusMat->Ambient[0] = 0; // Set red ambient component
-    TorusMat->Ambient[1] = 12;  // Set green ambient component
+    TorusMat->Ambient[1] = 132;  // Set green ambient component
     TorusMat->Ambient[2] = 4; // Set blue ambient component
 
     TorusMat->Diffuse[0] = 20; // Set red diffuse component

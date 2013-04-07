@@ -44,7 +44,7 @@ NullConsole *NullConsoleCreate(EON_uInt sw, EON_uInt sh)
         int size = sw * sh;
         ctx->width = sw;
         ctx->height = sh;
-        ctx->bpp = 8; // XXX
+        ctx->bpp = 4; // XXX
         ctx->zb = malloc(size * ctx->bpp);
         ctx->fb = malloc(size * sizeof(EON_ZBuffer));
         if (ctx->fb) {
@@ -82,7 +82,7 @@ int NullConsoleClearFrame(NullConsole *ctx)
 
 static void usage(void)
 {
-    fprintf(stderr, "Usage: %s [options] model", EXE);
+    fprintf(stderr, "Usage: %s [options] model\n", EXE);
     fprintf(stderr, "    -d dist           Render at the `dist' view distance. Affects performance.\n");
     fprintf(stderr, "    -v verbosity      Verbosity mode.\n");
     fprintf(stderr, "    -n frames         Renders `frames' frames.\n");
@@ -100,11 +100,9 @@ int main(int argc, char *argv[])
     EON_Light *TheLight;   // Our light
     EON_Obj *TheModel;      // Our cube object
     EON_Mat *ModelMat;      // The material for the cube
-    EON_Mat *AllMaterials[2]; // Used for creating palette
     EON_Cam *TheCamera; // Our camera
     EON_Rend *TheRend;
     NullConsole *TheConsole;
-    uint8_t ThePalette[3 * 256];
     double distance = 50;
     int ch = -1;
     int verbose = 1;
@@ -151,31 +149,17 @@ int main(int argc, char *argv[])
     }
 
     ModelMat = EON_MatCreate(); 
-    ModelMat->NumGradients = 100; // Have it use 100 colors
     ModelMat->ShadeType = EON_SHADE_FLAT;
 
-    ModelMat->Ambient[0] = 16; // Set red ambient component
-    ModelMat->Ambient[1] = 16; // Set green ambient component
-    ModelMat->Ambient[2] = 16; // Set blue ambient component
-
-    ModelMat->Diffuse[0] = 100; // Set red diffuse component
-    ModelMat->Diffuse[1] = 100; // Set green diffuse component
-    ModelMat->Diffuse[2] = 100; // Set blue diffuse component
+    ModelMat->Ambient[0] = 216; // Set red ambient component
+    ModelMat->Ambient[1] = 216; // Set green ambient component
+    ModelMat->Ambient[2] = 216; // Set blue ambient component
 
     EON_MatInit(ModelMat);          // Initialize the material
 
-    AllMaterials[0] = ModelMat; // Make list of materials
-    AllMaterials[1] = 0; // Null terminate list of materials
-    EON_MatMakeOptPal(ThePalette, 1, 255, AllMaterials, 2); // Create a nice palette
-
-    ThePalette[0] = ThePalette[1] = ThePalette[2] = 0; // Color 0 is black
-
-    EON_MatMapToPal(ModelMat, ThePalette, 0, 255);
-    // Map the material to our palette
-
     TheConsole = NullConsoleCreate(800, // Screen width
-                                  600 // Screen height
-                                  );
+                                   600 // Screen height
+                                   );
 
     TheModel = EONx_ReadPLYObj(filename, ModelMat);
     if (TheModel == NULL) {

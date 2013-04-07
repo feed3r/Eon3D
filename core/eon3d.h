@@ -43,6 +43,8 @@
 
 /** \file eon3d.h
     \brief eon3d: a simplistic 3D software renderer (interface).
+
+    FIXME note about coordinate space
 */
 
 /******************************************************************************/
@@ -73,6 +75,10 @@ typedef unsigned int EON_uInt;    /* unsigned optimal integer */
 typedef int EON_Bool;             /* boolean */
 typedef uint8_t EON_uChar;        /* unsigned 8 bit integer */
 typedef int8_t EON_sChar;         /* signed 8 bit integer */
+typedef uint8_t EON_Byte;
+
+
+#define EON_ZERO 0.0000001
 
 /* pi! */
 #define EON_PI 3.14159265359
@@ -118,6 +124,14 @@ enum {
     EON_TEXENV_MIN         = 5,
     EON_TEXENV_MAX         = 6
 };
+
+
+typedef struct _EON_Color {
+    EON_Byte R;
+    EON_Byte G;
+    EON_Byte B;
+    EON_Byte A;
+} EON_Color;
 
 /* Forward declarations needed for _PutFace */
 typedef struct _EON_Face EON_Face;
@@ -264,6 +278,7 @@ struct _EON_Cam {
   EON_Float Pitch, Pan, Roll;     /* Camera angle in degrees in worldspace */
   EON_uChar *frameBuffer;         /* Framebuffer (ScreenWidth*ScreenHeight) */
   EON_ZBuffer *zBuffer;           /* Z Buffer */
+  const EON_Byte *Palette;
 };
 
 typedef struct _EON_RenderInfo {
@@ -623,6 +638,8 @@ void EON_CamSetTarget(EON_Cam *c, EON_Float x, EON_Float y, EON_Float z);
      nothing
 */
 void EON_CamDelete(EON_Cam *c);
+
+void EON_CamSetPalette(EON_Cam *c, const uint8_t *palette, int numcolors);
 
 /******************************************************************************
 ** Easy Rendering Interface (render.c)
