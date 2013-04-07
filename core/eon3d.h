@@ -73,9 +73,10 @@ typedef unsigned int EON_uInt;    /* unsigned optimal integer */
 typedef int EON_Bool;             /* boolean */
 typedef uint8_t EON_uChar;        /* unsigned 8 bit integer */
 typedef int8_t EON_sChar;         /* signed 8 bit integer */
+typedef uint8_t EON_Byte;         /* generic binary data */
 
-/* pi! */
-#define EON_PI 3.14159265359
+#define EON_ZERO 0.000001
+#define EON_PI   3.14159265359
 
 /* Utility min() and max() functions */
 #define EON_Min(x,y) (( ( x ) > ( y ) ? ( y ) : ( x )))
@@ -390,8 +391,17 @@ void EON_MatMapToPal(EON_Mat *m, EON_uChar *pal, EON_sInt pstart, EON_sInt pend)
 void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
                        EON_sInt pend, EON_Mat **materials, EON_sInt nmats);
 
-
-void EON_MatInfo(EON_Mat *m, void *Logger);
+/*
+  EON_MatInfo() dumps the internal informations about a Material to a
+    logger. See cxkit/logkit.h for details.
+    The logger datatype is void* to remove a header dependency.
+  Parameters:
+    m: material to be inspected
+    logger: logger instance to be used
+  Returns:
+    nothing
+*/
+void EON_MatInfo(EON_Mat *m, void *logger);
 
 /******************************************************************************
 ** Object Functions (obj.c)
@@ -496,7 +506,17 @@ void EON_ObjSetMat(EON_Obj *o, EON_Mat *m, EON_Bool th);
 */
 EON_Obj *EON_ObjCalcNormals(EON_Obj *obj);
 
-void EON_ObjInfo(EON_Obj *o, void *Logger);
+/*
+  EON_ObjInfo() dumps the internal informations about an Object to a
+    logger. See cxkit/logkit.h for details.
+    The logger datatype is void* to remove a header dependency.
+  Parameters:
+    o: object to be inspected
+    logger: logger instance to be used
+  Returns:
+    nothing
+*/
+void EON_ObjInfo(EON_Obj *o, void *logger);
 
 /******************************************************************************
 ** Frustum Clipping Functions (clip.c)

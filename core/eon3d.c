@@ -276,16 +276,16 @@ EON_Obj *EON_ObjCreate(EON_uInt32 nv, EON_uInt32 nf)
     return o;
 }
 
-void EON_ObjInfo(EON_Obj *o, void *Logger)
+void EON_ObjInfo(EON_Obj *o, void *logger)
 {
-    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG, "Object (%p)", o);
-    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG,
+    CX_log_trace(logger, CX_LOG_INFO, EON_TAG, "Object (%p)", o);
+    CX_log_trace(logger, CX_LOG_INFO, EON_TAG,
                  "* Vertices: %i", o->NumVertices);
-    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG,
+    CX_log_trace(logger, CX_LOG_INFO, EON_TAG,
                  "* Faces: %i", o->NumFaces);
-    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG,
+    CX_log_trace(logger, CX_LOG_INFO, EON_TAG,
                  "* Generate Matrix: %s", (o->GenMatrix) ?"Yes" :"No");
-    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG,
+    CX_log_trace(logger, CX_LOG_INFO, EON_TAG,
                  "* Backface Cull: %s", (o->GenMatrix) ?"Yes" :"No");
 }
 
@@ -906,13 +906,13 @@ void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
     CX_free(colorBlock);
 }
 
-void EON_MatInfo(EON_Mat *m, void *Logger)
+void EON_MatInfo(EON_Mat *m, void *logger)
 {
-    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG, "Material (%p)", m);
-    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG,
+    CX_log_trace(logger, CX_LOG_INFO, EON_TAG, "Material (%p)", m);
+    CX_log_trace(logger, CX_LOG_INFO, EON_TAG,
                  "* Colors: Grads=%i Used=%i Requested=%i",
                  m->NumGradients, m->_ColorsUsed, m->_RequestedColors);
-    CX_log_trace(Logger, CX_LOG_INFO, EON_TAG,
+    CX_log_trace(logger, CX_LOG_INFO, EON_TAG,
                  "* Rasterizer: %s",
                  eon_PutFaceName(m->_PutFace));
 }
