@@ -379,7 +379,7 @@ void EON_MatMapToPal(EON_Mat *m, EON_uChar *pal, EON_sInt pstart, EON_sInt pend)
 /*
   EON_MatMakeOptPal() makes an almost optimal palette from materials
     created with EON_MatCreate() and initialized with EON_MatInit().
-  Paramters:
+  Parameters:
     p: palette to create
     pstart: first color entry to use
     pend: last color entry to use
@@ -409,7 +409,7 @@ void EON_MatInfo(EON_Mat *m, void *logger);
 
 /*
   EON_ObjCreate() allocates an object
-  Paramters:
+  Parameters:
     np: Number of vertices in object
     nf: Number of faces in object
   Returns:
@@ -420,7 +420,7 @@ EON_Obj *EON_ObjCreate(EON_uInt32 np, EON_uInt32 nf);
 /*
   EON_ObjDelete() frees an object and all of it's subobjects
     that was allocated with EON_ObjCreate();
-  Paramters:
+  Parameters:
     o: object to delete
   Returns:
     nothing
@@ -430,7 +430,7 @@ void EON_ObjDelete(EON_Obj *o);
 /*
   EON_ObjClone() creates an exact but independent duEON_icate of an object and
     all of it's subobjects
-  Paramters:
+  Parameters:
     o: the object to clone
   Returns:
     a pointer to the new object on success, 0 on failure
@@ -439,7 +439,7 @@ EON_Obj *EON_ObjClone(EON_Obj *o);
 
 /*
   EON_ObjScale() scales an object, and all of it's subobjects.
-  Paramters:
+  Parameters:
     o: a pointer to the object to scale
     s: the scaling factor
   Returns:
@@ -486,7 +486,7 @@ EON_Obj *EON_ObjFlipNormals(EON_Obj *o);
 
 /*
   EON_ObjSetMat() sets the material of all faces in an object.
-  Paramters:
+  Parameters:
     o: the object to set the material of
     m: the material to set it to
     th: "transcend hierarchy". If set, it will set the
@@ -499,7 +499,7 @@ void EON_ObjSetMat(EON_Obj *o, EON_Mat *m, EON_Bool th);
 /*
    EON_ObjCalcNormals() calculates all face and vertex normals for an object
      and all subobjects.
-   Paramters:
+   Parameters:
      obj: the object
    Returns:
      nothing
@@ -594,7 +594,7 @@ EON_Light *EON_LightNew(EON_uChar mode, EON_Float x, EON_Float y, EON_Float z,
 
 /*
   EON_LightDelete() frees a light allocated with EON_LightCreate().
-  Paramters:
+  Parameters:
     l: light to delete
   Returns:
     nothing
@@ -641,7 +641,7 @@ void EON_CamSetTarget(EON_Cam *c, EON_Float x, EON_Float y, EON_Float z);
 /*
    EON_CamDelete() frees all memory associated with a camera excluding
      framebuffers and Z buffers
-   Paramters:
+   Parameters:
      c: camera to free
    Returns:
      nothing
@@ -663,7 +663,7 @@ EON_Rend *EON_RendCreate(EON_Cam *Camera);
 
 /*
    EON_RendDelete() frees all memory associated with a rendering context.
-   Paramters:
+   Parameters:
      rend: context to free
    Returns:
      nothing
