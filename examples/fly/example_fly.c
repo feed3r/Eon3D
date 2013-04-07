@@ -11,13 +11,17 @@
 #include <eon3dx_console.h>
 #include <eon3dx_reader.h>
 
+#include <logkit.h>
+
+
 enum {
     LAND_SIZE = 65000, /* Physical size of land */
     LAND_DIV  = 128    /* Number of divisions of the land.
                           Higher number == more polygons */
 };
 
-void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal)
+void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
+                     CX_LogContext *Logger)
 {
     // create our 3 materials, make the fourth null so that EON_MatMakeOptPal2()
     // knows where to stop
@@ -74,8 +78,11 @@ void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal)
 
     // intialize the materials
     EON_MatInit(mat[0]);
+    EON_MatInfo(mat[0], Logger);
     EON_MatInit(mat[1]);
+    EON_MatInfo(mat[1], Logger);
     EON_MatInit(mat[2]);
+    EON_MatInfo(mat[2], Logger);
 
     // make a nice palette
     EON_MatMakeOptPal(pal,1,255,mat,3);
@@ -135,10 +142,11 @@ int main(int argc, char *argv[])
     uint64_t ts = 0;
 
     uint8_t pal[3 * 256]; // our palette
+    CX_LogContext *Logger = CX_log_open_console(CX_LOG_MARK, stderr);
 
     srand(0); // initialize prng
 
-    EONx_ConsoleStartup("Eon3D :: Fly v1.0", NULL);
+    EONx_ConsoleStartup("Eon3D :: Fly v1.1", NULL);
     con = EONx_ConsoleNew(800, // Screen width
                           600, // Screen height
                           90.0 // Field of view
@@ -149,13 +157,17 @@ int main(int argc, char *argv[])
 
     font = EON_TextDefaultFont();
 
-    setup_materials(con,mat,pal); // intialize materials and palette
+    setup_materials(con, mat, pal, Logger); // intialize materials and palette
 
     land = setup_landscape(mat[0],mat[1],mat[2]); // create landscape
     sky = land->Children[0]; // unhierarchicalize the sky from the land
     land->Children[0] = 0;
     sky2 = land->Children[1];
     land->Children[1] = 0;
+
+    EON_ObjInfo(land, Logger);
+    EON_ObjInfo(sky,  Logger);
+    EON_ObjInfo(sky2, Logger);
 
     frames = 0;     // set up for framerate counter
     ts = eon_gettime_ms();
@@ -189,7 +201,7 @@ int main(int argc, char *argv[])
                        cam->ClipLeft+5, cam->ClipTop, 0.0,
                       "%.3f FPS",
                       (frames/ (double) elapsed));
-        fprintf(stderr, 
+        CX_log_trace(Logger, CX_LOG_INFO, "fly",
                       "Camera={%f,%f,%f) %i frames %li elapsed %.3f FPS\r",
                       cam->X, cam->Y, cam->Z,
                       frames, (long)elapsed,
@@ -214,6 +226,8 @@ int main(int argc, char *argv[])
     EON_MatDelete(mat[1]);
     EON_MatDelete(mat[2]);
 
-    return EONx_ConsoleShutdown();
+    EONx_ConsoleShutdown();
+
+    return CX_log_close(Logger);
 }
 
