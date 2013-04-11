@@ -23,6 +23,7 @@ int main()
     EON_Mat *AllMaterials[3]; // Used for creating palette
     EON_Cam *TheCamera; // Our camera
     EON_Rend *TheRend;
+    EON_Frame *TheFrame;
     EONx_Console *TheConsole;
     uint8_t ThePalette[3 * 256];
 
@@ -80,6 +81,7 @@ int main()
     TheTorus = EON_MakeTorus(40.0,100.0,10,8,TorusMat); // Create the torus
     TheTorus->Xp = -70.0; // Shift the torus to the left a bit
 
+    TheFrame = EONx_ConsoleGetFrame(TheConsole);
     TheCamera = EONx_ConsoleGetCamera(TheConsole);
     TheCamera->Z = -300; // Back the camera up from the origin
 
@@ -110,7 +112,7 @@ int main()
         EON_RenderLight(TheRend, TheLight); // Render our light
         EON_RenderObj(TheRend, TheCube);    // Render our object
         EON_RenderObj(TheRend, TheTorus);   // Render our torus
-        EON_RenderEnd(TheRend);             // Finish rendering
+        EON_RenderEnd(TheRend, TheFrame);   // Finish rendering
         EONx_ConsoleShowFrame(TheConsole);
         frames++;
     }

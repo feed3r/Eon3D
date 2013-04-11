@@ -39,14 +39,14 @@
 ** Built-in Rasterizers
 ******************************************************************************/
 
-static void EON_PF_Null(EON_Cam *, EON_Face *);
-static void EON_PF_SolidF(EON_Cam *, EON_Face *);
-static void EON_PF_SolidG(EON_Cam *, EON_Face *);
-static void EON_PF_TexF(EON_Cam *, EON_Face *);
-static void EON_PF_TexG(EON_Cam *, EON_Face *);
-static void EON_PF_TexEnv(EON_Cam *, EON_Face *);
-static void EON_PF_PTexF(EON_Cam *, EON_Face *);
-static void EON_PF_PTexG(EON_Cam *, EON_Face *);
+static void EON_PF_Null(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_SolidF(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_SolidG(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_TexF(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_TexG(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_TexEnv(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_PTexF(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_PTexG(EON_Cam *, EON_Face *, EON_Frame *);
 
 /* Used internally; EON_FILL_* are stored in EON_Mat._st. */
 enum {
@@ -130,6 +130,65 @@ void EON_NormalizeVector(EON_Float *x, EON_Float *y, EON_Float *z)
         *z /= t;
     } else {
         *x = *y = *z = 0.0;
+    }
+    return;
+}
+
+// frame
+
+static inline EON_uInt32 eon_FrameSizeZBuffer(EON_Frame *f)
+{
+    return f->Width * f->Height * sizeof(EON_ZBuffer);
+}
+
+static inline void *eon_FrameDel(EON_Frame *f)
+{
+    if (f) {
+        CX_pafree(f->ZBuffer);
+        CX_pafree(f->Data);
+        CX_free(f);
+    }
+    return NULL;
+}
+
+EON_Frame *EON_FrameCreate(EON_uInt32 Width, EON_uInt32 Height,
+                           EON_uInt32 Bpp)
+{
+    EON_Frame *f = CX_zalloc(sizeof(*f));
+    if (f) {
+        f->Width = Width;
+        f->Height = Height;
+        f->Bpp = Bpp;
+        f->Data = CX_paalloc(EON_FrameSize(f));
+        f->ZBuffer = CX_paalloc(eon_FrameSizeZBuffer(f));
+
+        if (f->Data == NULL || f->ZBuffer == NULL ) {
+            f = eon_FrameDel(f);
+        }
+    }
+    return f;
+}
+
+void EON_FrameDelete(EON_Frame *f)
+{
+    eon_FrameDel(f);
+}
+
+EON_uInt32 EON_FrameSize(EON_Frame *f)
+{
+    EON_uInt32 size = 0;
+    if (f) {
+        size = f->Width * f->Height * f->Bpp;
+    }
+    return size;
+}
+
+void EON_FrameClear(EON_Frame *f)
+{
+    if (f) {
+        // clear framebuffer for next frame
+        memset(f->Data, 0, EON_FrameSize(f));
+        memset(f->ZBuffer, 0, eon_FrameSizeZBuffer(f));
     }
     return;
 }
@@ -948,8 +1007,7 @@ void EON_CamSetPalette(EON_Cam *c, const uint8_t *palette, int numcolors)
     return;
 }
 
-EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov,
-                       EON_uChar *fb, EON_ZBuffer *zb)
+EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov)
 {
     EON_Cam *c = CX_zalloc(sizeof(EON_Cam));
     if (c) {
@@ -960,8 +1018,6 @@ EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov,
         c->CenterX = sw>>1;
         c->CenterY = sh>>1;
         c->ClipBack = 8.0e30f;
-        c->frameBuffer = fb;
-        c->zBuffer = zb;
     }
     return c;
 }
@@ -1054,11 +1110,9 @@ void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam)
 }
 
 
-void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face)
+void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame)
 {
-    EON_uInt k, a, w, numVerts = 3;
-    double tmp, tmp2;
-    EON_Face newface;
+    EON_uInt a, numVerts = 3;
 
     for (a = 0; a < 3; a ++) {
         clip->CL[0].newVertices[a] = *(face->Vertices[a]);
@@ -1076,10 +1130,13 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face)
         a++;
     }
     if (numVerts > 2) {
-        memcpy(&newface,face,sizeof(EON_Face));
+        EON_uInt k, w;
+        double tmp, tmp2;
+        EON_Face newface;
+        memcpy(&newface, face, sizeof(EON_Face));
         for (k = 2; k < numVerts; k ++) {
             newface.fShade = EON_Clamp(face->fShade,0,1);
-            for (a = 0; a < 3; a ++) {
+            for (a = 0; a < 3; a++) {
                 if (a == 0)
                     w = 0;
                 else
@@ -1097,10 +1154,10 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face)
                 newface.Scrx[a] = clip->Cx + ((EON_sInt32)((tmp*(float) (1<<20))));
                 newface.Scry[a] = clip->Cy - ((EON_sInt32)((tmp2*clip->AdjAsp*(float) (1<<20))));
             }
-            newface.Material->_PutFace(clip->Cam,&newface);
-            clip->Info->TriStats[3] ++;
+            newface.Material->_PutFace(clip->Cam, &newface, frame);
+            clip->Info->TriStats[3]++;
         }
-        clip->Info->TriStats[2] ++;
+        clip->Info->TriStats[2]++;
     }
 }
 
@@ -1307,7 +1364,7 @@ void EON_TexDelete(EON_Texture *t)
     MappingV3=TriFace->MappingV[i2]*Texture->vScale*\
               TriFace->Material->TexScaling;
 
-static void EON_PF_Null(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_Null(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
     return; /* nothing to do */
 }
@@ -1338,12 +1395,12 @@ inline static EON_sInt32 eon_ToScreen(EON_sInt32 val)
 // pf_solid.c
 //
 
-static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
     EON_uChar i0, i1, i2;
 
-    EON_uInt32 *gmem = (EON_uInt32 *)cam->frameBuffer;
-    EON_ZBuffer *zbuf = cam->zBuffer;
+    EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
+    EON_ZBuffer *zbuf = Frame->ZBuffer;
 
     EON_sInt32 X1, X2;
     EON_sInt32 XL1, XL2;
@@ -1467,12 +1524,12 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
     }
 }
 
-static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
-  EON_uInt32 *gmem = (EON_uInt32 *)cam->frameBuffer;
+  EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
   EON_uChar *remap = TriFace->Material->_ReMapTable;
-  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_ZBuffer *zbuf = Frame->ZBuffer;
   EON_ZBuffer dZL=0, dZ1=0, dZ2=0, Z1, Z2, ZL, Z3;
   EON_sInt32 dX1=0, dX2=0, X1, X2, XL1, XL2;
   EON_sInt32 C1, C2, dC1=0, dC2=0, dCL=0, CL, C3;
@@ -1615,12 +1672,12 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace)
 // pf_tex.c
 //
 
-static void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
-  EON_uInt32 *gmem = (EON_uInt32 *)cam->frameBuffer;
+  EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
   EON_uChar *remap;
-  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_ZBuffer *zbuf = Frame->ZBuffer;
 
   EON_sInt32 MappingU1, MappingU2, MappingU3;
   EON_sInt32 MappingV1, MappingV2, MappingV3;
@@ -1830,11 +1887,11 @@ static void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
-  EON_uInt32 *gmem = (EON_uInt32 *)cam->frameBuffer;
-  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
+  EON_ZBuffer *zbuf = Frame->ZBuffer;
   EON_sInt32 MappingU1, MappingU2, MappingU3;
   EON_sInt32 MappingV1, MappingV2, MappingV3;
   EON_sInt32 MappingU_AND, MappingV_AND;
@@ -2008,11 +2065,11 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
-  EON_uInt32 *gmem = (EON_uInt32 *)cam->frameBuffer;
-  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
+  EON_ZBuffer *zbuf = Frame->ZBuffer;
   EON_sInt32 MappingU1, MappingU2, MappingU3;
   EON_sInt32 MappingV1, MappingV2, MappingV3;
   EON_sInt32 MappingU_AND, MappingV_AND;
@@ -2204,12 +2261,12 @@ static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace)
 // pf_ptex.c
 //
 
-static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
-  EON_uInt32 *gmem = (EON_uInt32 *)cam->frameBuffer;
+  EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
   EON_uChar *remap = TriFace->Material->_ReMapTable;
-  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_ZBuffer *zbuf = Frame->ZBuffer;
   EON_Float MappingU1, MappingU2, MappingU3;
   EON_Float MappingV1, MappingV2, MappingV3;
   EON_sInt32 MappingU_AND, MappingV_AND;
@@ -2418,14 +2475,14 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
   EON_Float MappingU1, MappingU2, MappingU3;
   EON_Float MappingV1, MappingV2, MappingV3;
 
   EON_Texture *Texture;
-  EON_Bool zb = (cam->zBuffer&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_Bool zb = TriFace->Material->zBufferable;
 
   EON_uChar nm, nmb;
   EON_uInt n;
@@ -2450,8 +2507,8 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace)
   /* Cache line */
   EON_Float dU1=0, U1, dZ1=0, Z1, V1, dV1=0;
   EON_sInt32 scrwidth = cam->ScreenWidth;
-  EON_uInt32 *gmem = (EON_uInt32 *)cam->frameBuffer;
-  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
+  EON_ZBuffer *zbuf = Frame->ZBuffer;
 
   if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
   else Texture = TriFace->Material->Texture;
@@ -2950,11 +3007,11 @@ void EON_RenderObj(EON_Rend *rend, EON_Obj *obj)
     return;
 }
 
-void EON_RenderEnd(EON_Rend *rend)
+void EON_RenderEnd(EON_Rend *rend, EON_Frame *frame)
 {
     EON_FaceInfo *f = rend->Faces;
     while (rend->NumFaces--) {
-        EON_ClipRenderFace(&rend->Clip, f->face);
+        EON_ClipRenderFace(&rend->Clip, f->face, frame);
         f++;
     }
     rend->NumFaces = 0;

@@ -18,6 +18,7 @@ int main()
     EON_Mat *CubeMat;      // The material for the cube
     EON_Cam *TheCamera; // Our camera
     EON_Rend *TheRend;
+    EON_Frame *TheFrame;
     EONx_Console *TheConsole;
     double edge = 100.0;
 
@@ -39,6 +40,7 @@ int main()
 
     TheCube = EON_MakeBox(edge,edge,edge,CubeMat); // Create the cube
 
+    TheFrame = EONx_ConsoleGetFrame(TheConsole);
     TheCamera = EONx_ConsoleGetCamera(TheConsole);
     TheCamera->Z = -300; // Back the camera up from the origin
 
@@ -58,7 +60,7 @@ int main()
         EON_RenderBegin(TheRend);           // Start rendering with the camera
         EON_RenderLight(TheRend, TheLight); // Render our light
         EON_RenderObj(TheRend, TheCube);    // Render our object
-        EON_RenderEnd(TheRend);             // Finish rendering
+        EON_RenderEnd(TheRend, TheFrame);   // Finish rendering
         EONx_ConsoleShowFrame(TheConsole);
         frames++;
     }

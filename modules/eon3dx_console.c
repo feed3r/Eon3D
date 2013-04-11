@@ -54,25 +54,11 @@ enum {
 
 struct eonx_console_ {
     EON_Cam *cam;
-    uint8_t *fb;
-    int width;
-    int height;
-    int bpp;
-    EON_ZBuffer *zb;
+    EON_Frame *fb;
     SDL_Surface *screen;
     SDL_Surface *frame;
 };
 
-
-static inline int EONx_ConsoleFrameSize(EONx_Console *ctx)
-{
-    return ctx->width * ctx->height * ctx->bpp;
-}
-
-static inline int EONx_ConsoleZBufferSize(EONx_Console *ctx)
-{
-    return ctx->width * ctx->height * sizeof(EON_ZBuffer);
-}
 
 int EONx_ConsoleStartup(const char *title, const char *icon)
 {
@@ -100,17 +86,17 @@ static int EONx_ConsoleInitSurfaces(EONx_Console *ctx)
 {
     int err = -1;
     Uint32 flags = SDL_HWSURFACE|SDL_DOUBLEBUF|SDL_HWACCEL|SDL_ASYNCBLIT;
-    ctx->screen = SDL_SetVideoMode(ctx->width, ctx->height,
+    ctx->screen = SDL_SetVideoMode(ctx->fb->Width, ctx->fb->Height,
                                    TRUECOLOR_DEPTH, flags);
     /*
      * always truecolor on screen, even if internally we use a palette.
      * SDL blitting will take care of the conversion.
      */
     if (ctx->screen) {
-        ctx->frame = SDL_CreateRGBSurfaceFrom(ctx->fb,
-                                              ctx->width, ctx->height,
-                                              ctx->bpp,
-                                              ctx->width * TRUECOLOR_BPP,
+        ctx->frame = SDL_CreateRGBSurfaceFrom(ctx->fb->Data,
+                                              ctx->fb->Width, ctx->fb->Height,
+                                              TRUECOLOR_DEPTH,
+                                              ctx->fb->Width * TRUECOLOR_BPP,
                                               0, 0, 0, 0);
         if (ctx->frame) {
             err = 0;
@@ -131,12 +117,8 @@ static void *EONx_ConsoleCleanup(EONx_Console *ctx)
         ctx->cam = NULL;
     }
     if (ctx->fb) {
-        free(ctx->fb);
+        EON_FrameDelete(ctx->fb);
         ctx->fb = NULL;
-    }
-    if (ctx->zb) {
-        free(ctx->zb);
-        ctx->zb = NULL;
     }
     free(ctx);
     return NULL;
@@ -145,7 +127,7 @@ static void *EONx_ConsoleCleanup(EONx_Console *ctx)
 EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov)
 {
     return EONx_ConsoleCreate(sw, sh, 1.0, fov,
-                              EONx_CONSOLE_FLAG_ZBUFFER);
+                              EONx_CONSOLE_FLAG_NONE);
 }
 
 EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
@@ -155,16 +137,9 @@ EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
     int err = -1;
     EONx_Console *ctx = calloc(1, sizeof(*ctx));
     if (ctx) {
-        ctx->width = sw;
-        ctx->height = sh;
-        ctx->bpp = TRUECOLOR_DEPTH; // XXX
-        if (flags & EONx_CONSOLE_FLAG_ZBUFFER) {
-            ctx->zb = malloc(EONx_ConsoleZBufferSize(ctx));
-        }
-        ctx->fb = malloc(EONx_ConsoleFrameSize(ctx));
+        ctx->fb = EON_FrameCreate(sw, sh, TRUECOLOR_BPP);
         if (ctx->fb) {
-            ctx->cam = EON_CamCreate(sw, sh, ar, fov,
-                                     ctx->fb, ctx->zb);
+            ctx->cam = EON_CamCreate(sw, sh, ar, fov);
             if (ctx->cam) {
                 err = EONx_ConsoleInitSurfaces(ctx);
             }
@@ -189,14 +164,19 @@ int EONx_ConsoleClearFrame(EONx_Console *ctx)
 {
     int err = -1;
     if (ctx) {
-        // clear framebuffer for next frame
-        memset(ctx->fb, 0, EONx_ConsoleFrameSize(ctx));
-        if (ctx->zb) {
-            memset(ctx->zb, 0, EONx_ConsoleZBufferSize(ctx));
-        }
+        EON_FrameClear(ctx->fb);
         err = 0;
     }
     return err;
+}
+
+EON_Frame* EONx_ConsoleGetFrame(EONx_Console *ctx)
+{
+    EON_Frame *frame = NULL;
+    if (ctx) {
+        frame = ctx->fb;
+    }
+    return frame;
 }
 
 
@@ -293,6 +273,11 @@ int EONx_ConsoleWaitKey(EONx_Console *ctx)
 int EONx_ConsoleSetPalette(EONx_Console *ctx, const uint8_t *palette, int numcolors)
 {
     return 0;
+}
+
+const EON_Frame* EONx_ConsoleGetFrame(EONx_Console *ctx)
+{
+    return NULL;
 }
 
 int EONx_ConsoleClearFrame(EONx_Console *ctx)

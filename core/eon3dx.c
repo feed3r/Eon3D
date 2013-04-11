@@ -315,15 +315,15 @@ EON_Font *EON_TextDefaultFont()
     return font;
 }
 
-static inline EON_uInt32 eon_PackColor(EON_Cam *cam, const EON_Color *col)
+static inline EON_uInt32 eon_PackColor(const EON_Color *col)
 {
     EON_uInt32 A = 0xFF000000;
     return (A | col->R << 16 | col->G << 8| col->B);
 }
 
 
-void EON_TextPutChar(EON_Font *font,
-                     EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+void EON_TextPutChar(EON_Font *font, EON_Cam *cam, EON_Frame *frame,
+                     EON_sInt x, EON_sInt y, EON_Float z,
                      char c)
 {
     const EON_uChar *face = font->Face + (c * font->Height);
@@ -348,8 +348,8 @@ void EON_TextPutChar(EON_Font *font,
         len = cam->ClipBottom-y;
     }
     while (len > 0) {
-        outmem = (EON_uInt32 *)(cam->frameBuffer + offset * 4);
-        zbuffer = cam->zBuffer + offset;
+        outmem = (EON_uInt32 *)(frame->Data + offset * 4);
+        zbuffer = frame->ZBuffer + offset;
         offset += cam->ScreenWidth;
         xx = x;
         ch = *face++;
@@ -362,7 +362,7 @@ void EON_TextPutChar(EON_Font *font,
                 if (ch & a) {
                     if (zz > *zbuffer) {
                         *zbuffer = zz;
-                        *outmem = eon_PackColor(cam, &font->Color);
+                        *outmem = eon_PackColor(&font->Color);
                     }
                 }
             }
@@ -375,10 +375,11 @@ void EON_TextPutChar(EON_Font *font,
         }
         len--;
     }
+    return;
 }
 
-void EON_TextPutStr(EON_Font *font, 
-                    EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+void EON_TextPutStr(EON_Font *font, EON_Cam *cam, EON_Frame *frame,
+                    EON_sInt x, EON_sInt y, EON_Float z,
                     const char *string)
 {
     EON_sInt xx = x;
@@ -397,7 +398,7 @@ void EON_TextPutStr(EON_Font *font,
             xx += 8*5;
             break;
         default:
-            EON_TextPutChar(font, cam, xx, y, z, *string);
+            EON_TextPutChar(font, cam, frame, xx, y, z, *string);
             xx += 8;
         break;
         }
@@ -405,8 +406,8 @@ void EON_TextPutStr(EON_Font *font,
     }
 }
 
-void EON_TextPrintf(EON_Font *font,
-                    EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+void EON_TextPrintf(EON_Font *font, EON_Cam *cam, EON_Frame *frame,
+                    EON_sInt x, EON_sInt y, EON_Float z,
                     const char *format, ...)
 {
     va_list arglist;
@@ -414,7 +415,7 @@ void EON_TextPrintf(EON_Font *font,
     va_start(arglist, format);
     vsnprintf(str, sizeof(str), format,arglist);
     va_end(arglist);
-    EON_TextPutStr(font, cam, x, y, z, str);
+    EON_TextPutStr(font, cam, frame, x, y, z, str);
 }
 
 // make.c

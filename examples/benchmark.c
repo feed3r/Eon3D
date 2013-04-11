@@ -11,11 +11,7 @@
 
 typedef struct null_console_ {
     EON_Cam *cam;
-    uint8_t *fb;
-    int width;
-    int height;
-    int bpp;
-    EON_ZBuffer *zb;
+    EON_Frame *fb;
 } NullConsole;
 
 static void *NullConsoleDelete(NullConsole *ctx)
@@ -25,12 +21,8 @@ static void *NullConsoleDelete(NullConsole *ctx)
         ctx->cam = NULL;
     }
     if (ctx->fb) {
-        free(ctx->fb);
+        EON_FrameDelete(ctx->fb);
         ctx->fb = NULL;
-    }
-    if (ctx->zb) {
-        free(ctx->zb);
-        ctx->zb = NULL;
     }
     free(ctx);
     return NULL;
@@ -41,15 +33,9 @@ NullConsole *NullConsoleCreate(EON_uInt sw, EON_uInt sh)
     int err = -1;
     NullConsole *ctx = calloc(1, sizeof(*ctx));
     if (ctx) {
-        int size = sw * sh;
-        ctx->width = sw;
-        ctx->height = sh;
-        ctx->bpp = 4; // XXX
-        ctx->zb = malloc(size * ctx->bpp);
-        ctx->fb = malloc(size * sizeof(EON_ZBuffer));
+        ctx->fb = EON_FrameCreate(sw, sh, 4/* XXX */);
         if (ctx->fb) {
-            ctx->cam = EON_CamCreate(sw, sh, 1.0, 90.0,
-                                     ctx->fb, ctx->zb);
+            ctx->cam = EON_CamCreate(sw, sh, 1.0, 90.0);
             if (ctx->cam) {
                 err = 0;
             }
@@ -65,12 +51,7 @@ int NullConsoleClearFrame(NullConsole *ctx)
 {
     int err = -1;
     if (ctx) {
-        // clear framebuffer for next frame
-        int size = ctx->width * ctx->height;
-        memset(ctx->fb, 0, size * ctx->bpp);
-        if (ctx->zb) {
-            memset(ctx->zb, 0, size * sizeof(EON_ZBuffer));
-        }
+        EON_FrameClear(ctx->fb);
         err = 0;
     }
     return err;
@@ -100,8 +81,9 @@ int main(int argc, char *argv[])
     EON_Light *TheLight;   // Our light
     EON_Obj *TheModel;      // Our cube object
     EON_Mat *ModelMat;      // The material for the cube
-    EON_Cam *TheCamera; // Our camera
+    EON_Cam *TheCamera;
     EON_Rend *TheRend;
+    EON_Frame *TheFrame;
     NullConsole *TheConsole;
     double distance = 50;
     int ch = -1;
@@ -168,6 +150,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    TheFrame = TheConsole->fb;
     TheCamera = TheConsole->cam;
     TheCamera->Z = -distance; // Back the camera up from the origin
 
@@ -188,7 +171,7 @@ int main(int argc, char *argv[])
         EON_RenderBegin(TheRend);           // Start rendering with the camera
         EON_RenderLight(TheRend, TheLight); // Render our light
         EON_RenderObj(TheRend, TheModel);   // Render our object
-        EON_RenderEnd(TheRend);             // Finish rendering
+        EON_RenderEnd(TheRend, TheFrame);   // Finish rendering
         frames++;
     }
     stop = time(NULL);

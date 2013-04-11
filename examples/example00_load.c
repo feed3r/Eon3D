@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
     EON_Mat *ModelMat;      // The material for the cube
     EON_Cam *TheCamera; // Our camera
     EON_Rend *TheRend;
+    EON_Frame *TheFrame;
     EONx_Console *TheConsole;
     double distance = 50;
 
@@ -51,6 +52,7 @@ int main(int argc, char *argv[])
 
     TheModel = EONx_ReadPLYObj(filename, ModelMat);
 
+    TheFrame = EONx_ConsoleGetFrame(TheConsole);
     TheCamera = EONx_ConsoleGetCamera(TheConsole);
     TheCamera->Z = -distance; // Back the camera up from the origin
 
@@ -71,7 +73,7 @@ int main(int argc, char *argv[])
         EON_RenderBegin(TheRend);           // Start rendering with the camera
         EON_RenderLight(TheRend, TheLight); // Render our light
         EON_RenderObj(TheRend, TheModel);   // Render our object
-        EON_RenderEnd(TheRend);             // Finish rendering
+        EON_RenderEnd(TheRend, TheFrame);   // Finish rendering
         EONx_ConsoleShowFrame(TheConsole);
         frames++;
     }
