@@ -1409,7 +1409,7 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
     EON_ZBuffer Z0, Z1, Z2, ZL;
     EON_sInt32 Y1, Y2, Y0, dY;
     EON_uChar stat;
-    EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+    EON_Bool zb = TriFace->Material->zBufferable;
     EON_uInt32 color = eon_PickColorF(TriFace);
 
     PUTFACE_SORT();
@@ -1535,7 +1535,7 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   EON_sInt32 C1, C2, dC1=0, dC2=0, dCL=0, CL, C3;
   EON_sInt32 Y1, Y2, Y0, dY;
   EON_uChar stat;
-  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_Bool zb = TriFace->Material->zBufferable;
 
   EON_Float nc = (TriFace->Material->_ColorsUsed-1)*65536.0f;
   EON_sInt32 maxColor=((TriFace->Material->_ColorsUsed-1)<<16);
@@ -1692,7 +1692,7 @@ static void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   EON_uInt16 *addtable;
   EON_Texture *Texture, *Environment;
   EON_uChar stat;
-  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_Bool zb = TriFace->Material->zBufferable;
 
   EON_sInt32 U1, V1, U2, V2, dU1=0, dU2=0, dV1=0, dV2=0, dUL=0, dVL=0, UL, VL;
   EON_sInt32 eU1, eV1, eU2, eV2, edU1=0, edU2=0, edV1=0,
@@ -1907,7 +1907,7 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   EON_sInt32 dUL=0, dVL=0, UL, VL;
   EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
   EON_sInt32 Y1, Y2, Y0, dY;
-  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_Bool zb = TriFace->Material->zBufferable;
   EON_sInt shade;
 
   if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
@@ -2086,7 +2086,7 @@ static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   EON_sInt32 Y1, Y2, Y0, dY;
   EON_uChar stat;
 
-  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_Bool zb = TriFace->Material->zBufferable;
 
   if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
   else Texture = TriFace->Material->Texture;
@@ -2287,7 +2287,7 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   EON_sInt32 Y1, Y2, Y0, dY;
   EON_uChar stat;
 
-  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_Bool zb = TriFace->Material->zBufferable;
 
   if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
   else Texture = TriFace->Material->Texture;
