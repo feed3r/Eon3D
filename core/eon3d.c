@@ -43,16 +43,15 @@
 ** Built-in Rasterizers
 ******************************************************************************/
 
-static void EON_PF_Null(EON_Cam *, EON_Face *);
-static void EON_PF_SolidF(EON_Cam *, EON_Face *);
-static void EON_PF_SolidG(EON_Cam *, EON_Face *);
-static void EON_PF_TexF(EON_Cam *, EON_Face *);
-static void EON_PF_TexG(EON_Cam *, EON_Face *);
-static void EON_PF_TexEnv(EON_Cam *, EON_Face *);
-static void EON_PF_PTexF(EON_Cam *, EON_Face *);
-static void EON_PF_PTexG(EON_Cam *, EON_Face *);
-static void EON_PF_TransF(EON_Cam *, EON_Face *);
-static void EON_PF_TransG(EON_Cam *, EON_Face *);
+static void EON_PF_Null(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_WireF(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_SolidF(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_SolidG(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_TexF(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_TexG(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_TexEnv(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_PTexF(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_PTexG(EON_Cam *, EON_Face *, EON_Frame *);
 
 
 static const char *eon_PutFaceName(void *addr)
@@ -164,6 +163,65 @@ void EON_NormalizeVector(EON_Float *x, EON_Float *y, EON_Float *z)
         *z /= t;
     } else {
         *x = *y = *z = 0.0;
+    }
+    return;
+}
+
+// frame
+
+static inline EON_uInt32 eon_FrameSizeZBuffer(EON_Frame *f)
+{
+    return f->Width * f->Height * sizeof(EON_ZBuffer);
+}
+
+static inline void *eon_FrameDel(EON_Frame *f)
+{
+    if (f) {
+        CX_pafree(f->ZBuffer);
+        CX_pafree(f->Data);
+        CX_free(f);
+    }
+    return NULL;
+}
+
+EON_Frame *EON_FrameCreate(EON_uInt32 Width, EON_uInt32 Height,
+                           EON_uInt32 Bpp)
+{
+    EON_Frame *f = CX_zalloc(sizeof(*f));
+    if (f) {
+        f->Width = Width;
+        f->Height = Height;
+        f->Bpp = Bpp;
+        f->Data = CX_paalloc(EON_FrameSize(f));
+        f->ZBuffer = CX_paalloc(eon_FrameSizeZBuffer(f));
+
+        if (f->Data == NULL || f->ZBuffer == NULL ) {
+            f = eon_FrameDel(f);
+        }
+    }
+    return f;
+}
+
+void EON_FrameDelete(EON_Frame *f)
+{
+    eon_FrameDel(f);
+}
+
+EON_uInt32 EON_FrameSize(EON_Frame *f)
+{
+    EON_uInt32 size = 0;
+    if (f) {
+        size = f->Width * f->Height * f->Bpp;
+    }
+    return size;
+}
+
+void EON_FrameClear(EON_Frame *f)
+{
+    if (f) {
+        // clear framebuffer for next frame
+        memset(f->Data, 0, EON_FrameSize(f));
+        memset(f->ZBuffer, 0, eon_FrameSizeZBuffer(f));
     }
     return;
 }
@@ -481,8 +539,8 @@ static void eon_MatSetupTransparent(EON_Mat *m, EON_uChar *pal)
         if (m->_AddTable)
             CX_free(m->_AddTable);
         m->_AddTable = CX_malloc(256 * sizeof(EON_uInt16));
-        for (x = 0; x < 256; x ++) {
-            intensity = *pal++;
+        for (x = 0; x < 256; x++) {
+            intensity  = *pal++;
             intensity += *pal++;
             intensity += *pal++;
             m->_AddTable[x] = ((intensity*(m->_ColorsUsed-m->_tsfact))/768);
@@ -730,21 +788,27 @@ static void eon_SetMaterialPutFace(EON_Mat *m)
     switch (m->_ft) {
     case EON_FILL_TRANSPARENT:
         switch(m->_st) {
+        case EON_SHADE_WIREFRAME:
+            m->_PutFace = EON_PF_WireF;
+            break;
         case EON_SHADE_NONE:
         case EON_SHADE_FLAT:
         case EON_SHADE_FLAT_DISTANCE:
         case EON_SHADE_FLAT_DISTANCE|EON_SHADE_FLAT:
-            m->_PutFace = EON_PF_TransF;
+//            m->_PutFace = EON_PF_TransF;
             break;
         case EON_SHADE_GOURAUD:
         case EON_SHADE_GOURAUD_DISTANCE:
         case EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE:
-            m->_PutFace = EON_PF_TransG;
+//            m->_PutFace = EON_PF_TransG;
             break;
         }
         break;
     case EON_FILL_SOLID:
         switch(m->_st) {
+        case EON_SHADE_WIREFRAME:
+            m->_PutFace = EON_PF_WireF;
+            break;
         case EON_SHADE_NONE:
         case EON_SHADE_FLAT:
         case EON_SHADE_FLAT_DISTANCE:
@@ -996,10 +1060,17 @@ void EON_CamSetTarget(EON_Cam *c, EON_Float x, EON_Float y, EON_Float z)
         c->Pan = 0.0f;
         c->Pitch = -90.0f;
     }
+    return;
 }
 
-EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov,
-                       EON_uChar *fb, EON_ZBuffer *zb)
+
+void EON_CamSetPalette(EON_Cam *c, const uint8_t *palette, int numcolors)
+{
+    c->Palette = palette;
+    return;
+}
+
+EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov)
 {
     EON_Cam *c = CX_zalloc(sizeof(EON_Cam));
     if (c) {
@@ -1010,8 +1081,6 @@ EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov,
         c->CenterX = sw>>1;
         c->CenterY = sh>>1;
         c->ClipBack = 8.0e30f;
-        c->frameBuffer = fb;
-        c->zBuffer = zb;
     }
     return c;
 }
@@ -1104,11 +1173,9 @@ void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam)
 }
 
 
-void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face)
+void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame)
 {
-    EON_uInt k, a, w, numVerts = 3;
-    double tmp, tmp2;
-    EON_Face newface;
+    EON_uInt a, numVerts = 3;
 
     for (a = 0; a < 3; a ++) {
         clip->CL[0].newVertices[a] = *(face->Vertices[a]);
@@ -1126,10 +1193,13 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face)
         a++;
     }
     if (numVerts > 2) {
-        memcpy(&newface,face,sizeof(EON_Face));
+        EON_uInt k, w;
+        double tmp, tmp2;
+        EON_Face newface;
+        memcpy(&newface, face, sizeof(EON_Face));
         for (k = 2; k < numVerts; k ++) {
             newface.fShade = EON_Clamp(face->fShade,0,1);
-            for (a = 0; a < 3; a ++) {
+            for (a = 0; a < 3; a++) {
                 if (a == 0)
                     w = 0;
                 else
@@ -1147,10 +1217,10 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face)
                 newface.Scrx[a] = clip->Cx + ((EON_sInt32)((tmp*(float) (1<<20))));
                 newface.Scry[a] = clip->Cy - ((EON_sInt32)((tmp2*clip->AdjAsp*(float) (1<<20))));
             }
-            newface.Material->_PutFace(clip->Cam,&newface);
-            clip->Info->TriStats[3] ++;
+            newface.Material->_PutFace(clip->Cam, &newface, frame);
+            clip->Info->TriStats[3]++;
         }
-        clip->Info->TriStats[2] ++;
+        clip->Info->TriStats[2]++;
     }
 }
 
@@ -1357,81 +1427,162 @@ void EON_TexDelete(EON_Texture *t)
     MappingV3=TriFace->MappingV[i2]*Texture->vScale*\
               TriFace->Material->TexScaling;
 
-static void EON_PF_Null(EON_Cam *cam, EON_Face *TriFace)
+inline static EON_uInt32 eon_PickColorP(EON_Cam *cam, EON_Byte value)
+{
+    EON_uInt32 R = cam->Palette[3 * value + 0];
+    EON_uInt32 G = cam->Palette[3 * value + 1];
+    EON_uInt32 B = cam->Palette[3 * value + 2];
+    EON_uInt32 A = 0xFF000000;
+    return (A | R << 16 | G << 8| B);
+}
+
+inline static EON_uInt32 eon_PickColorF(const EON_Face *f)
+{
+    EON_uInt32 R = ((EON_sInt32)(f->Material->Ambient[0] * f->fShade)) & 0xFF;
+    EON_uInt32 G = ((EON_sInt32)(f->Material->Ambient[1] * f->fShade)) & 0xFF;
+    EON_uInt32 B = ((EON_sInt32)(f->Material->Ambient[2] * f->fShade)) & 0xFF;
+    EON_uInt32 A = 0xFF000000;
+    return (A | R << 16 | G << 8| B);
+}
+
+inline static EON_sInt32 eon_ToScreen(EON_sInt32 val)
+{
+    return (val + (1<<19)) >> 20;
+}
+
+inline static void eon_DrawLine(EON_uInt32 *fb, EON_sInt32 pitch,
+                                EON_sInt32 x0, EON_sInt32 y0,
+                                EON_sInt32 x1, EON_sInt32 y1,
+                                EON_uInt32 pixel)
+{
+    EON_sInt32 dx = abs(x0 - x1);
+    EON_sInt32 dy = abs(y0 - y1);
+    EON_sInt32 sx = (x0 < x1) ?+1 :-1;
+    EON_sInt32 sy = (y0 < y1) ?+1 :-1;
+    EON_sInt32 err = dx - dy;
+
+    while (x0 != x1 || y0 != y1) {
+        EON_sInt32 e2 = 2 * err;
+        EON_sInt32 offset = (x0 + (y0 * pitch)) * 4; // XXX
+
+        fb[offset] = pixel;
+
+        if (e2 > -dy) {
+            err -= dy;
+            x0 += sx;
+        }
+        if (e2 <  dx) {
+            err += dx;
+            y0 += sy;
+        }
+    }
+
+    return;
+}
+
+// pf misc
+
+static void EON_PF_Null(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
     return; /* nothing to do */
+}
+
+static void EON_PF_WireF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
+{
+    EON_uChar i0 = 0, i1 = 1, i2 = 2;
+
+    EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
+
+    EON_sInt32 X0, X1, X2;
+    EON_sInt32 Y0, Y1, Y2;
+//    EON_ZBuffer Z0, Z1, Z2;
+    EON_uInt32 color = eon_PickColorF(TriFace);
+
+//    PUTFACE_SORT();
+
+//    Z0 = TriFace->Scrz[i0];
+//    Z1 = TriFace->Scrz[i1];
+//    Z2 = TriFace->Scrz[i2];
+    X0 = eon_ToScreen(TriFace->Scrx[i0]);
+    X1 = eon_ToScreen(TriFace->Scrx[i1]);
+    X2 = eon_ToScreen(TriFace->Scrx[i2]);
+    Y0 = eon_ToScreen(TriFace->Scry[i0]);
+    Y1 = eon_ToScreen(TriFace->Scry[i1]);
+    Y2 = eon_ToScreen(TriFace->Scry[i2]);
+
+    eon_DrawLine(gmem, cam->ScreenWidth, X0, Y0, X1, Y1, color);
+    eon_DrawLine(gmem, cam->ScreenWidth, X0, Y0, X2, Y2, color);
+    eon_DrawLine(gmem, cam->ScreenWidth, X1, Y1, X2, Y2, color);
+
+    return;
 }
 
 // pf_solid.c
 //
 
-static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
     EON_uChar i0, i1, i2;
 
-    EON_uChar *gmem = cam->frameBuffer;
-    EON_ZBuffer *zbuf = cam->zBuffer;
+    EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
+    EON_ZBuffer *zbuf = Frame->ZBuffer;
 
-    EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
-    EON_ZBuffer dZL=0, dZ1=0, dZ2=0, Z1, ZL, Z2, Z3;
+    EON_sInt32 X1, X2;
+    EON_sInt32 XL1, XL2;
+    EON_sInt32 dX1=0, dX2=0;
+    EON_ZBuffer dZL=0, dZ1=0, dZ2=0;
+    EON_ZBuffer Z0, Z1, Z2, ZL;
     EON_sInt32 Y1, Y2, Y0, dY;
     EON_uChar stat;
-    EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
-    EON_uChar bc;
-    EON_sInt32 shade;
+    EON_Bool zb = TriFace->Material->zBufferable;
+    EON_uInt32 color = eon_PickColorF(TriFace);
 
     PUTFACE_SORT();
 
-    shade=(EON_sInt32) (TriFace->fShade*(TriFace->Material->_ColorsUsed-1));
-    if (shade < 0)
-        shade=0;
-    if (shade > (EON_sInt32)TriFace->Material->_ColorsUsed-1)
-        shade=TriFace->Material->_ColorsUsed-1;
-    bc=TriFace->Material->_ReMapTable[shade];
-
-    X2 = X1 = TriFace->Scrx[i0];
-    Z1 = TriFace->Scrz[i0];
-    Z2 = TriFace->Scrz[i1];
-    Z3 = TriFace->Scrz[i2];
-    Y0 = (TriFace->Scry[i0]+(1<<19)) >> 20;
-    Y1 = (TriFace->Scry[i1]+(1<<19)) >> 20;
-    Y2 = (TriFace->Scry[i2]+(1<<19)) >> 20;
+    X1 = TriFace->Scrx[i0];
+    X2 = TriFace->Scrx[i0];
+    Z0 = TriFace->Scrz[i0];
+    Z1 = TriFace->Scrz[i1];
+    Z2 = TriFace->Scrz[i2];
+    Y0 = eon_ToScreen(TriFace->Scry[i0]);
+    Y1 = eon_ToScreen(TriFace->Scry[i1]);
+    Y2 = eon_ToScreen(TriFace->Scry[i2]);
 
     dY = Y2-Y0;
     if (dY) {
         dX2 = (TriFace->Scrx[i2] - X1) / dY;
-        dZ2 = (Z3 - Z1) / dY;
+        dZ2 = (Z2 - Z0) / dY;
     }
     dY = Y1-Y0;
     if (dY) {
         dX1 = (TriFace->Scrx[i1] - X1) / dY;
-        dZ1 = (Z2 - Z1) / dY;
+        dZ1 = (Z1 - Z0) / dY;
         if (dX2 < dX1) {
             dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
             dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
             stat = 2;
         } else
             stat = 1;
-        Z2 = Z1;
+        Z1 = Z0;
     } else {
         if (TriFace->Scrx[i1] > X1) {
             X2 = TriFace->Scrx[i1];
             stat = 2|4;
         } else {
             X1 = TriFace->Scrx[i1];
-            ZL = Z1; Z1 = Z2; Z2 = ZL;
-        stat = 1|8;
+            ZL = Z0; Z0 = Z1; Z1 = ZL;
+            stat = 1|8;
         }
     }
 
     if (zb) {
-        XL1 = ((dX1-dX2)*dY+(1<<19))>>20;
+        XL1 = eon_ToScreen((dX1-dX2)*dY);
         if (XL1)
             dZL = ((dZ1-dZ2)*dY)/XL1;
         else {
-            XL1 = (X2-X1+(1<<19))>>20;
+            XL1 = eon_ToScreen(X2-X1);
             if (zb && XL1)
-                dZL = (Z2-Z1)/XL1;
+                dZL = (Z1-Z0)/XL1;
             else
                 dZL = 0.0;
         }
@@ -1442,7 +1593,7 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
 
     while (Y0 < Y2) {
         if (Y0 == Y1) {
-            dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
+            dY = Y2 - eon_ToScreen(TriFace->Scry[i1]);
             if (dY) {
                 if (stat & 1) {
                     X1 = TriFace->Scrx[i1];
@@ -1460,12 +1611,12 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
                     X2 = TriFace->Scrx[i0];
                     dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
                 }
-                dZ1 = (Z3-Z1)/dY;
+                dZ1 = (Z2-Z0)/dY;
             }
         }
-        XL1 = (X1+(1<<19))>>20;
-        XL2 = (X2+(1<<19))>>20;
-        ZL = Z1;
+        XL1 = eon_ToScreen(X1);
+        XL2 = eon_ToScreen(X2);
+        ZL = Z0;
         XL2 -= XL1;
         if (XL2 > 0) {
             zbuf += XL1;
@@ -1475,47 +1626,47 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace)
                 do {
                     if (*zbuf < ZL) {
                         *zbuf = ZL;
-                        *gmem = bc;
+                        *gmem = color;
                     }
                     gmem++;
                     zbuf++;
                     ZL += dZL;
                 } while (--XL2);
             else
-                do
-                    *gmem++ = bc;
-                while (--XL2);
+                do {
+                    *gmem = color;
+                    gmem++;
+                } while (--XL2);
             gmem -= XL1;
             zbuf -= XL1;
         }
         gmem += cam->ScreenWidth;
         zbuf += cam->ScreenWidth;
-        Z1 += dZ1;
+        Z0 += dZ1;
         X1 += dX1;
         X2 += dX2;
         Y0++;
     }
 }
 
-static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
-  EON_uChar *gmem = cam->frameBuffer;
+  EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
   EON_uChar *remap = TriFace->Material->_ReMapTable;
-  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_ZBuffer *zbuf = Frame->ZBuffer;
   EON_ZBuffer dZL=0, dZ1=0, dZ2=0, Z1, Z2, ZL, Z3;
   EON_sInt32 dX1=0, dX2=0, X1, X2, XL1, XL2;
   EON_sInt32 C1, C2, dC1=0, dC2=0, dCL=0, CL, C3;
   EON_sInt32 Y1, Y2, Y0, dY;
   EON_uChar stat;
-  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_Bool zb = TriFace->Material->zBufferable;
 
   EON_Float nc = (TriFace->Material->_ColorsUsed-1)*65536.0f;
   EON_sInt32 maxColor=((TriFace->Material->_ColorsUsed-1)<<16);
   EON_sInt32 maxColorNonShift=TriFace->Material->_ColorsUsed-1;
 
   PUTFACE_SORT();
-
 
   C1 = (EON_sInt32) (TriFace->Shades[i0]*nc);
   C2 = (EON_sInt32) (TriFace->Shades[i1]*nc);
@@ -1605,15 +1756,17 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace)
     ZL = Z1;
     XL2 -= XL1;
     if (XL2 > 0) {
+      EON_Byte CX = 0;
       gmem += XL1;
       zbuf += XL1;
       XL1 += XL2;
       if (zb) do {
           if (*zbuf < ZL) {
             *zbuf = ZL;
-            if (CL >= maxColor) *gmem=remap[maxColorNonShift];
-            else if (CL > 0) *gmem = remap[CL>>16];
-            else *gmem = remap[0];
+            if (CL >= maxColor) CX = remap[maxColorNonShift];
+            else if (CL > 0) CX = remap[CL>>16];
+            else CX = remap[0];
+            *gmem = eon_PickColorP(cam, CX);
           }
           gmem++;
           zbuf++;
@@ -1621,9 +1774,11 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace)
           CL += dCL;
         } while (--XL2);
       else do {
-          if (CL >= maxColor) *gmem++=remap[maxColorNonShift];
-          else if (CL > 0) *gmem++ = remap[CL>>16];
-          else *gmem++ = remap[0];
+          if (CL >= maxColor) CX = remap[maxColorNonShift];
+          else if (CL > 0) CX = remap[CL>>16];
+          else CX = remap[0];
+          *gmem = eon_PickColorP(cam, CX);
+          gmem++;
           CL += dCL;
         } while (--XL2);
       gmem -= XL1;
@@ -1642,12 +1797,12 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace)
 // pf_tex.c
 //
 
-static void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
-  EON_uChar *gmem = cam->frameBuffer;
+  EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
   EON_uChar *remap;
-  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_ZBuffer *zbuf = Frame->ZBuffer;
 
   EON_sInt32 MappingU1, MappingU2, MappingU3;
   EON_sInt32 MappingV1, MappingV2, MappingV3;
@@ -1662,7 +1817,7 @@ static void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace)
   EON_uInt16 *addtable;
   EON_Texture *Texture, *Environment;
   EON_uChar stat;
-  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_Bool zb = TriFace->Material->zBufferable;
 
   EON_sInt32 U1, V1, U2, V2, dU1=0, dU2=0, dV1=0, dV2=0, dUL=0, dVL=0, UL, VL;
   EON_sInt32 eU1, eV1, eU2, eV2, edU1=0, edU2=0, edV1=0,
@@ -1815,10 +1970,11 @@ static void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace)
       if (zb) do {
           if (*zbuf < ZL) {
             *zbuf = ZL;
-            *gmem = remap[addtable[environment[
+            *gmem = eon_PickColorP(cam,
+                                   remap[addtable[environment[
                 ((eUL>>16)&eMappingU_AND)+((eVL>>evshift)&eMappingV_AND)]] +
                             texture[((UL>>16)&MappingU_AND) +
-                                    ((VL>>vshift)&MappingV_AND)]];
+                                    ((VL>>vshift)&MappingV_AND)]]);
           }
           zbuf++;
           gmem++;
@@ -1829,10 +1985,12 @@ static void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace)
           eVL += edVL;
         } while (--XL2);
       else do {
-          *gmem++ = remap[addtable[environment[
+          *gmem = eon_PickColorP(cam,
+              remap[addtable[environment[
               ((eUL>>16)&eMappingU_AND)+((eVL>>evshift)&eMappingV_AND)]] +
                           texture[((UL>>16)&MappingU_AND) +
-                                  ((VL>>vshift)&MappingV_AND)]];
+                                  ((VL>>vshift)&MappingV_AND)]]);
+          gmem++;
           UL += dUL;
           VL += dVL;
           eUL += edUL;
@@ -1854,11 +2012,11 @@ static void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
-  EON_uChar *gmem = cam->frameBuffer;
-  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
+  EON_ZBuffer *zbuf = Frame->ZBuffer;
   EON_sInt32 MappingU1, MappingU2, MappingU3;
   EON_sInt32 MappingV1, MappingV2, MappingV3;
   EON_sInt32 MappingU_AND, MappingV_AND;
@@ -1874,7 +2032,7 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace)
   EON_sInt32 dUL=0, dVL=0, UL, VL;
   EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
   EON_sInt32 Y1, Y2, Y0, dY;
-  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_Bool zb = TriFace->Material->zBufferable;
   EON_sInt shade;
 
   if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
@@ -2000,8 +2158,9 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace)
       if (zb) do {
           if (*zbuf < ZL) {
             *zbuf = ZL;
-            *gmem = remap[bc + texture[((UL >> 16)&MappingU_AND) +
-                                ((VL>>vshift)&MappingV_AND)]];
+            *gmem = eon_PickColorP(cam,
+                           remap[bc + texture[((UL >> 16)&MappingU_AND) +
+                                ((VL>>vshift)&MappingV_AND)]]);
           }
           zbuf++;
           gmem++;
@@ -2010,8 +2169,10 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace)
           VL += dVL;
         } while (--XL2);
       else do {
-          *gmem++ = remap[bc + texture[((UL >> 16)&MappingU_AND) +
-                                ((VL>>vshift)&MappingV_AND)]];
+          *gmem = eon_PickColorP(cam,
+                           remap[bc + texture[((UL >> 16)&MappingU_AND) +
+                                ((VL>>vshift)&MappingV_AND)]]);
+          gmem++;
           UL += dUL;
           VL += dVL;
         } while (--XL2);
@@ -2029,11 +2190,11 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
-  EON_uChar *gmem = cam->frameBuffer;
-  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
+  EON_ZBuffer *zbuf = Frame->ZBuffer;
   EON_sInt32 MappingU1, MappingU2, MappingU3;
   EON_sInt32 MappingV1, MappingV2, MappingV3;
   EON_sInt32 MappingU_AND, MappingV_AND;
@@ -2050,7 +2211,7 @@ static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace)
   EON_sInt32 Y1, Y2, Y0, dY;
   EON_uChar stat;
 
-  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_Bool zb = TriFace->Material->zBufferable;
 
   if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
   else Texture = TriFace->Material->Texture;
@@ -2181,9 +2342,10 @@ static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace)
             else if (CL > (255<<8)) av=addtable[255];
             else av=addtable[CL>>8];
             *zbuf = ZL;
-            *gmem = remap[av +
+            *gmem = eon_PickColorP(cam,
+                            remap[av +
                             texture[((UL>>16)&MappingU_AND) +
-                                    ((VL>>vshift)&MappingV_AND)]];
+                                    ((VL>>vshift)&MappingV_AND)]]);
           }
           zbuf++;
           gmem++;
@@ -2197,9 +2359,11 @@ static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace)
           if (CL < 0) av=addtable[0];
           else if (CL > (255<<8)) av=addtable[255];
           else av=addtable[CL>>8];
-          *gmem++ = remap[av +
+          *gmem = eon_PickColorP(cam,
+                          remap[av +
                           texture[((UL>>16)&MappingU_AND) +
-                                  ((VL>>vshift)&MappingV_AND)]];
+                                  ((VL>>vshift)&MappingV_AND)]]);
+          gmem++;
           CL += dCL;
           UL += dUL;
           VL += dVL;
@@ -2222,12 +2386,12 @@ static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace)
 // pf_ptex.c
 //
 
-static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
-  EON_uChar *gmem = cam->frameBuffer;
+  EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
   EON_uChar *remap = TriFace->Material->_ReMapTable;
-  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_ZBuffer *zbuf = Frame->ZBuffer;
   EON_Float MappingU1, MappingU2, MappingU3;
   EON_Float MappingV1, MappingV2, MappingV3;
   EON_sInt32 MappingU_AND, MappingV_AND;
@@ -2248,7 +2412,7 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace)
   EON_sInt32 Y1, Y2, Y0, dY;
   EON_uChar stat;
 
-  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_Bool zb = TriFace->Material->zBufferable;
 
   if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
   else Texture = TriFace->Material->Texture;
@@ -2402,8 +2566,9 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace)
         if (zb) do {
             if (*zbuf < ZL) {
               *zbuf = ZL;
-              *gmem = remap[bc + texture[((iUL>>16)&MappingU_AND) +
-                                   ((iVL>>vshift)&MappingV_AND)]];
+              *gmem = eon_PickColorP(cam,
+                              remap[bc + texture[((iUL>>16)&MappingU_AND) +
+                                   ((iVL>>vshift)&MappingV_AND)]]);
             }
             zbuf++;
             gmem++;
@@ -2412,8 +2577,10 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace)
             iVL += idVL;
           } while (--n);
         else do {
-            *gmem++ = remap[bc + texture[((iUL>>16)&MappingU_AND) +
-                                   ((iVL>>vshift)&MappingV_AND)]];
+            *gmem = eon_PickColorP(cam,
+                              remap[bc + texture[((iUL>>16)&MappingU_AND) +
+                                   ((iVL>>vshift)&MappingV_AND)]]);
+            gmem++;
             iUL += idUL;
             iVL += idVL;
           } while (--n);
@@ -2433,14 +2600,14 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace)
+static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
   EON_Float MappingU1, MappingU2, MappingU3;
   EON_Float MappingV1, MappingV2, MappingV3;
 
   EON_Texture *Texture;
-  EON_Bool zb = (cam->zBuffer&&TriFace->Material->zBufferable) ? 1 : 0;
+  EON_Bool zb = TriFace->Material->zBufferable;
 
   EON_uChar nm, nmb;
   EON_uInt n;
@@ -2465,8 +2632,8 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace)
   /* Cache line */
   EON_Float dU1=0, U1, dZ1=0, Z1, V1, dV1=0;
   EON_sInt32 scrwidth = cam->ScreenWidth;
-  EON_uChar *gmem = cam->frameBuffer;
-  EON_ZBuffer *zbuf = cam->zBuffer;
+  EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
+  EON_ZBuffer *zbuf = Frame->ZBuffer;
 
   if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
   else Texture = TriFace->Material->Texture;
@@ -2635,9 +2802,10 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace)
               else if (CL > (255<<8)) av=addtable[255];
               else av=addtable[CL>>8];
               *zbuf = ZL;
-              *gmem = remap[av +
+              *gmem = eon_PickColorP(cam,
+                      remap[av +
                       texture[((iUL>>16)&MappingU_AND) +
-                              ((iVL>>vshift)&MappingV_AND)]];
+                              ((iVL>>vshift)&MappingV_AND)]]);
             }
             zbuf++;
             gmem++;
@@ -2651,9 +2819,11 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace)
             if (CL < 0) av=addtable[0];
             else if (CL > (255<<8)) av=addtable[255];
             else av=addtable[CL>>8];
-            *gmem++ = remap[av +
+            *gmem = eon_PickColorP(cam,
+                      remap[av +
                       texture[((iUL>>16)&MappingU_AND) +
-                              ((iVL>>vshift)&MappingV_AND)]];
+                              ((iVL>>vshift)&MappingV_AND)]]);
+            gmem++;
             CL += dCL;
             iUL += idUL;
             iVL += idVL;
@@ -2674,271 +2844,6 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace)
   }
 }
 
-
-// pf_trans.c
-//
-
-static void EON_PF_TransF(EON_Cam *cam, EON_Face *TriFace)
-{
-  EON_uChar i0, i1, i2;
-  EON_uChar *gmem = cam->frameBuffer;
-  EON_uChar *remap = TriFace->Material->_ReMapTable;
-  EON_ZBuffer *zbuf = cam->zBuffer;
-  EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
-  EON_ZBuffer Z1, ZL, dZ1=0, dZL=0, dZ2=0, Z2;
-  EON_sInt32 Y1, Y2, Y0, dY;
-  EON_uInt16 *lookuptable = TriFace->Material->_AddTable;
-  EON_uChar stat;
-  EON_sInt32 bc = (EON_sInt32) TriFace->fShade*TriFace->Material->_tsfact;
-  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
-
-  PUTFACE_SORT();
-
-  if (bc < 0) bc=0;
-  if (bc > (EON_sInt32) TriFace->Material->_tsfact-1) bc=TriFace->Material->_tsfact-1;
-  remap+=bc;
-
-  X2 = X1 = TriFace->Scrx[i0];
-  Z2 = Z1 = TriFace->Scrz[i0];
-  Y0 = (TriFace->Scry[i0]+(1<<19))>>20;
-  Y1 = (TriFace->Scry[i1]+(1<<19))>>20;
-  Y2 = (TriFace->Scry[i2]+(1<<19))>>20;
-
-  dY = Y2 - Y0;
-  if (dY) {
-    dX2 = (TriFace->Scrx[i2] - X1) / dY;
-    dZ2 = (TriFace->Scrz[i2] - Z1) / dY;
-  }
-  dY = Y1-Y0;
-  if (dY) {
-    dX1 = (TriFace->Scrx[i1] - X1) / dY;
-    dZ1 = (TriFace->Scrz[i1] - Z1) / dY;
-    if (dX2 < dX1) {
-      dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
-      dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
-      stat = 2;
-    } else stat = 1;
-  } else {
-    if (TriFace->Scrx[i1] > X1) {
-      X2 = TriFace->Scrx[i1];
-      Z2 = TriFace->Scrz[i1];
-      stat= 2|4;
-    } else {
-      X1 = TriFace->Scrx[i1];
-      Z1 = TriFace->Scrz[i1];
-      stat= 1|8;
-    }
-  }
-
-  gmem += (Y0 * cam->ScreenWidth);
-  zbuf += (Y0 * cam->ScreenWidth);
-  if (zb) {
-    XL1 = (((dX1-dX2)*dY+(1<<19))>>20);
-    if (XL1) dZL = ((dZ1-dZ2)*dY)/XL1;
-    else {
-      XL1 = ((X2-X1+(1<<19))>>20);
-      if (XL1) dZL = (Z2-Z1)/XL1;
-    }
-  }
-
-  while (Y0 < Y2) {
-    if (Y0 == Y1) {
-      dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
-      if (dY) {
-        if (stat & 1) {
-          X1 = TriFace->Scrx[i1];
-          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
-        }
-        if (stat & 2) {
-          X2 = TriFace->Scrx[i1];
-          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
-        }
-        if (stat & 4) {
-          X1 = TriFace->Scrx[i0];
-          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
-        }
-        if (stat & 8) {
-          X2 = TriFace->Scrx[i0];
-          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
-        }
-        dZ1 = (TriFace->Scrz[i2]- Z1)/dY;
-      }
-    }
-    XL1 = (X1+(1<<19))>>20;
-    XL2 = (X2+(1<<19))>>20;
-    ZL = Z1;
-    if ((XL2-XL1) > 0) {
-      XL2 -= XL1;
-      zbuf += XL1;
-      gmem += XL1;
-      XL1 += XL2;
-      if (zb) {
-        do {
-          if (*zbuf < ZL) {
-            *zbuf = ZL;
-            *gmem = remap[lookuptable[*gmem]];
-          }
-          gmem++;
-          zbuf++;
-          ZL += dZL;
-        } while (--XL2);
-      } else do {
-          EON_uChar value = remap[lookuptable[*gmem]];
-          *gmem++ = value;
-      } while (--XL2);
-      gmem -= XL1;
-      zbuf -= XL1;
-    }
-    gmem += cam->ScreenWidth;
-    zbuf += cam->ScreenWidth;
-    Z1 += dZ1;
-    X1 += dX1;
-    X2 += dX2;
-    Y0 ++;
-  }
-}
-
-static void EON_PF_TransG(EON_Cam *cam, EON_Face *TriFace)
-{
-  EON_uChar i0, i1, i2;
-  EON_uChar *gmem = cam->frameBuffer;
-  EON_uChar *remap = TriFace->Material->_ReMapTable;
-  EON_ZBuffer *zbuf = cam->zBuffer;
-  EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
-  EON_ZBuffer Z1, ZL, dZ1=0, dZL=0, dZ2=0, Z2;
-  EON_sInt32 dC1=0, dCL=0, CL, C1, C2, dC2=0;
-  EON_sInt32 Y1, Y2, Y0, dY;
-  EON_Float nc = (TriFace->Material->_tsfact*65536.0f);
-  EON_uInt16 *lookuptable = TriFace->Material->_AddTable;
-  EON_Bool zb = (zbuf&&TriFace->Material->zBufferable) ? 1 : 0;
-  EON_uChar stat;
-
-  EON_sInt32 maxColor=((TriFace->Material->_tsfact-1)<<16);
-  EON_sInt32 maxColorNonShift=TriFace->Material->_tsfact-1;
-
-  PUTFACE_SORT();
-
-  C1 = C2 = (EON_sInt32) (TriFace->Shades[i0]*nc);
-  X2 = X1 = TriFace->Scrx[i0];
-  Z2 = Z1 = TriFace->Scrz[i0];
-  Y0 = (TriFace->Scry[i0]+(1<<19))>>20;
-  Y1 = (TriFace->Scry[i1]+(1<<19))>>20;
-  Y2 = (TriFace->Scry[i2]+(1<<19))>>20;
-
-  dY = Y2 - Y0;
-  if (dY) {
-    dX2 = (TriFace->Scrx[i2] - X1) / dY;
-    dC2 = (EON_sInt32) ((TriFace->Shades[i2]*nc - C1) / dY);
-    dZ2 = (TriFace->Scrz[i2] - Z1) / dY;
-  }
-  dY = Y1-Y0;
-  if (dY) {
-    dX1 = (TriFace->Scrx[i1] - X1) / dY;
-    dZ1 = (TriFace->Scrz[i1] - Z1) / dY;
-    dC1 = (EON_sInt32) ((TriFace->Shades[i1]*nc - C1) / dY);
-    if (dX2 < dX1) {
-      dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
-      dC2 ^= dC1; dC1 ^= dC2; dC2 ^= dC1;
-      dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
-      stat = 2;
-    } else stat = 1;
-  } else {
-    if (TriFace->Scrx[i1] > X1) {
-      X2 = TriFace->Scrx[i1];
-      Z2 = TriFace->Scrz[i1];
-      C2 = (EON_sInt32) (TriFace->Shades[i1]*nc);
-      stat = 2|4;
-    } else {
-      X1 = TriFace->Scrx[i1];
-      Z1 = TriFace->Scrz[i1];
-      C1 = (EON_sInt32) (TriFace->Shades[i1]*nc);
-      stat = 1|8;
-    }
-  }
-
-  gmem += (Y0 * cam->ScreenWidth);
-  zbuf += (Y0 * cam->ScreenWidth);
-  XL1 = (((dX1-dX2)*dY+(1<<19))>>20);
-  if (XL1) {
-    dCL = ((dC1-dC2)*dY)/XL1;
-    dZL = ((dZ1-dZ2)*dY)/XL1;
-  } else {
-    XL1 = ((X2-X1+(1<<19))>>20);
-    if (XL1) {
-      dCL = (C2-C1)/XL1;
-      dZL = (Z2-Z1)/XL1;
-    }
-  }
-
-  while (Y0 < Y2) {
-    if (Y0 == Y1) {
-      dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
-      if (dY) {
-        if (stat & 1) {
-          X1 = TriFace->Scrx[i1];
-          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
-        }
-        if (stat & 2) {
-          X2 = TriFace->Scrx[i1];
-          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
-        }
-        if (stat & 4) {
-          X1 = TriFace->Scrx[i0];
-          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
-        }
-        if (stat & 8) {
-          X2 = TriFace->Scrx[i0];
-          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
-        }
-        dZ1 = (TriFace->Scrz[i2]-Z1)/dY;
-        dC1 = (EON_sInt32) ((TriFace->Shades[i2]*nc - C1) / dY);
-      }
-    }
-    CL = C1;
-    XL1 = (X1+(1<<19))>>20;
-    XL2 = (X2+(1<<19))>>20;
-    ZL = Z1;
-    if ((XL2-XL1) > 0) {
-      XL2 -= XL1;
-      zbuf += XL1;
-      gmem += XL1;
-      XL1 += XL2;
-      if (zb) do {
-          if (*zbuf < ZL) {
-            EON_sInt av;
-            if (CL >= maxColor) av=maxColorNonShift;
-            else if (CL > 0) av=CL>>16;
-            else av=0;
-            *zbuf = ZL;
-            *gmem = remap[av + lookuptable[*gmem]];
-          }
-          gmem++;
-          CL += dCL;
-          zbuf++;
-          ZL += dZL;
-        } while (--XL2);
-      else do {
-          EON_sInt av;
-          EON_uChar value;
-          if (CL >= maxColor) av=maxColorNonShift;
-          else if (CL > 0) av=CL>>16;
-          else av=0;
-          value = remap[av + lookuptable[*gmem]];
-          *gmem++ = value;
-          CL += dCL;
-        } while (--XL2);
-      gmem -= XL1;
-      zbuf -= XL1;
-    }
-    gmem += cam->ScreenWidth;
-    zbuf += cam->ScreenWidth;
-    Z1 += dZ1;
-    X1 += dX1;
-    X2 += dX2;
-    C1 += dC1;
-    Y0++;
-  }
-}
 
 // render.c
 //
@@ -3220,11 +3125,11 @@ void EON_RenderObj(EON_Rend *rend, EON_Obj *obj)
     return;
 }
 
-void EON_RenderEnd(EON_Rend *rend)
+void EON_RenderEnd(EON_Rend *rend, EON_Frame *frame)
 {
     EON_FaceInfo *f = rend->Faces;
     while (rend->NumFaces--) {
-        EON_ClipRenderFace(&rend->Clip, f->face);
+        EON_ClipRenderFace(&rend->Clip, f->face, frame);
         f++;
     }
     rend->NumFaces = 0;

@@ -124,9 +124,9 @@ EON_Obj *EON_MakeTorus(EON_Float r1, EON_Float r2, EON_uInt divrot,
 ******************************************************************************/
 
 typedef struct _EON_Font {
-    const EON_uChar *Face;
-    EON_uChar Height;
-    EON_uChar Color;
+    const EON_Byte *Face;
+    EON_Color Color;
+    EON_uInt Height;
 } EON_Font;
 
 /*
@@ -136,13 +136,11 @@ typedef struct _EON_Font {
     Returns:
       a pointer to a Font object to be initialized.
 */
-
 EON_Font *EON_TextDefaultFont();
 
 /*
   EON_FontDelete() frees all memory associated with "font"
 */
-
 void EON_FontDelete(EON_Font *font);
 
 /*
@@ -150,6 +148,7 @@ void EON_FontDelete(EON_Font *font);
   Parameters:
     font: the Font object to be used.
     cam: the camera. If the camera has a zBuffer, it will be used.
+    frame: the frame on which to render.
     x: the x screen position of the left of the text
     y: the y screen position of the top of the text
     z: the depth of the text (used when cam->zBuffer is set)
@@ -157,9 +156,8 @@ void EON_FontDelete(EON_Font *font);
   Returns:
     nothing
 */
-
-void EON_TextPutChar(EON_Font *font,
-                     EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+void EON_TextPutChar(EON_Font *font, EON_Cam *cam, EON_Frame *frame,
+                     EON_sInt x, EON_sInt y, EON_Float z,
                      char c);
 
 /*
@@ -167,6 +165,7 @@ void EON_TextPutChar(EON_Font *font,
   Parameters:
     font: the Font object to be used.
     cam: The camera. If the camera has a zBuffer, it will be used.
+    frame: the frame on which to render.
     x: the x screen position of the left of the text
     y: the y screen position of the top of the text
     z: the depth of the text (used when cam->zBuffer is set)
@@ -175,8 +174,8 @@ void EON_TextPutChar(EON_Font *font,
   Returns:
     nothing
 */
-void EON_TextPutStr(EON_Font *font,
-                    EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+void EON_TextPutStr(EON_Font *font, EON_Cam *cam, EON_Frame *frame,
+                    EON_sInt x, EON_sInt y, EON_Float z,
                     const char *string);
 
 /*
@@ -184,6 +183,7 @@ void EON_TextPutStr(EON_Font *font,
   Parameters:
     font: the Font object to be used.
     cam: The camera. If the camera has a zBuffer, it will be used.
+    frame: the frame on which to render.
     x: the x screen position of the left of the text
     y: the y screen position of the top of the text
     z: the depth of the text
@@ -194,8 +194,8 @@ void EON_TextPutStr(EON_Font *font,
   Returns:
     nothing
 */
-void EON_TextPrintf(EON_Font *font,
-                    EON_Cam *cam, EON_sInt x, EON_sInt y, EON_Float z,
+void EON_TextPrintf(EON_Font *font, EON_Cam *cam, EON_Frame *frame,
+                    EON_sInt x, EON_sInt y, EON_Float z,
                     const char *format, ...);
 
 /*************************************************************************/

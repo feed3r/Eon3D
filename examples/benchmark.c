@@ -14,11 +14,7 @@
 
 typedef struct null_console_ {
     EON_Cam *cam;
-    uint8_t *fb;
-    int width;
-    int height;
-    int bpp;
-    EON_ZBuffer *zb;
+    EON_Frame *fb;
 } NullConsole;
 
 static void *NullConsoleDelete(NullConsole *ctx)
@@ -28,12 +24,8 @@ static void *NullConsoleDelete(NullConsole *ctx)
         ctx->cam = NULL;
     }
     if (ctx->fb) {
-        free(ctx->fb);
+        EON_FrameDelete(ctx->fb);
         ctx->fb = NULL;
-    }
-    if (ctx->zb) {
-        free(ctx->zb);
-        ctx->zb = NULL;
     }
     free(ctx);
     return NULL;
@@ -44,15 +36,9 @@ NullConsole *NullConsoleCreate(EON_uInt sw, EON_uInt sh)
     int err = -1;
     NullConsole *ctx = calloc(1, sizeof(*ctx));
     if (ctx) {
-        int size = sw * sh;
-        ctx->width = sw;
-        ctx->height = sh;
-        ctx->bpp = 8; // XXX
-        ctx->zb = malloc(size * ctx->bpp);
-        ctx->fb = malloc(size * sizeof(EON_ZBuffer));
+        ctx->fb = EON_FrameCreate(sw, sh, 4/* XXX */);
         if (ctx->fb) {
-            ctx->cam = EON_CamCreate(sw, sh, 1.0, 90.0,
-                                     ctx->fb, ctx->zb);
+            ctx->cam = EON_CamCreate(sw, sh, 1.0, 90.0);
             if (ctx->cam) {
                 err = 0;
             }
@@ -68,12 +54,7 @@ int NullConsoleClearFrame(NullConsole *ctx)
 {
     int err = -1;
     if (ctx) {
-        // clear framebuffer for next frame
-        int size = ctx->width * ctx->height;
-        memset(ctx->fb, 0, size * ctx->bpp);
-        if (ctx->zb) {
-            memset(ctx->zb, 0, size * sizeof(EON_ZBuffer));
-        }
+        EON_FrameClear(ctx->fb);
         err = 0;
     }
     return err;
@@ -103,11 +84,10 @@ int main(int argc, char *argv[])
     EON_Light *TheLight;   // Our light
     EON_Obj *TheModel;      // Our cube object
     EON_Mat *ModelMat;      // The material for the cube
-    EON_Mat *AllMaterials[2]; // Used for creating palette
-    EON_Cam *TheCamera; // Our camera
+    EON_Cam *TheCamera;
     EON_Rend *TheRend;
+    EON_Frame *TheFrame;
     NullConsole *TheConsole;
-    uint8_t ThePalette[3 * 256];
     double distance = 50;
     int ch = -1;
     int verbose = 1;
@@ -157,32 +137,18 @@ int main(int argc, char *argv[])
     }
 
     ModelMat = EON_MatCreate(); 
-    ModelMat->NumGradients = 100; // Have it use 100 colors
     ModelMat->ShadeType = EON_SHADE_FLAT;
 
-    ModelMat->Ambient[0] = 16; // Set red ambient component
-    ModelMat->Ambient[1] = 16; // Set green ambient component
-    ModelMat->Ambient[2] = 16; // Set blue ambient component
-
-    ModelMat->Diffuse[0] = 100; // Set red diffuse component
-    ModelMat->Diffuse[1] = 100; // Set green diffuse component
-    ModelMat->Diffuse[2] = 100; // Set blue diffuse component
+    ModelMat->Ambient[0] = 216; // Set red ambient component
+    ModelMat->Ambient[1] = 216; // Set green ambient component
+    ModelMat->Ambient[2] = 216; // Set blue ambient component
 
     EON_MatInit(ModelMat);      // Initialize the material
     EON_MatInfo(ModelMat, Logger);
 
-    AllMaterials[0] = ModelMat; // Make list of materials
-    AllMaterials[1] = 0; // Null terminate list of materials
-    EON_MatMakeOptPal(ThePalette, 1, 255, AllMaterials, 2); // Create a nice palette
-
-    ThePalette[0] = ThePalette[1] = ThePalette[2] = 0; // Color 0 is black
-
-    EON_MatMapToPal(ModelMat, ThePalette, 0, 255);
-    // Map the material to our palette
-
     TheConsole = NullConsoleCreate(800, // Screen width
-                                  600 // Screen height
-                                  );
+                                   600 // Screen height
+                                   );
 
     TheModel = EONx_ReadPLYObj(filename, ModelMat);
     if (TheModel == NULL) {
@@ -194,6 +160,7 @@ int main(int argc, char *argv[])
 
     EON_ObjInfo(TheModel, Logger);
 
+    TheFrame = TheConsole->fb;
     TheCamera = TheConsole->cam;
     TheCamera->Z = -distance; // Back the camera up from the origin
 
@@ -214,7 +181,7 @@ int main(int argc, char *argv[])
         EON_RenderBegin(TheRend);           // Start rendering with the camera
         EON_RenderLight(TheRend, TheLight); // Render our light
         EON_RenderObj(TheRend, TheModel);   // Render our object
-        EON_RenderEnd(TheRend);             // Finish rendering
+        EON_RenderEnd(TheRend, TheFrame);   // Finish rendering
         frames++;
     }
     stop = time(NULL);

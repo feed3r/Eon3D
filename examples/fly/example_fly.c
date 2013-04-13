@@ -138,6 +138,7 @@ int main(int argc, char *argv[])
     EON_Obj *sky, *sky2;
     EONx_Console *con;
     EON_Rend *rend;
+    EON_Frame *frame;
     EON_Font *font;
     uint64_t ts = 0;
 
@@ -151,6 +152,8 @@ int main(int argc, char *argv[])
                           600, // Screen height
                           90.0 // Field of view
                           );
+
+    frame = EONx_ConsoleGetFrame(con);
     cam = EONx_ConsoleGetCamera(con);
     rend = EON_RendCreate(cam);
     cam->Y = 800; // move the camera up from the ground
@@ -194,10 +197,10 @@ int main(int argc, char *argv[])
             EON_RenderObj(rend, sky);
             EON_RenderObj(rend, land);
         }
-        EON_RenderEnd(rend);
+        EON_RenderEnd(rend, frame);
 
         elapsed = (eon_gettime_ms() - ts) / 1000000;
-        EON_TextPrintf(font, cam,
+        EON_TextPrintf(font, cam, frame,
                        cam->ClipLeft+5, cam->ClipTop, 0.0,
                       "%.3f FPS",
                       (frames/ (double) elapsed));

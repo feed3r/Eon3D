@@ -43,6 +43,8 @@
 
 /** \file eon3d.h
     \brief eon3d: a simplistic 3D software renderer (interface).
+
+    FIXME note about coordinate space
 */
 
 /******************************************************************************/
@@ -75,7 +77,7 @@ typedef uint8_t EON_uChar;        /* unsigned 8 bit integer */
 typedef int8_t EON_sChar;         /* signed 8 bit integer */
 typedef uint8_t EON_Byte;         /* generic binary data */
 
-#define EON_ZERO 0.000001
+#define EON_ZERO 0.0000001
 #define EON_PI   3.14159265359
 
 /* Utility min() and max() functions */
@@ -93,7 +95,8 @@ enum {
     EON_SHADE_FLAT             = 2,
     EON_SHADE_FLAT_DISTANCE    = 4,
     EON_SHADE_GOURAUD          = 8,
-    EON_SHADE_GOURAUD_DISTANCE = 16
+    EON_SHADE_GOURAUD_DISTANCE = 16,
+    EON_SHADE_WIREFRAME        = 32
 };
 
 /*
@@ -119,6 +122,22 @@ enum {
     EON_TEXENV_MIN         = 5,
     EON_TEXENV_MAX         = 6
 };
+
+
+typedef struct _EON_Color {
+    EON_Byte R;
+    EON_Byte G;
+    EON_Byte B;
+    EON_Byte A;
+} EON_Color;
+
+typedef struct _EON_Frame {
+    EON_Byte *Data;
+    EON_ZBuffer *ZBuffer;
+    EON_uInt32 Width;
+    EON_uInt32 Height;
+    EON_uInt32 Bpp; /* Bytes Per Pixel */
+} EON_Frame;
 
 /* Forward declarations needed for _PutFace */
 typedef struct _EON_Face EON_Face;
@@ -165,7 +184,7 @@ typedef struct _EON_Mat {
   EON_uInt16 *_AddTable;        /* Shading/Translucent/etc table */
   EON_uChar *_ReMapTable;       /* Table to remap colors to palette */
   EON_uChar *_RequestedColors;  /* _ColorsUsed colors, desired colors */
-  void (*_PutFace)(EON_Cam *, EON_Face *);
+  void (*_PutFace)(EON_Cam *, EON_Face *, EON_Frame *);
   /* Renders the triangle with this material */
 } EON_Mat;
 
@@ -263,8 +282,7 @@ struct _EON_Cam {
   EON_sInt CenterX, CenterY;      /* Center of screen */
   EON_Float X, Y, Z;              /* Camera position in worldspace */
   EON_Float Pitch, Pan, Roll;     /* Camera angle in degrees in worldspace */
-  EON_uChar *frameBuffer;         /* Framebuffer (ScreenWidth*ScreenHeight) */
-  EON_ZBuffer *zBuffer;           /* Z Buffer */
+  const EON_Byte *Palette;
 };
 
 typedef struct _EON_RenderInfo {
@@ -324,6 +342,48 @@ typedef struct _EON_Rend {
     EON_Cam *Cam;
 } EON_Rend;
 
+
+/******************************************************************************
+** Frame Functions
+******************************************************************************/
+/*
+  EON_FrameCreate() creates a frame with the specified dimensions
+  Parameters:
+    Width: the frame width (pixels).
+    Height: the frame height (pixels).
+    Bpp: Bytes per pixel. How many bytes takes a pixel?
+  Returns:
+    a pointer to the frame on success, 0 on failure
+*/
+EON_Frame *EON_FrameCreate(EON_uInt32 Width, EON_uInt32 Height,
+                           EON_uInt32 Bpp);
+
+/*
+  EON_FrameDelete() deletes a frame that was created with EON_FrameCreate().
+  Parameters:
+    f: a pointer to the frame to be deleted
+  Returns:
+    nothing
+*/
+void EON_FrameDelete(EON_Frame *f);
+
+/*
+  EON_FrameSize() tells how much storage space in bytes takes a given frame.
+  Parameters:
+    f: the frame to be inspected
+  Returns:
+    nothing
+*/
+EON_uInt32 EON_FrameSize(EON_Frame *f);
+
+/*
+  EON_FrameClear() `blanks' a given frame.
+  Parameters:
+    f: the frame to be blanked (cleared)
+  Returns:
+    nothing
+*/
+void EON_FrameClear(EON_Frame *f);
 
 /******************************************************************************
 ** Material Functions (mat.c)
@@ -543,7 +603,7 @@ void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam);
     nothing
   Notes: this is used internally by EON_Render*(), so be careful. Kinda slow too.
 */
-void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face);
+void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame);
 
 /*
   EON_ClipNeeded() decides whether the face is in the frustum, intersecting
@@ -618,13 +678,10 @@ void EON_TexDelete(EON_Texture *t);
     sh: screen height
     ar: aspect ratio (usually 1.0)
     fov: field of view (usually 45-120)
-    fb: pointer to framebuffer
-    zb: pointer to Z buffer
   Returns:
     a pointer to the newly allocated camera
 */
-EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov,
-                       EON_uChar *fb, EON_ZBuffer *zb);
+EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov);
 
 /*
   EON_CamSetTarget() sets the target of a camera allocated with EON_CamCreate().
@@ -647,6 +704,8 @@ void EON_CamSetTarget(EON_Cam *c, EON_Float x, EON_Float y, EON_Float z);
      nothing
 */
 void EON_CamDelete(EON_Cam *c);
+
+void EON_CamSetPalette(EON_Cam *c, const uint8_t *palette, int numcolors);
 
 /******************************************************************************
 ** Easy Rendering Interface (render.c)
@@ -708,7 +767,7 @@ void EON_RenderObj(EON_Rend *rend, EON_Obj *obj);
    Returns:
      nothing
 */
-void EON_RenderEnd(EON_Rend *rend);
+void EON_RenderEnd(EON_Rend *rend, EON_Frame *frame);
 
 
 /******************************************************************************

@@ -46,12 +46,11 @@ int EONx_ConsoleShutdown(void);
 
 enum {
     EONx_CONSOLE_FLAG_NONE = 0,
-    EONx_CONSOLE_FLAG_ZBUFFER = 1
 };
 
 EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
                                  EON_Float ar, EON_Float fov,
-                                 EON_uInt flags);
+                                 EON_uInt32 flags);
 
 EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov);
 
@@ -62,6 +61,8 @@ EON_Cam *EONx_ConsoleGetCamera(EONx_Console *ctx);
 int EONx_ConsoleWaitKey(EONx_Console *ctx);
 
 int EONx_ConsoleSetPalette(EONx_Console *ctx, const uint8_t *palette, int numcolors);
+
+EON_Frame* EONx_ConsoleGetFrame(EONx_Console *ctx);
 
 int EONx_ConsoleClearFrame(EONx_Console *ctx);
 

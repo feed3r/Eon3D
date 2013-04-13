@@ -23,6 +23,7 @@ int main()
     EON_Mat *AllMaterials[3]; // Used for creating palette
     EON_Cam *TheCamera; // Our camera
     EON_Rend *TheRend;
+    EON_Frame *TheFrame;
     EONx_Console *TheConsole;
     uint8_t ThePalette[3 * 256];
 
@@ -32,7 +33,7 @@ int main()
     CubeMat->NumGradients = 100; // Have it use 100 colors
     CubeMat->ShadeType = EON_SHADE_FLAT; // Make the cube flat shaded
 
-    CubeMat->Ambient[0] = 32; // Set red ambient component
+    CubeMat->Ambient[0] = 132; // Set red ambient component
     CubeMat->Ambient[1] = 0;  // Set green ambient component
     CubeMat->Ambient[2] = 16; // Set blue ambient component
 
@@ -48,7 +49,7 @@ int main()
     TorusMat->Shininess = 10; // Make the torus a bit more shiny
 
     TorusMat->Ambient[0] = 0; // Set red ambient component
-    TorusMat->Ambient[1] = 12;  // Set green ambient component
+    TorusMat->Ambient[1] = 132;  // Set green ambient component
     TorusMat->Ambient[2] = 4; // Set blue ambient component
 
     TorusMat->Diffuse[0] = 20; // Set red diffuse component
@@ -80,6 +81,7 @@ int main()
     TheTorus = EON_MakeTorus(40.0,100.0,10,8,TorusMat); // Create the torus
     TheTorus->Xp = -70.0; // Shift the torus to the left a bit
 
+    TheFrame = EONx_ConsoleGetFrame(TheConsole);
     TheCamera = EONx_ConsoleGetCamera(TheConsole);
     TheCamera->Z = -300; // Back the camera up from the origin
 
@@ -110,7 +112,7 @@ int main()
         EON_RenderLight(TheRend, TheLight); // Render our light
         EON_RenderObj(TheRend, TheCube);    // Render our object
         EON_RenderObj(TheRend, TheTorus);   // Render our torus
-        EON_RenderEnd(TheRend);             // Finish rendering
+        EON_RenderEnd(TheRend, TheFrame);   // Finish rendering
         EONx_ConsoleShowFrame(TheConsole);
         frames++;
     }
