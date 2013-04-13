@@ -40,6 +40,51 @@
 
 
 /******************************************************************************
+** Forward Declarations
+******************************************************************************/
+
+/******************************************************************************
+** Frustum Clipping Functions (clip.c)
+******************************************************************************/
+
+/*
+  EON_ClipSetFrustum() sets up the clipping frustum.
+  Parameters:
+    cam: a camera allocated with EON_CamCreate().
+  Returns:
+    nothing
+  Notes:
+    Sets up the internal structures.
+    DO NOT CALL THIS ROUTINE FROM WITHIN A EON_Render*() block.
+*/
+void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam);
+
+/*
+  EON_ClipRenderFace() renders a face and clips it to the frustum initialized
+    with EON_ClipSetFrustum().
+  Parameters:
+    face: the face to render
+  Returns:
+    nothing
+  Notes: this is used internally by EON_Render*(), so be careful. Kinda slow too.
+*/
+void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame);
+
+/*
+  EON_ClipNeeded() decides whether the face is in the frustum, intersecting
+    the frustum, or comEON_etely out of the frustum craeted with
+    EON_ClipSetFrustum().
+  Parameters:
+    face: the face to check
+  Returns:
+    0: the face is out of the frustum, no drawing necessary
+    1: the face is intersecting the frustum, splitting and drawing necessary
+  Notes: this is used internally by EON_Render*(), so be careful. Kinda slow too.
+*/
+EON_sInt EON_ClipNeeded(EON_Clip *clip, EON_Face *face);
+
+
+/******************************************************************************
 ** Built-in Rasterizers
 ******************************************************************************/
 
@@ -53,35 +98,6 @@ static void EON_PF_TexEnv(EON_Cam *, EON_Face *, EON_Frame *);
 static void EON_PF_PTexF(EON_Cam *, EON_Face *, EON_Frame *);
 static void EON_PF_PTexG(EON_Cam *, EON_Face *, EON_Frame *);
 
-
-static const char *eon_PutFaceName(void *addr)
-{
-    const char *name = "N/A";
-    if (addr == EON_PF_Null) {
-        name = "Null";
-    } else if (addr == EON_PF_SolidF) {
-        name = "SolidF";
-    } else if (addr == EON_PF_SolidG) {
-        name = "SolidG";
-    } else if (addr == EON_PF_TexF) {
-        name = "TexF";
-    } else if (addr == EON_PF_TexG) {
-        name = "TexG";
-    } else if (addr == EON_PF_TexEnv) {
-        name = "TexEnv";
-    } else if (addr == EON_PF_PTexF) {
-        name = "PTexF";
-    } else if (addr == EON_PF_PTexG) {
-        name = "PTexG";
-//    } else if (addr == EON_PF_TransF) {
-//        name = "TransF";
-//    } else if (addr == EON_PF_TransG) {
-//        name = "TransG";
-    } else if (addr == EON_PF_WireF) {
-        name = "WireF";
-    }
-    return name;
-}
 
 /* Used internally; EON_FILL_* are stored in EON_Mat._st. */
 enum {
@@ -260,6 +276,22 @@ EON_Obj *EON_ObjStretch(EON_Obj *o, EON_Float x, EON_Float y, EON_Float z)
         if (o->Children[i])
             EON_ObjStretch(o->Children[i],x,y,z);
     return o;
+}
+
+void EON_ObjCentroid(EON_Obj *o, EON_Float *x, EON_Float *y, EON_Float *z)
+{
+    EON_uInt32 i = 0;
+    EON_uInt32 n = o->NumVertices;
+    EON_Double tX = 0.0, tY = 0.0, tZ = 0.0;
+    for (i = 0; i < n; i++) {
+        tX += o->Vertices[i].x;
+        tY += o->Vertices[i].y;
+        tZ += o->Vertices[i].z;
+    }
+    *x = tX / (EON_Double)n;
+    *y = tY / (EON_Double)n;
+    *z = tZ / (EON_Double)n;
+    return;
 }
 
 EON_Obj *EON_ObjTranslate(EON_Obj *o, EON_Float x, EON_Float y, EON_Float z)
@@ -972,6 +1004,35 @@ void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
     CX_free(colorBlock);
 }
 
+static const char *eon_PutFaceName(void *addr)
+{
+    const char *name = "N/A";
+    if (addr == EON_PF_Null) {
+        name = "Null";
+    } else if (addr == EON_PF_SolidF) {
+        name = "SolidF";
+    } else if (addr == EON_PF_SolidG) {
+        name = "SolidG";
+    } else if (addr == EON_PF_TexF) {
+        name = "TexF";
+    } else if (addr == EON_PF_TexG) {
+        name = "TexG";
+    } else if (addr == EON_PF_TexEnv) {
+        name = "TexEnv";
+    } else if (addr == EON_PF_PTexF) {
+        name = "PTexF";
+    } else if (addr == EON_PF_PTexG) {
+        name = "PTexG";
+//    } else if (addr == EON_PF_TransF) {
+//        name = "TransF";
+//    } else if (addr == EON_PF_TransG) {
+//        name = "TransG";
+    } else if (addr == EON_PF_WireF) {
+        name = "WireF";
+    }
+    return name;
+}
+
 void EON_MatInfo(EON_Mat *m, void *logger)
 {
     CX_log_trace(logger, CX_LOG_INFO, EON_TAG, "Material (%p)", m);
@@ -1132,12 +1193,12 @@ void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam)
     clip->ClipPlanes[2][3] = 0.00000001;
     if (cam->ClipRight == cam->CenterX) {
         clip->ClipPlanes[2][0] = -1.0;
-    }
-    else
+    } else {
         eon_FindNormal(100,100,
                     -100, 100,
                     clip->Fov*100.0/(cam->ClipRight-cam->CenterX),
                     clip->ClipPlanes[2]);
+    }
     if (cam->ClipRight < cam->CenterX) {
         clip->ClipPlanes[2][0] = -clip->ClipPlanes[2][0];
         clip->ClipPlanes[2][1] = -clip->ClipPlanes[2][1];
@@ -1172,6 +1233,7 @@ void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam)
         clip->ClipPlanes[4][1] = -clip->ClipPlanes[4][1];
         clip->ClipPlanes[4][2] = -clip->ClipPlanes[4][2];
     }
+    return;
 }
 
 

@@ -521,6 +521,16 @@ EON_Obj *EON_ObjScale(EON_Obj *o, EON_Float s);
 EON_Obj *EON_ObjStretch(EON_Obj *o, EON_Float x, EON_Float y, EON_Float z);
 
 /*
+  EON_ObjCentroid() calculates the centroid of a given object
+  Parameters:
+    o: a pointer to the object to calculate the centroid for
+    x,y,z: pointer to the output coordinates.
+  Returns:
+    nothing
+*/
+void EON_ObjCentroid(EON_Obj *o, EON_Float *x, EON_Float *y, EON_Float *z);
+
+/*
    EON_ObjTranslate() translates an object
    Parameters:
      o: a pointer to the object to translate
@@ -577,46 +587,6 @@ EON_Obj *EON_ObjCalcNormals(EON_Obj *obj);
     nothing
 */
 void EON_ObjInfo(EON_Obj *o, void *logger);
-
-/******************************************************************************
-** Frustum Clipping Functions (clip.c)
-******************************************************************************/
-
-/*
-  EON_ClipSetFrustum() sets up the clipping frustum.
-  Parameters:
-    cam: a camera allocated with EON_CamCreate().
-  Returns:
-    nothing
-  Notes:
-    Sets up the internal structures.
-    DO NOT CALL THIS ROUTINE FROM WITHIN A EON_Render*() block.
-*/
-void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam);
-
-/*
-  EON_ClipRenderFace() renders a face and clips it to the frustum initialized
-    with EON_ClipSetFrustum().
-  Parameters:
-    face: the face to render
-  Returns:
-    nothing
-  Notes: this is used internally by EON_Render*(), so be careful. Kinda slow too.
-*/
-void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame);
-
-/*
-  EON_ClipNeeded() decides whether the face is in the frustum, intersecting
-    the frustum, or comEON_etely out of the frustum craeted with
-    EON_ClipSetFrustum().
-  Parameters:
-    face: the face to check
-  Returns:
-    0: the face is out of the frustum, no drawing necessary
-    1: the face is intersecting the frustum, sEON_itting and drawing necessary
-  Notes: this is used internally by EON_Render*(), so be careful. Kinda slow too.
-*/
-EON_sInt EON_ClipNeeded(EON_Clip *clip, EON_Face *face);
 
 /******************************************************************************
 ** Light Handling Routines (light.c)
