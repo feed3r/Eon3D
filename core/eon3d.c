@@ -40,6 +40,7 @@
 ******************************************************************************/
 
 static void EON_PF_Null(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_WireF(EON_Cam *, EON_Face *, EON_Frame *);
 static void EON_PF_SolidF(EON_Cam *, EON_Face *, EON_Frame *);
 static void EON_PF_SolidG(EON_Cam *, EON_Face *, EON_Frame *);
 static void EON_PF_TexF(EON_Cam *, EON_Face *, EON_Frame *);
@@ -742,6 +743,9 @@ static void eon_SetMaterialPutFace(EON_Mat *m)
     switch (m->_ft) {
     case EON_FILL_TRANSPARENT:
         switch(m->_st) {
+        case EON_SHADE_WIREFRAME:
+            m->_PutFace = EON_PF_WireF;
+            break;
         case EON_SHADE_NONE:
         case EON_SHADE_FLAT:
         case EON_SHADE_FLAT_DISTANCE:
@@ -757,6 +761,9 @@ static void eon_SetMaterialPutFace(EON_Mat *m)
         break;
     case EON_FILL_SOLID:
         switch(m->_st) {
+        case EON_SHADE_WIREFRAME:
+            m->_PutFace = EON_PF_WireF;
+            break;
         case EON_SHADE_NONE:
         case EON_SHADE_FLAT:
         case EON_SHADE_FLAT_DISTANCE:
@@ -1364,11 +1371,6 @@ void EON_TexDelete(EON_Texture *t)
     MappingV3=TriFace->MappingV[i2]*Texture->vScale*\
               TriFace->Material->TexScaling;
 
-static void EON_PF_Null(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
-{
-    return; /* nothing to do */
-}
-
 inline static EON_uInt32 eon_PickColorP(EON_Cam *cam, EON_Byte value)
 {
     EON_uInt32 R = cam->Palette[3 * value + 0];
@@ -1390,6 +1392,73 @@ inline static EON_uInt32 eon_PickColorF(const EON_Face *f)
 inline static EON_sInt32 eon_ToScreen(EON_sInt32 val)
 {
     return (val + (1<<19)) >> 20;
+}
+
+inline static void eon_DrawLine(EON_uInt32 *fb, EON_sInt32 pitch,
+                                EON_sInt32 x0, EON_sInt32 y0,
+                                EON_sInt32 x1, EON_sInt32 y1,
+                                EON_uInt32 pixel)
+{
+    EON_sInt32 dx = abs(x0 - x1);
+    EON_sInt32 dy = abs(y0 - y1);
+    EON_sInt32 sx = (x0 < x1) ?+1 :-1;
+    EON_sInt32 sy = (y0 < y1) ?+1 :-1;
+    EON_sInt32 err = dx - dy;
+
+    while (x0 != x1 || y0 != y1) {
+        EON_sInt32 e2 = 2 * err;
+        EON_sInt32 offset = (x0 + (y0 * pitch)) * 4; // XXX
+
+        fb[offset] = pixel;
+
+        if (e2 > -dy) {
+            err -= dy;
+            x0 += sx;
+        }
+        if (e2 <  dx) {
+            err += dx;
+            y0 += sy;
+        }
+    }
+
+    return;
+}
+
+// pf misc
+
+static void EON_PF_Null(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
+{
+    return; /* nothing to do */
+}
+
+static void EON_PF_WireF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
+{
+    EON_uChar i0 = 0, i1 = 1, i2 = 2;
+
+    EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
+
+    EON_sInt32 X0, X1, X2;
+    EON_sInt32 Y0, Y1, Y2;
+//    EON_ZBuffer Z0, Z1, Z2;
+    EON_uInt32 color = eon_PickColorF(TriFace);
+
+//    PUTFACE_SORT();
+
+//    Z0 = TriFace->Scrz[i0];
+//    Z1 = TriFace->Scrz[i1];
+//    Z2 = TriFace->Scrz[i2];
+    X0 = eon_ToScreen(TriFace->Scrx[i0]);
+    X1 = eon_ToScreen(TriFace->Scrx[i1]);
+    X2 = eon_ToScreen(TriFace->Scrx[i2]);
+    Y0 = eon_ToScreen(TriFace->Scry[i0]);
+    Y1 = eon_ToScreen(TriFace->Scry[i1]);
+    Y2 = eon_ToScreen(TriFace->Scry[i2]);
+
+    eon_DrawLine(gmem, cam->ScreenWidth, X0, Y0, X1, Y1, color);
+    eon_DrawLine(gmem, cam->ScreenWidth, X0, Y0, X2, Y2, color);
+    eon_DrawLine(gmem, cam->ScreenWidth, X1, Y1, X2, Y2, color);
+
+    return;
 }
 
 // pf_solid.c

@@ -98,7 +98,8 @@ enum {
     EON_SHADE_FLAT             = 2,
     EON_SHADE_FLAT_DISTANCE    = 4,
     EON_SHADE_GOURAUD          = 8,
-    EON_SHADE_GOURAUD_DISTANCE = 16
+    EON_SHADE_GOURAUD_DISTANCE = 16,
+    EON_SHADE_WIREFRAME        = 32
 };
 
 /*
