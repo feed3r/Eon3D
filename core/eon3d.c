@@ -73,10 +73,12 @@ static const char *eon_PutFaceName(void *addr)
         name = "PTexF";
     } else if (addr == EON_PF_PTexG) {
         name = "PTexG";
-    } else if (addr == EON_PF_TransF) {
-        name = "TransF";
-    } else if (addr == EON_PF_TransG) {
-        name = "TransG";
+//    } else if (addr == EON_PF_TransF) {
+//        name = "TransF";
+//    } else if (addr == EON_PF_TransG) {
+//        name = "TransG";
+    } else if (addr == EON_PF_WireF) {
+        name = "WireF";
     }
     return name;
 }
