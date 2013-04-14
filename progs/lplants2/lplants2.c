@@ -115,6 +115,21 @@ struct poly *leave_poly( struct poly *last ){
   return last; /* do not leave the root! */
 }
 
+enum {
+    DRAW_HEADER  = 0,
+    DRAW_FOOTER  = 1,
+    DRAW_CONNECT = 2, /* line/cone */
+    DRAW_POLYGON = 3
+};
+
+enum {
+    FORMAT_PS = 1,
+    FORMAT_POV,
+    FORMAT_RAW,
+    FORMAT_PLY
+};
+
+
 /*
    in: stk[],llen, poly3[],ppoly->len, pg,
    outputrange 0..500, 0..800
@@ -126,7 +141,7 @@ int out_ps(int f){ /* output polyeder in PS-file f=figure: 0=init,1=end */
   cg=(rgb[j][1]+RAND(rgb[j][4]))/255.; if(cg>1)cg=1; if(cg<0)cg=0;
   cb=(rgb[j][2]+RAND(rgb[j][5]))/255.; if(cb>1)cb=1; if(cb<0)cb=0;
   switch (f) {
-  case 0:{  /* --- open PS-file --- */
+  case DRAW_HEADER:{  /* --- open PS-file --- */
      fprintf(fo,
      "%%!PS-Adobe-2.0 EPSF-2.0\n"
      "%%%%Title: %s\n"
@@ -171,10 +186,10 @@ int out_ps(int f){ /* output polyeder in PS-file f=figure: 0=init,1=end */
       "%%%%EndProcSet\n"
       "50 50 translate\n");
     } break;
-  case 1:{                               /* --- close PS-file --- */
+  case DRAW_FOOTER:{                               /* --- close PS-file --- */
      fprintf(fo,"showpage\n");
     } break;
-  case 2:{                               /* --- line --- */
+  case DRAW_CONNECT:{                               /* --- line --- */
      x=turtle->hlu[0][0]*turtle->llen+turtle->x;
      y=turtle->hlu[0][1]*turtle->llen+turtle->y;
      z=turtle->hlu[0][2]*turtle->llen+turtle->z;
@@ -184,7 +199,7 @@ int out_ps(int f){ /* output polyeder in PS-file f=figure: 0=init,1=end */
        cr, cg, cb, turtle->ld, /* color + thickness */
        turtle->x, turtle->y, turtle->z, x, y, z, 2); /* r1 r2 numpoints=2 */
     } break;
-  case 3:{                               /* --- polyfill --- */
+  case DRAW_POLYGON:{                               /* --- polyfill --- */
      fprintf(fo,"%4.2f %4.2f %4.2f f",cr,cg,cb); /* color */
      for (i=0;i<ppoly->len;i++)
      fprintf(fo," %11.6f %11.6f %11.6f", /* x y z */
@@ -200,7 +215,7 @@ int out_ps(int f){ /* output polyeder in PS-file f=figure: 0=init,1=end */
 int out_pov(int f){ /* output polyeder f=figure: 0=init,1=end */
   int i; double x,y,z;
   switch (f) {
-  case 0:{
+  case DRAW_HEADER:{
      fprintf(fo,
       "// LPLANTS " version_string " output for POVRAY 3.0\n\n"
       "#include \"colors.inc\"\n\n"
@@ -234,13 +249,13 @@ int out_pov(int f){ /* output polyeder f=figure: 0=init,1=end */
        );     
      }
     } break;
-  case 1:{                               /* --- close POV-file --- */
+  case DRAW_FOOTER:{                               /* --- close POV-file --- */
      fprintf(fo,"\n");
     } break;
   /*
      ambient=1, diffuse=0 => all pixel same color
   */
-  case 2: if ( turtle->llen>1e-3 ) {      /* --- poly as cone --- */
+  case DRAW_CONNECT: if ( turtle->llen>1e-3 ) {      /* --- poly as cone --- */
      x=turtle->hlu[0][0]*turtle->llen+turtle->x;
      y=turtle->hlu[0][1]*turtle->llen+turtle->y;
      z=turtle->hlu[0][2]*turtle->llen+turtle->z;
@@ -250,7 +265,7 @@ int out_pov(int f){ /* output polyeder f=figure: 0=init,1=end */
       turtle->x, turtle->y, turtle->z, turtle->ld,
       x,         y,         z,         turtle->ld, turtle->col);
     } break;
-  case 3: if (ppoly->len>2) {             /* --- polyfill as mesh --- */
+  case DRAW_POLYGON: if (ppoly->len>2) {             /* --- polyfill as mesh --- */
      fprintf(fo,"mesh {\n");
      for (i=0;i<ppoly->len-2;i++)
      fprintf(fo," smooth_triangle {"
@@ -274,13 +289,13 @@ int out_pov(int f){ /* output polyeder f=figure: 0=init,1=end */
 int out_data(int f){
   int i; double x,y,z;
   switch (f) {
-  case 0:
+  case DRAW_HEADER:
      fprintf(fo,"# lplants raw data\n");
      fprintf(fo,"# cone:     2  x1 y1 z1  x2 y2 z2  color\n");
      fprintf(fo,"# polyfill: n  x1 y1 z1  ...  xn yn zn  color\n");
      break;
-  case 1: break;
-  case 2:{                               /* --- poly --- */
+  case DRAW_FOOTER: break;
+  case DRAW_CONNECT:{                               /* --- poly --- */
      x=turtle->hlu[0][0]*turtle->llen+turtle->x;
      y=turtle->hlu[0][1]*turtle->llen+turtle->y;
      z=turtle->hlu[0][2]*turtle->llen+turtle->z;
@@ -289,7 +304,7 @@ int out_data(int f){
                   "  %2d\n",
        turtle->x,turtle->y,turtle->z,x,y,z,turtle->col);
     } break;
-  case 3:{                               /* --- polyfill --- */
+  case DRAW_POLYGON:{                               /* --- polyfill --- */
      fprintf(fo,"%2d",ppoly->len);
      for (i=0;i<ppoly->len;i++)
      fprintf(fo,"  %13.8f %13.8f %13.8f",
@@ -302,13 +317,10 @@ int out_data(int f){
   return 0;
  }
 
-/* 
-   i: 0=header, 1=foot, 2=line/cone, 3=polygon
-*/
 int draw(int i){
-  if( o_fmt==1 ) return out_ps(i);
-  if( o_fmt==2 ) return out_pov(i);
-  if( o_fmt==3 ) return out_data(i);
+  if( o_fmt==FORMAT_PS ) return out_ps(i);
+  if( o_fmt==FORMAT_POV ) return out_pov(i);
+  if( o_fmt==FORMAT_RAW ) return out_data(i);
   return 0; /* no output, used to calculate box! */
 }
 
@@ -496,7 +508,7 @@ int rollLtoXZ(){
    switch (cc) {
     case 'L':
     case 'R':
-    case 'F': draw(2);   /* draw a line */
+    case 'F': draw(DRAW_CONNECT);   /* draw a line */
               forward(1); break;
     case 'l':
     case 'r':
@@ -520,7 +532,7 @@ int rollLtoXZ(){
     case '{':
        ppoly=create_poly(ppoly);
        store_vertex( 0 ); break;         /* set 1st point of new polygon */
-    case '}': draw(3); ppoly->len=0;
+    case '}': draw(DRAW_POLYGON); ppoly->len=0;
        ppoly=leave_poly(ppoly); break;   /* reset, polygon=off */
     case '"':
       if ( turtle->col<NUMCOL ) turtle->col++;  /* increment color index */
@@ -775,9 +787,9 @@ int main(int argc, char *argv[]){
  slen=0;    /* reset symbol counter */
 
  o_fmt&=127;                /* main pass */
- draw(0);                   /* output header */
+ draw(DRAW_HEADER);
  interpret(depth+1,"S");    /* L-system generation */
- draw(1);                   /* output tail */
+ draw(DRAW_FOOTER);
 
  if ( fo ) fclose(fo);
 
