@@ -44,7 +44,12 @@
 /** \file eon3d.h
     \brief eon3d: a simplistic 3D software renderer (interface).
 
-    FIXME note about coordinate space
+    Worldspace is in a unusual coordinate system.
+    For example, if the camera is at the origin and not rotated,
+    X is positive to the right,
+    Y is positive upward, and
+    Z is positive going into the screen.
+    I.e. behind the camera is negative Z. 
 */
 
 /******************************************************************************/
