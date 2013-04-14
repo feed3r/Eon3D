@@ -9,6 +9,17 @@
 #include <eon3dx_console.h>
 #include <eon3dx_reader.h>
 
+static int screenshot(int key, EONx_Console *ctx, void *userdata)
+{
+    int err = 0;
+    char name[1024] = { '\0' }; // XXX
+    EONx_ConsoleMakeName(ctx, name, sizeof(name));
+    err = EONx_ConsoleSaveFrame(ctx, name);
+    fprintf(stderr, "saving screenshot to [%s] -> %s (%i)\n",
+            name, (err) ?EONx_ConsoleGetError(ctx) :"OK", err);
+    return err;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -50,6 +61,8 @@ int main(int argc, char *argv[])
                                  90.0 // Field of view
                                  );
 
+    EONx_ConsoleBindEventKey(TheConsole, 's', screenshot, NULL); // XXX
+
     TheModel = EONx_ReadPLYObj(filename, ModelMat);
 
     TheFrame = EONx_ConsoleGetFrame(TheConsole);
@@ -64,7 +77,7 @@ int main(int argc, char *argv[])
     TheRend = EON_RendCreate(TheCamera);
 
     start = time(NULL);
-    while (!EONx_ConsoleWaitKey(TheConsole)) { // While the keyboard hasn't been touched
+    while (!EONx_ConsoleNextEvent(TheConsole)) {
         // Rotate by 1 degree on each axis
         TheModel->Xa += 1.0;
         TheModel->Ya += 1.0;

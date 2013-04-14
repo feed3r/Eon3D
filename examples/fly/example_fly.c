@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 
     frames = 0;     // set up for framerate counter
     ts = eon_gettime_ms();
-    while (!EONx_ConsoleWaitKey(con)) {
+    while (!EONx_ConsoleNextEvent(con)) {
         // save time when the frame began, to be used later.
         uint64_t elapsed = 0;
         frames++;

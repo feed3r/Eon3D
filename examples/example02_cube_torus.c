@@ -90,7 +90,7 @@ int main()
     TheRend = EON_RendCreate(TheCamera);
 
     start = time(NULL);
-    while (!EONx_ConsoleWaitKey(TheConsole)) { // While the keyboard hasn't been touched
+    while (!EONx_ConsoleNextEvent(TheConsole)) { // While the keyboard hasn't been touched
         TheCube->Xa += 1.0; // Rotate cube by 1 degree on each axis
         TheCube->Ya += 1.0;
         TheCube->Za += 1.0;
