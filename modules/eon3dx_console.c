@@ -22,6 +22,8 @@
  *                                                                        *
  **************************************************************************/
 
+#include "stringkit.h"
+
 #include "eon3dx_console.h"
 
 
@@ -34,6 +36,10 @@
 #define HAVE_SDL 1
 #endif /* SDL_FOUND */
 
+/* ditto */
+#ifdef PNG_FOUND
+#define HAVE_PNG 1
+#endif /* PNG_FOUND */
 
 /**************************************************************************
  * SDL backend Console implementation.                                    *
@@ -44,6 +50,9 @@
 #define EONx_SDL_TAG    "EONSDL"
 
 #include <SDL.h>
+
+#include "savepng.h"
+
 
 // FIXME BPP ambiguitiy (depth/BPP/bpp)
 
@@ -226,6 +235,17 @@ const char *EONx_ConsoleGetError(EONx_Console *ctx)
     return SDL_GetError();
 }
 
+int EONx_ConsoleSaveFrame(EONx_Console *ctx, const char *filename)
+{
+    int ret = -1;
+#ifdef HAVE_PNG
+    if (ctx && filename) {
+        ret = SDL_SavePNG(ctx->frame, filename);
+    }
+#endif
+    return ret;
+}
+
 #else /* ! HAVE_SDL */
 
 
@@ -295,7 +315,20 @@ const char *EONx_ConsoleGetError(EONx_Console *ctx)
     return NULL;
 }
 
+int EONx_ConsoleSaveFrame(EONx_Console *ctx, const char *filename)
+{
+    return -1;
+}
+
 #endif /* HAVE_SDL */
+
+/* some code is indipendent from SDL */
+
+const char *EONx_ConsoleMakeName(EONx_Console *ctx, char *buf, size_t len)
+{
+    CX_strlcpy(buf, "screenshot.png", len);
+    return buf;
+}
 
 /* vim: set ts=4 sw=4 et */
 /* EOF */

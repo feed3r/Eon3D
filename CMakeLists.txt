@@ -8,6 +8,7 @@ include(CheckCSourceCompiles)
 include(CheckFunctionExists)
 
 include(FindSDL)
+include(FindPNG)
 
 set(CMAKE_REQUIRED_INCLUDES 	stdlib.h)
 set(CMAKE_REQUIRED_INCLUDES 	stdint.h)

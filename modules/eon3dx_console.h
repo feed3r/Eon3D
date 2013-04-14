@@ -62,11 +62,15 @@ int EONx_ConsoleWaitKey(EONx_Console *ctx);
 
 int EONx_ConsoleSetPalette(EONx_Console *ctx, const uint8_t *palette, int numcolors);
 
-EON_Frame* EONx_ConsoleGetFrame(EONx_Console *ctx);
+EON_Frame *EONx_ConsoleGetFrame(EONx_Console *ctx);
 
 int EONx_ConsoleClearFrame(EONx_Console *ctx);
 
 int EONx_ConsoleShowFrame(EONx_Console *ctx);
+
+int EONx_ConsoleSaveFrame(EONx_Console *ctx, const char *filename);
+
+const char *EONx_ConsoleMakeName(EONx_Console *ctx, char *buf, size_t len);
 
 const char *EONx_ConsoleGetError(EONx_Console *ctx);
 
