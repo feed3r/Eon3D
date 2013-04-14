@@ -23,6 +23,7 @@
  **************************************************************************/
 
 #include "stringkit.h"
+#include "arraykit.h"
 
 #include "eon3dx_console.h"
 
@@ -61,11 +62,18 @@ enum {
     TRUECOLOR_DEPTH = 32 // XXX
 };
 
+typedef struct eonx_event_ {
+    EONx_KeyHandler handler;
+    void *userdata;
+    int key;
+} EONx_Event;
+
 struct eonx_console_ {
     EON_Cam *cam;
     EON_Frame *fb;
     SDL_Surface *screen;
     SDL_Surface *frame;
+    CX_VArray *keyhandlers;
 };
 
 
@@ -152,7 +160,7 @@ EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
             if (ctx->cam) {
                 err = EONx_ConsoleInitSurfaces(ctx);
             }
-
+            ctx->keyhandlers = CX_varray_new(8, sizeof(EONx_Event)); //XXX
         }
     }
     if (err) {
@@ -209,24 +217,56 @@ EON_Cam *EONx_ConsoleGetCamera(EONx_Console *ctx)
     return cam;
 }
 
-
-int EONx_ConsoleWaitKey(EONx_Console *ctx)
+int EONx_ConsoleBindEventKey(EONx_Console *ctx, int key,
+                             EONx_KeyHandler handler, void *userdata)
 {
-    int ret = 0;
+    int err = 0;
+    if (ctx) {
+        EONx_Event ev = {
+            .key = key,
+            .handler = handler,
+            .userdata = userdata
+        };
+        err = CX_varray_append(ctx->keyhandlers, &ev);
+    }
+    return err;
+}
+
+int eonx_ConsoleHandleKeyEvent(EONx_Console *ctx, int key)
+{
+    int err = 0, i = 0, found = 0;
+    int n = CX_varray_length(ctx->keyhandlers);
+    for (i = 0; !found && i < n; i++) {
+        EONx_Event *ev = CX_varray_get_ref(ctx->keyhandlers, i);
+        if (key == ev->key) {
+            err = ev->handler(key, ctx, ev->userdata);
+            found = 1;
+        }
+    }
+    return err;
+}
+
+int EONx_ConsoleNextEvent(EONx_Console *ctx)
+{
+    int err = 0;
     SDL_Event event;
 
-    while (SDL_PollEvent(&event)) {
+    while (!err && SDL_PollEvent(&event)) {
         switch (event.type) {
             case SDL_QUIT:
-                ret = -1;
+                err = -1;
+                break;
+            case SDL_KEYDOWN:
+                err = eonx_ConsoleHandleKeyEvent(ctx,
+                                                 event.key.keysym.sym);
                 break;
             default:
-                ret = 0;
+                err = 0;
                 break;
         }
     }
 
-    return ret;
+    return err;
 }
 
 
@@ -238,11 +278,14 @@ const char *EONx_ConsoleGetError(EONx_Console *ctx)
 int EONx_ConsoleSaveFrame(EONx_Console *ctx, const char *filename)
 {
     int ret = -1;
-#ifdef HAVE_PNG
     if (ctx && filename) {
-        ret = SDL_SavePNG(ctx->frame, filename);
-    }
+#ifdef HAVE_PNG
+//        ret = SDL_SavePNG(ctx->frame, filename);
+        ret = SDL_SaveBMP(ctx->frame, filename);
+#else
+        ret = SDL_SaveBMP(ctx->frame, filename);
 #endif
+    }
     return ret;
 }
 
@@ -285,7 +328,7 @@ EON_Cam *EONx_ConsoleGetCamera(EONx_Console *ctx)
     return NULL;
 }
 
-int EONx_ConsoleWaitKey(EONx_Console *ctx)
+int EONx_ConsoleNextEvent(EONx_Console *ctx)
 {
     return 0;
 }

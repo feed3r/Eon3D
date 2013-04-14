@@ -58,7 +58,12 @@ void *EONx_ConsoleDelete(EONx_Console *ctx);
 
 EON_Cam *EONx_ConsoleGetCamera(EONx_Console *ctx);
 
-int EONx_ConsoleWaitKey(EONx_Console *ctx);
+typedef int (*EONx_KeyHandler)(int key, EONx_Console *con, void *userdata);
+
+int EONx_ConsoleBindEventKey(EONx_Console *ctx, int key,
+                             EONx_KeyHandler handler, void *userdata);
+
+int EONx_ConsoleNextEvent(EONx_Console *ctx);
 
 int EONx_ConsoleSetPalette(EONx_Console *ctx, const uint8_t *palette, int numcolors);
 
