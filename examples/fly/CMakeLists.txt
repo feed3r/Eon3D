@@ -11,7 +11,6 @@ include_directories(${eon3d_SOURCE_DIR}/deps/cxkit)
 include_directories(${eon3d_SOURCE_DIR}/deps/cxkit/kits)
 
 link_directories(${eon3d_BINARY_DIR}/core)
-link_directories(${eon3d_BINARY_DIR}/deps/cxkit)
 
 target_link_libraries(example_fly ${EON3D_LIBS})
 
