@@ -94,21 +94,10 @@ The modules breakdown of Eon3D follows.
   - Dependencies: libSDL (LGPL, not bundled);
   - Description: Simple graphical I/O console.
 
-* model
+* reader
   - License: ZLIB;
   - Dependencies: rply (MIT, bundled);
   - Description: Simple model file loader.
-
-* png (planned)
-  - License: ZLIB;
-  - Status: Planned;
-  - Dependencies: libPNG (not bundled);
-  - Description: Saves frame to PNG images.
-
-* avi (planned)
-  - License: GPL2;
-  - Dependencies: avilib (bundled);
-  - Description: Save renders to raw AVI files.
 
 
 Getting Started
