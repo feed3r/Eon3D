@@ -504,7 +504,7 @@ int rollLtoXZ(){
 
 
  /* interprete characters by drawing turtle */
- int zeichne(char cc){
+ int interpretate(char cc){
    switch (cc) {
     case 'L':
     case 'R':
@@ -604,7 +604,7 @@ int expression( char *s, int len, int age ) {
 }
 
 /* rekursive string interpreter; id=depth; s=string */
-int interpret( int id, char *s){
+int generate( int id, char *s){
   int i,llen,rule; char *s2;
   llen=strlen(s);
   for ( i=0; i<llen; i++ ){
@@ -626,10 +626,10 @@ int interpret( int id, char *s){
     s2=strchr(gx,s[i]);       /* is char s[i] replaceable? */
     if ( id==0 || s2==0 ) {   /* if not, try to interpret it */
       if ( o_mode&1 ) printf("%c",s[i]); /* for debugging */
-      zeichne(s[i]);
+      interpretate(s[i]);
     } else {
       rule=s2-gx;
-      if( gsp[rule]>=100 || RAND(100)<gsp[rule] ) interpret(id-1,gs[rule]);
+      if( gsp[rule]>=100 || RAND(100)<gsp[rule] ) generate(id-1,gs[rule]);
     }
   }
   slen+=llen;
@@ -782,13 +782,13 @@ int main(int argc, char *argv[]){
    depth,turtle->llen,(.5+turtle->angle/M_PI*180),turtle->a[0],turtle->ld);
 
  if (o_fmt&128)             /* 1st pass to create a box */
- interpret(depth+1,"[S]");  /* L-system generation */
+ generate(depth+1,"[S]");  /* L-system generation */
 
  slen=0;    /* reset symbol counter */
 
  o_fmt&=127;                /* main pass */
  draw(DRAW_HEADER);
- interpret(depth+1,"S");    /* L-system generation */
+ generate(depth+1,"S");    /* L-system generation */
  draw(DRAW_FOOTER);
 
  if ( fo ) fclose(fo);
