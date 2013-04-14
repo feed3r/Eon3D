@@ -16,7 +16,7 @@
 /** DO NOT rely on their values. ABI isn't guaranteed */
 typedef enum {
     CX_VARRAY_OK       =  0, /**< success (no real error, thus)          */
-    CX_VARRAY_EMPTY    = -1, /**< empty CX_VArray element (not critical) */
+    CX_VARRAY_EMPTY    = -1, /**< empty CX_VArray/element (not critical) */
     CX_VARRAY_BAD_REF  = -2, /**< bad varray reference given             */
     CX_VARRAY_BAD_IDX  = -3, /**< bad varray index given                 */
     CX_VARRAY_NO_MEM   = -4  /**< out of memory                          */
@@ -27,9 +27,9 @@ typedef struct CX_varray_ CX_VArray;
 
 /** \fn Allocates a new CX_VArray. */
 /**
-  \param size initial number of elements.
+  \param size initial number of elements. Must Be >= 1.
   \param element_size size of each element of the CX_VArray.
-         `0' could be used as shourcut for sizeof(pointer).
+         `0' could be used as shourcut for sizeof(void *).
   \return a new CX_VArray reference on success, NULL on error
   \see CX_varray_del
 */
@@ -49,7 +49,7 @@ int CX_varray_del(CX_VArray *va);
   \param va a CX_VArray reference.
   \return >= 0 the length of the CX_VArray, < 0 a CX_VArrayError otherwise.
 */
-int32_t CX_varray_length(CX_VArray *va);
+int32_t CX_varray_length(const CX_VArray *va);
 
 /** \fn Gets the size of a CX_VArray. */
 /** The size of a CX_VArray is the amount of the memory occupied, including the
@@ -58,7 +58,7 @@ int32_t CX_varray_length(CX_VArray *va);
   \return >= 0 the size of the CX_VArray, < 0 a CX_VArrayError otherwise.
   \see CX_varray_length
 */
-int32_t CX_varray_size(CX_VArray *va);
+int32_t CX_varray_size(const CX_VArray *va);
 
 /** \fn Gets the element size of a CX_VArray. */
 /** Useful mostly for debug purposes since the caller is supposed to know
@@ -67,7 +67,7 @@ int32_t CX_varray_size(CX_VArray *va);
   \return > 0 the size of the CX_VArray, <= 0 a CX_VArrayError otherwise.
   \see CX_varray_new
 */
-int32_t CX_varray_element_size(CX_VArray *va);
+int32_t CX_varray_element_size(const CX_VArray *va);
 
 /** \fn Inserts an element in a Varray in a given position. */
 /** Always overwrites the old element.
@@ -116,7 +116,7 @@ int CX_varray_remove(CX_VArray *va, int32_t position);
          element.
   \return CX_VARRAY_OK on success, a CX_VArrayError otherwise.
 */
-int CX_varray_get(CX_VArray *va, int32_t position, void *element);
+int CX_varray_get(const CX_VArray *va, int32_t position, void *element);
 
 /** \fn Gets a reference to element from a CX_VArray given its position. */
 /** This functions gets A POINTER of a given element (by position)

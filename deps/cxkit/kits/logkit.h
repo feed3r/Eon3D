@@ -35,14 +35,14 @@ typedef enum {
 /** \var typedef CX_LogHandler
     \brief logging callback function.
 
-    This callback is invoked by the eon3d runtime whenever is needed
+    This callback is invoked by the logkit runtime whenever is needed
     to log a message.
 
-    eon3d provides a default callback to log to the  stderr.
+    logkit provides a default callback to log to the  stderr.
 
     \param user_data a pointer given at the callback registration
-           time. Fully opaque for eon3d.
-    \param tag string identifying the eon3d module/subsystem.
+           time. Fully opaque for logkit.
+    \param tag string identifying the logkit module/subsystem.
     \param level the severity of the message.
     \param fmt printf-like format string for the message.
     \param args va_list of the arguments to complete the format string.
@@ -64,7 +64,7 @@ typedef int (*CX_LogHandler)(void *user_data,
     \return a pointer to the allocated descriptor, NULL on error.
     \see CX_log_close
 */
-CX_LogContext *CX_log_open_null();
+CX_LogContext *CX_log_open_null(void);
 
 /** \fn open a log descriptor which sends everything to the given FILE. */
 /** Attach a log descriptor to a given file. The file must be already open
@@ -160,7 +160,7 @@ int CX_log_trace_va(CX_LogContext *ctx,
     \param ctx the log descriptor to use for logging.
     \return 0 if succesfull, <0 on error.
 */
-int CX_log_flush(CX_LogContext *cxt);
+int CX_log_flush(CX_LogContext *ctx);
 
 
 #endif  /* CX_LOGKIT_H */

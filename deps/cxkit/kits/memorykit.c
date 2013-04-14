@@ -15,7 +15,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "CX_kit.h"
 #include "memorykit.h"
 
 
@@ -55,12 +54,13 @@ void *CX__tpaalloc(const char *file, int line, size_t size)
     long pagesize = sysconf(_SC_PAGESIZE);
     int8_t *base = malloc(size + sizeof(void *) + pagesize);
     int8_t *ptr = NULL;
-    unsigned long offset = 0;
 
     if (base == NULL) {
         fprintf(stderr, "[%s:%d] CX__tpaalloc(): can't allocate %lu bytes\n",
                         file, line, (unsigned long)size);
     } else {
+        unsigned long offset = 0;
+
         ptr = base + sizeof(void *);
         offset = (unsigned long)ptr % pagesize;
 
@@ -79,5 +79,5 @@ void CX_pafree(void *ptr)
     return;
 }
 
-/* vim: et sw=4 ts=4: */
+/* vim: set et sw=4 ts=4 */
 

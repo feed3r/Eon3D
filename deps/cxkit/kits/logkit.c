@@ -7,9 +7,8 @@
     \brief the LOGging kit implementation.
 */
 
-#include "CX_config.h"
-
 #include "CX_kit.h"
+#include "CX_config.h"
 #include "memorykit.h"
 #include "logkit.h"
 
@@ -106,7 +105,7 @@ static int CX_log_trace_console(void *user_data, CX_LogLevel level,
 
     /* construct real format string */
     snprintf(msg, size, template, tag, fmt);
-    /* ant then finally deliver the message */
+    /* and then finally deliver the message */
     vfprintf(user_data, msg, ap);
 
     if (is_dynbuf) {
@@ -275,7 +274,5 @@ int CX_log_close(CX_LogContext *ctx)
     return err;
 }
 
-
-
-/* vim: et sw=4 ts=4: */
+/* vim: set sw=4 ts=4 et */
 
