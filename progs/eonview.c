@@ -3,6 +3,7 @@
  * (C)2013 Francesco Romani <fromani at gmail dot com>
  */
 
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -12,13 +13,99 @@
 #include <eon3dx_console.h>
 #include <eon3dx_reader.h>
 
+#include <logkit.h>
+
+typedef struct _Options {
+    const char *filename;
+    double distance;
+    int verbose;
+    int frames;
+} Options;
+
+typedef struct _EONViewer {
+    Options opts;
+    CX_LogContext *logger;
+} EONViewer;
+
+#define EXE "eonview"
+
+static void usage(void)
+{
+    fprintf(stderr, "Usage: %s [options] model\n", EXE);
+    fprintf(stderr, "    -d dist           Render at the `dist' view distance. Affects performance.\n");
+    fprintf(stderr, "    -v verbosity      Verbosity mode.\n");
+    fprintf(stderr, "    -n frames         Renders `frames' frames.\n");
+    fprintf(stderr, "\n");
+}
+
+static void opts_Defaults(Options *opts)
+{
+    memset(opts, 0, sizeof(*opts));
+    opts->filename = NULL;
+    opts->distance = 50.0;
+    opts->verbose = 1;
+    opts->frames = -1;
+    return;
+}
+
+static int opts_Parse(Options *opts, int argc, char *argv[])
+{
+    int ch = -1;
+
+    while (1) {
+        ch = getopt(argc, argv, "d:n:v:h?");
+        if (ch == -1) {
+            break;
+        }
+
+        switch (ch) {
+          case 'd':
+            opts->distance = atof(optarg);
+            break;
+          case 'n':
+            opts->frames = atoi(optarg);
+            break;
+          case 'v':
+            opts->verbose = atoi(optarg);
+            break;
+          case '?': /* fallthrough */
+          case 'h': /* fallthrough */
+          default:
+            usage();
+            return 1;
+        }
+    }
+
+    /* XXX: watch out here */
+    argc -= optind;
+    argv += optind;
+
+    if (argc != 1) {
+        usage();
+        return -1;
+    }
+    opts->filename = argv[0];
+
+    return 0;
+}
+
+static int opts_ErrCode(int err)
+{
+    int ret = 0;
+    if (err < 0) {
+        ret = -err;
+    } // else coalesce on zero
+    return ret;
+}
+
 
 int main(int argc, char *argv[])
 {
-    const char *filename;
+    int err = 0;
     int frames = 0;
-    time_t start = 0, stop = 0;
-    // Our variables
+    time_t start = 0;
+    time_t stop = 0;
+
     EON_Light *light;
     EON_Obj *model;
     EON_Mat *material;
@@ -26,58 +113,57 @@ int main(int argc, char *argv[])
     EON_Rend *rend;
     EON_Frame *frame;
     EONx_Console *console;
-    double distance = 50;
+    EONViewer view;
 
-    if (argc != 3) {
-        fprintf(stderr, "usage: %s plymodel distance\n",
-                argv[0]);
-        exit(1);
-    } else {
-        filename = argv[1];
-        distance = atof(argv[2]);
+    view.logger = CX_log_open_console(CX_LOG_MARK, stderr);
+
+    opts_Defaults(&view.opts);
+    err = opts_Parse(&view.opts, argc, argv);
+    if (err) {
+        return opts_ErrCode(err);
     }
 
-    EONx_ConsoleStartup("Eon3D :: example 0", NULL);
+    EONx_ConsoleStartup("Eon3D Model Viewer", NULL);
 
-    ModelMat = EON_MatCreate(); 
-    ModelMat->ShadeType = EON_SHADE_FLAT;
+    material = EON_MatCreate(); 
+    material->ShadeType = EON_SHADE_FLAT;
 
-    ModelMat->Ambient[0] = 200; // Set red ambient component
-    ModelMat->Ambient[1] = 200; // Set green ambient component
-    ModelMat->Ambient[2] = 200; // Set blue ambient component
+    material->Ambient[0] = 200;
+    material->Ambient[1] = 200;
+    material->Ambient[2] = 200;
 
-    EON_MatInit(ModelMat);          // Initialize the material
+    EON_MatInit(material);
 
-    TheConsole = EONx_ConsoleNew(800, // Screen width
+    console = EONx_ConsoleNew(800, // Screen width
                                  600, // Screen height
                                  90.0 // Field of view
                                  );
 
-    TheModel = EONx_ReadPLYObj(filename, ModelMat);
+    model = EONx_ReadPLYObj(view.opts.filename, material);
 
-    TheFrame = EONx_ConsoleGetFrame(TheConsole);
-    TheCamera = EONx_ConsoleGetCamera(TheConsole);
-    TheCamera->Z = -distance; // Back the camera up from the origin
+    frame = EONx_ConsoleGetFrame(console);
+    camera = EONx_ConsoleGetCamera(console);
+    camera->Z = -view.opts.distance;
 
-    TheLight = EON_LightNew(EON_LIGHT_VECTOR, // vector light
+    light = EON_LightNew(EON_LIGHT_VECTOR,
                             0.0, 0.0, 0.0, // rotation angles
                             1.0, // intensity
                             1.0); // falloff, not used for vector lights
 
-    TheRend = EON_RendCreate(TheCamera);
+    rend = EON_RendCreate(camera);
 
     start = time(NULL);
-    while (!EONx_ConsoleWaitKey(TheConsole)) { // While the keyboard hasn't been touched
+    while (!EONx_ConsoleWaitKey(console)) {
         // Rotate by 1 degree on each axis
-        TheModel->Xa += 1.0;
-        TheModel->Ya += 1.0;
-        TheModel->Za += 1.0;
-        EONx_ConsoleClearFrame(TheConsole);
-        EON_RenderBegin(TheRend);           // Start rendering with the camera
-        EON_RenderLight(TheRend, TheLight); // Render our light
-        EON_RenderObj(TheRend, TheModel);   // Render our object
-        EON_RenderEnd(TheRend, TheFrame);   // Finish rendering
-        EONx_ConsoleShowFrame(TheConsole);
+        model->Xa += 1.0;
+        model->Ya += 1.0;
+        model->Za += 1.0;
+        EONx_ConsoleClearFrame(console);
+        EON_RenderBegin(rend);
+        EON_RenderLight(rend, light);
+        EON_RenderObj(rend, model);
+        EON_RenderEnd(rend, frame);
+        EONx_ConsoleShowFrame(console);
         frames++;
     }
     stop = time(NULL);
