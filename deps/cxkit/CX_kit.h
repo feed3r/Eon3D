@@ -1,6 +1,6 @@
 /* 
  * cxkit is yet another collection of utilities for the C language.
- * (C) 2010-2011 Francesco Romani - fromani at gmail dot com. ZLIB licensed.
+ * (C) 2010-2013 Francesco Romani - fromani at gmail dot com. ZLIB licensed.
  */
 
 /** \file CX_kit.h
@@ -19,6 +19,10 @@
 /* clamp x between a and b */
 #define CX_CLAMP(x, a, b)	CX_MIN(CX_MAX((a), (x)), (b))
 
+enum {
+    CX_FALSE = 0,
+    CX_TRUE  = 1
+};
 
 #endif /* CX_KIT_H */
 

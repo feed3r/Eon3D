@@ -1,6 +1,6 @@
 /* 
  * String utilities kit - utility functions to work with C strings.
- * (C) 2010-2011 Francesco Romani - fromani at gmail dot com. ZLIB licensed.
+ * (C) 2010-2013 Francesco Romani - fromani at gmail dot com. ZLIB licensed.
  */
 
 /** \file stringkit.h
@@ -13,8 +13,10 @@
 
 #include <errno.h>
 
+#include "CX_kit.h"
 #include "stringkit.h"
 #include "memorykit.h"
+
 
 
 char *CX__tstrndup(const char *file, int line, const char *s, size_t n)
@@ -62,7 +64,7 @@ char **CX_strsplit(const char *str, char sep, size_t *pieces_num)
     const char *begin = str, *end = NULL;
     char **pieces = NULL, *pc = NULL;
     size_t i = 0, n = 2;
-    int failed = TC_FALSE;
+    int failed = CX_FALSE;
 
     if (!str || !strlen(str)) {
         return NULL;
@@ -94,7 +96,7 @@ char **CX_strsplit(const char *str, char sep, size_t *pieces_num)
         if (len > 0) {
             pc = CX_strndup(begin, len);
             if (pc == NULL) {
-                failed = TC_TRUE;
+                failed = CX_TRUE;
                 break;
             } else {
                 pieces[i] = pc;

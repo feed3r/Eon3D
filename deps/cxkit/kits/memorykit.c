@@ -1,6 +1,6 @@
 /* 
  * Memory utilities kit - utility functions to track memory handling.
- * (C) 2010-2011 Francesco Romani - fromani at gmail dot com. ZLIB licensed.
+ * (C) 2010-2013 Francesco Romani - fromani at gmail dot com. ZLIB licensed.
  */
 
 /** \file memorykit.h
@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "CX_kit.h"
 #include "memorykit.h"
 
 

@@ -1,6 +1,6 @@
 /* 
  * Vector ARRAY kit - an array which automatically enlarges when needed.
- * (C) 2010-2011 Francesco Romani - fromani at gmail dot com. ZLIB licensed.
+ * (C) 2010-2013 Francesco Romani - fromani at gmail dot com. ZLIB licensed.
  */
 
 /** \file arraykit.h
