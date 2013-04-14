@@ -118,8 +118,8 @@ struct poly *leave_poly( struct poly *last ){
 enum {
     DRAW_HEADER  = 0,
     DRAW_FOOTER  = 1,
-    DRAW_CONNECT = 2, /* line/cone */
-    DRAW_POLYGON = 3
+    DRAW_POLYGON = 2, /* line/cone */
+    DRAW_POLYFILL = 3
 };
 
 enum {
@@ -189,7 +189,7 @@ int out_ps(int f){ /* output polyeder in PS-file f=figure: 0=init,1=end */
   case DRAW_FOOTER:{                               /* --- close PS-file --- */
      fprintf(fo,"showpage\n");
     } break;
-  case DRAW_CONNECT:{                               /* --- line --- */
+  case DRAW_POLYGON:{                               /* --- line --- */
      x=turtle->hlu[0][0]*turtle->llen+turtle->x;
      y=turtle->hlu[0][1]*turtle->llen+turtle->y;
      z=turtle->hlu[0][2]*turtle->llen+turtle->z;
@@ -199,7 +199,7 @@ int out_ps(int f){ /* output polyeder in PS-file f=figure: 0=init,1=end */
        cr, cg, cb, turtle->ld, /* color + thickness */
        turtle->x, turtle->y, turtle->z, x, y, z, 2); /* r1 r2 numpoints=2 */
     } break;
-  case DRAW_POLYGON:{                               /* --- polyfill --- */
+  case DRAW_POLYFILL:{                               /* --- polyfill --- */
      fprintf(fo,"%4.2f %4.2f %4.2f f",cr,cg,cb); /* color */
      for (i=0;i<ppoly->len;i++)
      fprintf(fo," %11.6f %11.6f %11.6f", /* x y z */
@@ -255,7 +255,7 @@ int out_pov(int f){ /* output polyeder f=figure: 0=init,1=end */
   /*
      ambient=1, diffuse=0 => all pixel same color
   */
-  case DRAW_CONNECT: if ( turtle->llen>1e-3 ) {      /* --- poly as cone --- */
+  case DRAW_POLYGON: if ( turtle->llen>1e-3 ) {      /* --- poly as cone --- */
      x=turtle->hlu[0][0]*turtle->llen+turtle->x;
      y=turtle->hlu[0][1]*turtle->llen+turtle->y;
      z=turtle->hlu[0][2]*turtle->llen+turtle->z;
@@ -265,7 +265,7 @@ int out_pov(int f){ /* output polyeder f=figure: 0=init,1=end */
       turtle->x, turtle->y, turtle->z, turtle->ld,
       x,         y,         z,         turtle->ld, turtle->col);
     } break;
-  case DRAW_POLYGON: if (ppoly->len>2) {             /* --- polyfill as mesh --- */
+  case DRAW_POLYFILL: if (ppoly->len>2) {             /* --- polyfill as mesh --- */
      fprintf(fo,"mesh {\n");
      for (i=0;i<ppoly->len-2;i++)
      fprintf(fo," smooth_triangle {"
@@ -295,7 +295,7 @@ int out_data(int f){
      fprintf(fo,"# polyfill: n  x1 y1 z1  ...  xn yn zn  color\n");
      break;
   case DRAW_FOOTER: break;
-  case DRAW_CONNECT:{                               /* --- poly --- */
+  case DRAW_POLYGON:{                               /* --- poly --- */
      x=turtle->hlu[0][0]*turtle->llen+turtle->x;
      y=turtle->hlu[0][1]*turtle->llen+turtle->y;
      z=turtle->hlu[0][2]*turtle->llen+turtle->z;
@@ -304,7 +304,7 @@ int out_data(int f){
                   "  %2d\n",
        turtle->x,turtle->y,turtle->z,x,y,z,turtle->col);
     } break;
-  case DRAW_POLYGON:{                               /* --- polyfill --- */
+  case DRAW_POLYFILL:{                               /* --- polyfill --- */
      fprintf(fo,"%2d",ppoly->len);
      for (i=0;i<ppoly->len;i++)
      fprintf(fo,"  %13.8f %13.8f %13.8f",
@@ -508,7 +508,7 @@ int rollLtoXZ(){
    switch (cc) {
     case 'L':
     case 'R':
-    case 'F': draw(DRAW_CONNECT);   /* draw a line */
+    case 'F': draw(DRAW_POLYGON);   /* draw a line */
               forward(1); break;
     case 'l':
     case 'r':
@@ -532,7 +532,7 @@ int rollLtoXZ(){
     case '{':
        ppoly=create_poly(ppoly);
        store_vertex( 0 ); break;         /* set 1st point of new polygon */
-    case '}': draw(DRAW_POLYGON); ppoly->len=0;
+    case '}': draw(DRAW_POLYFILL); ppoly->len=0;
        ppoly=leave_poly(ppoly); break;   /* reset, polygon=off */
     case '"':
       if ( turtle->col<NUMCOL ) turtle->col++;  /* increment color index */
