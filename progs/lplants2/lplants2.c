@@ -44,7 +44,14 @@ int depth=3, o_mode=0, o_fmt=0, /* length of steps, options, output format */
     clx=0, cly=400, clz=-400, /* camera location */
     cax=0, cay=300, caz=0;    /* camera look_at */
 
-#define NumA 4
+enum {
+    NumA = 4,
+    STACKSIZE = 256,
+    NUMCOL = 16,
+    NUMRULES = 256,
+    MAXPOLY = 128
+};
+
 struct tturtle {         /* turtle status */
   /* double? float would be enough! */
   double x,y,z;          /* turte-pos */
@@ -55,7 +62,6 @@ struct tturtle {         /* turtle status */
   double angle, llen;	 /* unit of rotation and length */
 };
 
-#define STACKSIZE 256
 struct tturtle stk[STACKSIZE], /* stack for storing turtle states */
               *turtle;         /* aktual turtle state points to stk[sp] */
 int sp;                        /* stack pointer */
@@ -67,14 +73,12 @@ int sp;                        /* stack pointer */
 double p_stack[STACKSIZE];
 int    p_sp=0;
 
-#define NUMCOL 16
 int rgb[NUMCOL][6]; /* RGB-palette (0..255) idx3..5 is for random offset */
 int minx=999, maxx=-999,
     miny=999, maxy=-999,
     minz=999, maxz=-999;
 int sp,slen;   /* stack-pointer and string len */
 
-#define NUMRULES 256
 char  gx[NUMRULES];  /* replacable chars (alphabet) */
 char *gs[NUMRULES];  /* production rules */
 char gsp[NUMRULES];  /* probabilities in 0.01 (0..100) */
@@ -84,7 +88,6 @@ char gsp[NUMRULES];  /* probabilities in 0.01 (0..100) */
     
      vertex 0..2, normal 3..5 (used be smooth triangle)
  */
-#define MAXPOLY 128
 struct poly {
   struct poly *next;
   struct poly *prev;
