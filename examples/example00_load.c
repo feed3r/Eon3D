@@ -1,5 +1,7 @@
 /* Loads and rotates a PLY model. */
 
+#include <strings.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -13,13 +15,18 @@ static int screenshot(int key, EONx_Console *ctx, void *userdata)
 {
     int err = 0;
     char name[1024] = { '\0' }; // XXX
-    EONx_ConsoleMakeName(ctx, name, sizeof(name));
-    err = EONx_ConsoleSaveFrame(ctx, name);
+    EONx_ConsoleMakeName(ctx, name, sizeof(name),
+                         "screenshot", "png");
+    err = EONx_ConsoleSaveFrame(ctx, name, "png");
     fprintf(stderr, "saving screenshot to [%s] -> %s (%i)\n",
             name, (err) ?EONx_ConsoleGetError(ctx) :"OK", err);
     return err;
 }
 
+static int quit(int key, EONx_Console *ctx, void *userdata)
+{
+    return 1;
+}
 
 int main(int argc, char *argv[])
 {
@@ -62,6 +69,7 @@ int main(int argc, char *argv[])
                                  );
 
     EONx_ConsoleBindEventKey(TheConsole, 's', screenshot, NULL); // XXX
+    EONx_ConsoleBindEventKey(TheConsole, 'q', quit, NULL); // XXX
 
     TheModel = EONx_ReadPLYObj(filename, ModelMat);
 

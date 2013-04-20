@@ -22,6 +22,8 @@
  *                                                                        *
  **************************************************************************/
 
+#include <time.h>
+
 #include "stringkit.h"
 #include "arraykit.h"
 
@@ -275,15 +277,20 @@ const char *EONx_ConsoleGetError(EONx_Console *ctx)
     return SDL_GetError();
 }
 
-int EONx_ConsoleSaveFrame(EONx_Console *ctx, const char *filename)
+int EONx_ConsoleSaveFrame(EONx_Console *ctx,
+                          const char *filename, const char *filetype)
 {
     int ret = -1;
     if (ctx && filename) {
+        if (!filetype || !strcasecmp(filetype, "bmp")) {
+            ret = SDL_SaveBMP(ctx->frame, filename);
+        }
 #ifdef HAVE_PNG
-//        ret = SDL_SavePNG(ctx->frame, filename);
-        ret = SDL_SaveBMP(ctx->frame, filename);
-#else
-        ret = SDL_SaveBMP(ctx->frame, filename);
+        else if (filetype && !strcasecmp(filetype, "png")) {
+            SDL_Surface *shot = SDL_PNGFormatAlpha(ctx->frame);
+            ret = SDL_SavePNG(shot, filename);
+            SDL_FreeSurface(shot);
+        }
 #endif
     }
     return ret;
@@ -358,7 +365,8 @@ const char *EONx_ConsoleGetError(EONx_Console *ctx)
     return NULL;
 }
 
-int EONx_ConsoleSaveFrame(EONx_Console *ctx, const char *filename)
+int EONx_ConsoleSaveFrame(EONx_Console *ctx,
+                          const char *filename, const char *filetype)
 {
     return -1;
 }
@@ -367,9 +375,16 @@ int EONx_ConsoleSaveFrame(EONx_Console *ctx, const char *filename)
 
 /* some code is indipendent from SDL */
 
-const char *EONx_ConsoleMakeName(EONx_Console *ctx, char *buf, size_t len)
+const char *EONx_ConsoleMakeName(EONx_Console *ctx,
+                                 char *buf, size_t len,
+                                 const char *pfx, const char *ext)
 {
-    CX_strlcpy(buf, "screenshot.png", len);
+    char timebuf[256] = { '\0' }; // XXX
+    time_t now = time(0);
+    struct tm res;
+    localtime_r(&now, &res);
+    strftime(timebuf, sizeof(timebuf), "%F_%T", &res);
+    snprintf(buf, len, "%s_%s.%s", pfx, timebuf, ext);
     return buf;
 }
 
