@@ -21,7 +21,6 @@ if(ENABLE_TESTS)
     include_directories(${eon3d_BINARY_DIR}/tests)
 
     link_directories(${eon3d_BINARY_DIR}/core)
-    link_directories(${eon3d_BINARY_DIR}/deps/cxkit)
     # for the custom library
     link_directories(${eon3d_BINARY_DIR}/tests)
 
