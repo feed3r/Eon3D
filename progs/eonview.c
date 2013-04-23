@@ -20,6 +20,7 @@ typedef struct _Options {
     double distance;
     int verbose;
     int frames;
+    int shade;
     int width, height;
     double rx, ry, rz;
 } Options;
@@ -38,7 +39,8 @@ static void usage(void)
     fprintf(stderr, "    -v verbosity      Verbosity mode.\n");
     fprintf(stderr, "    -n frames         Renders `frames' frames.\n");
     fprintf(stderr, "    -g w,h            Frame size Width,Height in pixel.\n");
-    fprintf(stderr, "    -r x,y,z          Rotates around axes of the specified degrees.\n");
+    fprintf(stderr, "    -R x,y,z          Rotates around axes of the specified degrees.\n");
+    fprintf(stderr, "    -S m              Shading mode.\n");
     fprintf(stderr, "\n");
 }
 
@@ -49,6 +51,12 @@ static void opts_Defaults(Options *opts)
     opts->distance = 50.0;
     opts->verbose = 1;
     opts->frames = -1;
+    opts->shade = EON_SHADE_FLAT;
+    opts->width = 800;
+    opts->height = 600;
+    opts->rx = 1.0;
+    opts->ry = 1.0;
+    opts->rz = 1.0;
     return;
 }
 
@@ -57,7 +65,7 @@ static int opts_Parse(Options *opts, int argc, char *argv[])
     int ch = -1;
 
     while (1) {
-        ch = getopt(argc, argv, "d:n:v:h?");
+        ch = getopt(argc, argv, "d:g:n:R:S:v:h?");
         if (ch == -1) {
             break;
         }
@@ -81,13 +89,16 @@ static int opts_Parse(Options *opts, int argc, char *argv[])
                 opts->height = 600;
             }
             break;
-          case 'r':
+          case 'R':
             if (sscanf(optarg, "%lf,%lf,%lf",
                        &opts->rx, &opts->ry, &opts->rz) != 3) { // XXX
                 opts->rx = 1.0;
                 opts->ry = 1.0;
                 opts->rz = 1.0;
             }
+            break;
+          case 'S':
+            opts->shade = atoi(optarg);
             break;
           case '?': /* fallthrough */
           case 'h': /* fallthrough */
@@ -166,6 +177,9 @@ int main(int argc, char *argv[])
     }
 
     CX_log_trace(view.logger, CX_LOG_INFO, EXE,
+                 "Shading mode: %i",
+                 view.opts.shade);
+    CX_log_trace(view.logger, CX_LOG_INFO, EXE,
                  "Frame Size: %ix%i",
                  view.opts.width, view.opts.height);
     CX_log_trace(view.logger, CX_LOG_INFO, EXE,
@@ -175,7 +189,7 @@ int main(int argc, char *argv[])
     EONx_ConsoleStartup("Eon3D Model Viewer", NULL);
 
     material = EON_MatCreate(); 
-    material->ShadeType = EON_SHADE_FLAT;
+    material->ShadeType = view.opts.shade;
 
     material->Ambient[0] = 200;
     material->Ambient[1] = 200;
