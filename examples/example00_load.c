@@ -11,22 +11,6 @@
 #include <eon3dx_console.h>
 #include <eon3dx_reader.h>
 
-static int screenshot(int key, EONx_Console *ctx, void *userdata)
-{
-    int err = 0;
-    char name[1024] = { '\0' }; // XXX
-    EONx_ConsoleMakeName(ctx, name, sizeof(name),
-                         "screenshot", "png");
-    err = EONx_ConsoleSaveFrame(ctx, name, "png");
-    fprintf(stderr, "saving screenshot to [%s] -> %s (%i)\n",
-            name, (err) ?EONx_ConsoleGetError(ctx) :"OK", err);
-    return err;
-}
-
-static int quit(int key, EONx_Console *ctx, void *userdata)
-{
-    return 1;
-}
 
 int main(int argc, char *argv[])
 {
@@ -67,9 +51,6 @@ int main(int argc, char *argv[])
                                  600, // Screen height
                                  90.0 // Field of view
                                  );
-
-    EONx_ConsoleBindEventKey(TheConsole, 's', screenshot, NULL); // XXX
-    EONx_ConsoleBindEventKey(TheConsole, 'q', quit, NULL); // XXX
 
     TheModel = EONx_ReadPLYObj(filename, ModelMat);
 
