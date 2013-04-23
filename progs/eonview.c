@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
     rend = EON_RendCreate(camera);
 
     start = time(NULL);
-    while (!EONx_ConsoleWaitKey(console)) {
+    while (!EONx_ConsoleNextEvent(console)) {
         // Rotate by 1 degree on each axis
         model->Xa += 1.0;
         model->Ya += 1.0;
