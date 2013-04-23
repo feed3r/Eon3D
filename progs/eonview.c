@@ -20,6 +20,8 @@ typedef struct _Options {
     double distance;
     int verbose;
     int frames;
+    int width, height;
+    double rx, ry, rz;
 } Options;
 
 typedef struct _EONViewer {
@@ -35,6 +37,8 @@ static void usage(void)
     fprintf(stderr, "    -d dist           Render at the `dist' view distance. Affects performance.\n");
     fprintf(stderr, "    -v verbosity      Verbosity mode.\n");
     fprintf(stderr, "    -n frames         Renders `frames' frames.\n");
+    fprintf(stderr, "    -g w,h            Frame size Width,Height in pixel.\n");
+    fprintf(stderr, "    -r x,y,z          Rotates around axes of the specified degrees.\n");
     fprintf(stderr, "\n");
 }
 
@@ -68,6 +72,23 @@ static int opts_Parse(Options *opts, int argc, char *argv[])
           case 'v':
             opts->verbose = atoi(optarg);
             break;
+          case 'g':
+            if (sscanf(optarg, "%i,%i",
+                       &opts->width, &opts->height) != 2
+             || (opts->width  < 320 || opts->width > 1920)
+             || (opts->height < 200 || opts->height > 1080)) { // XXX
+                opts->width = 800;
+                opts->height = 600;
+            }
+            break;
+          case 'r':
+            if (sscanf(optarg, "%lf,%lf,%lf",
+                       &opts->rx, &opts->ry, &opts->rz) != 3) { // XXX
+                opts->rx = 1.0;
+                opts->ry = 1.0;
+                opts->rz = 1.0;
+            }
+            break;
           case '?': /* fallthrough */
           case 'h': /* fallthrough */
           default:
@@ -98,6 +119,27 @@ static int opts_ErrCode(int err)
     return ret;
 }
 
+static int onkey_Screenshot(int key, EONx_Console *ctx, void *userdata)
+{
+    EONViewer *view = userdata;
+    int err = 0;
+    char name[1024] = { '\0' }; // XXX
+    EONx_ConsoleMakeName(ctx, name, sizeof(name),
+                         "screenshot", "png");
+    err = EONx_ConsoleSaveFrame(ctx, name, "png");
+    CX_log_trace(view->logger, CX_LOG_INFO, EXE,
+                 "saving screenshot to [%s] -> %s (%i)\n",
+                 name, (err) ?EONx_ConsoleGetError(ctx) :"OK", err);
+    return err;
+}
+
+static int onkey_Quit(int key, EONx_Console *ctx, void *userdata)
+{
+    EONViewer *view = userdata;
+    CX_log_trace(view->logger, CX_LOG_INFO, EXE, "Bye!");
+    return 1;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -123,6 +165,13 @@ int main(int argc, char *argv[])
         return opts_ErrCode(err);
     }
 
+    CX_log_trace(view.logger, CX_LOG_INFO, EXE,
+                 "Frame Size: %ix%i",
+                 view.opts.width, view.opts.height);
+    CX_log_trace(view.logger, CX_LOG_INFO, EXE,
+                 "Model rotation: X=%f Y=%f Z=%f",
+                 view.opts.rx, view.opts.ry, view.opts.rz);
+
     EONx_ConsoleStartup("Eon3D Model Viewer", NULL);
 
     material = EON_MatCreate(); 
@@ -134,10 +183,10 @@ int main(int argc, char *argv[])
 
     EON_MatInit(material);
 
-    console = EONx_ConsoleNew(800, // Screen width
-                                 600, // Screen height
-                                 90.0 // Field of view
-                                 );
+    console = EONx_ConsoleNew(view.opts.width, view.opts.height, 90);
+
+    EONx_ConsoleBindEventKey(console, 's', onkey_Screenshot, &view); // XXX
+    EONx_ConsoleBindEventKey(console, 'q', onkey_Quit, &view); // XXX
 
     model = EONx_ReadPLYObj(view.opts.filename, material);
 
@@ -145,19 +194,15 @@ int main(int argc, char *argv[])
     camera = EONx_ConsoleGetCamera(console);
     camera->Z = -view.opts.distance;
 
-    light = EON_LightNew(EON_LIGHT_VECTOR,
-                            0.0, 0.0, 0.0, // rotation angles
-                            1.0, // intensity
-                            1.0); // falloff, not used for vector lights
+    light = EON_LightNew(EON_LIGHT_VECTOR, 0.0, 0.0, 0.0, 1.0, 1.0);
 
     rend = EON_RendCreate(camera);
 
     start = time(NULL);
     while (!EONx_ConsoleNextEvent(console)) {
-        // Rotate by 1 degree on each axis
-        model->Xa += 1.0;
-        model->Ya += 1.0;
-        model->Za += 1.0;
+        model->Xa += view.opts.rx;
+        model->Ya += view.opts.ry;
+        model->Za += view.opts.rz;
         EONx_ConsoleClearFrame(console);
         EON_RenderBegin(rend);
         EON_RenderLight(rend, light);
@@ -168,10 +213,10 @@ int main(int argc, char *argv[])
     }
     stop = time(NULL);
 
-    fprintf(stderr, "(%s) %i frames in %f seconds: %.3f FPS\n",
-            __FILE__,
-            frames, (double)stop-(double)start,
-            (double)frames/((double)stop-(double)start));
+    CX_log_trace(view.logger, CX_LOG_INFO, EXE,
+                 "%i frames in %f seconds: %.3f FPS\n",
+                 frames, (double)stop-(double)start,
+                 (double)frames/((double)stop-(double)start));
 
     return EONx_ConsoleShutdown();
 }
