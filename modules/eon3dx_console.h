@@ -35,9 +35,33 @@ typedef struct eonx_console_ EONx_Console;
 
 typedef int (*EONx_KeyHandler)(int key, EONx_Console *con, void *userdata);
 
-
+/*
+  EON_ConsoleStartup() initializes the console backend.
+  Parameters:
+    title: title of the graphical window when in foreground
+    icon: title of the graphical window when iconized (WARNING!)
+  Returns:
+    0 on success, !0 on failure.
+  Notes:
+    Any call to console functions before this call will produce
+    unexpected behaviour.
+    Should be called once before to use any other console functions.
+    Further calls are useless but harmless.
+*/
 int EONx_ConsoleStartup(const char *title, const char *icon);
 
+/*
+  EON_ConsoleShutdown() finalizes and releases the console backend.
+  Parameters:
+    none
+  Returns:
+    0 on success, !0 on failure.
+  Notes:
+    Any call to console functions after this call will produce
+    unexpected behaviour.
+    Should be called once after use any other console functions.
+    Further calls are useless but harmless.
+*/
 int EONx_ConsoleShutdown(void);
 
 EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov);
