@@ -1559,14 +1559,8 @@ static void EON_PF_WireF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 
     EON_sInt32 X0, X1, X2;
     EON_sInt32 Y0, Y1, Y2;
-//    EON_ZBuffer Z0, Z1, Z2;
     EON_uInt32 color = eon_PickColorF(TriFace);
 
-//    PUTFACE_SORT();
-
-//    Z0 = TriFace->Scrz[i0];
-//    Z1 = TriFace->Scrz[i1];
-//    Z2 = TriFace->Scrz[i2];
     X0 = eon_ToScreen(TriFace->Scrx[i0]);
     X1 = eon_ToScreen(TriFace->Scrx[i1]);
     X2 = eon_ToScreen(TriFace->Scrx[i2]);
