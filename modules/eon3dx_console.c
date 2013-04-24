@@ -59,6 +59,11 @@
 
 // FIXME BPP ambiguitiy (depth/BPP/bpp)
 
+/* for future usage */
+enum {
+    EONx_CONSOLE_FLAG_NONE = 0,
+};
+
 enum {
     TRUECOLOR_BPP   = 4,
     TRUECOLOR_DEPTH = 32 // XXX
@@ -143,13 +148,7 @@ static void *EONx_ConsoleCleanup(EONx_Console *ctx)
     return NULL;
 }
 
-EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov)
-{
-    return EONx_ConsoleCreate(sw, sh, 1.0, fov,
-                              EONx_CONSOLE_FLAG_NONE);
-}
-
-EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
+EONx_Console *eon_ConsoleCreate(EON_uInt sw, EON_uInt sh,
                                  EON_Float ar, EON_Float fov,
                                  EON_uInt32 flags)
 {
@@ -171,6 +170,11 @@ EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
     return ctx;
 }
 
+EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov)
+{
+    return eon_ConsoleCreate(sw, sh, 1.0, fov,
+                              EONx_CONSOLE_FLAG_NONE);
+}
 
 void *EONx_ConsoleDelete(EONx_Console *ctx)
 {
@@ -313,7 +317,7 @@ int EONx_ConsoleShutdown(void)
     return 0;
 }
 
-EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
+EONx_Console *eon_ConsoleCreate(EON_uInt sw, EON_uInt sh,
                                  EON_Float ar, EON_Float fov,
                                  EON_uInt flags)
 {

@@ -27,38 +27,24 @@
 
 #include <eon3d.h>
 
-/** \file eon3dx_console.h
-    \brief eon3d eXtension: the graphical console.
-*/
-
-/*************************************************************************
- * Console                                                               *
- *************************************************************************/
-
-/** \struct the opaque console datatype.
-   Can use SDL or anything else.
+/*
+  The opaque console datatype.
+  Can use SDL or anything else.
 */
 typedef struct eonx_console_ EONx_Console;
+
+typedef int (*EONx_KeyHandler)(int key, EONx_Console *con, void *userdata);
+
 
 int EONx_ConsoleStartup(const char *title, const char *icon);
 
 int EONx_ConsoleShutdown(void);
-
-enum {
-    EONx_CONSOLE_FLAG_NONE = 0,
-};
-
-EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh,
-                                 EON_Float ar, EON_Float fov,
-                                 EON_uInt32 flags);
 
 EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov);
 
 void *EONx_ConsoleDelete(EONx_Console *ctx);
 
 EON_Cam *EONx_ConsoleGetCamera(EONx_Console *ctx);
-
-typedef int (*EONx_KeyHandler)(int key, EONx_Console *con, void *userdata);
 
 int EONx_ConsoleBindEventKey(EONx_Console *ctx, int key,
                              EONx_KeyHandler handler, void *userdata);
@@ -74,12 +60,14 @@ int EONx_ConsoleClearFrame(EONx_Console *ctx);
 
 int EONx_ConsoleShowFrame(EONx_Console *ctx);
 
-int EONx_ConsoleSaveFrame(EONx_Console *ctx,
-                          const char *filename, const char *filetype);
+/* helpers */
 
 const char *EONx_ConsoleMakeName(EONx_Console *ctx,
                                  char *buf, size_t len,
                                  const char *pfx, const char *ext);
+
+int EONx_ConsoleSaveFrame(EONx_Console *ctx,
+                          const char *filename, const char *filetype);
 
 const char *EONx_ConsoleGetError(EONx_Console *ctx);
 
