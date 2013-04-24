@@ -221,7 +221,8 @@ static EON_uInt eon_OptimizeImage(EON_uChar *pal,
     return (lastused+1);
 }
 
-static EON_sInt eon_ReadPCX(char *filename, EON_uInt16 *width, EON_uInt16 *height,
+static EON_sInt eon_ReadPCX(const char *filename,
+                            EON_uInt16 *width, EON_uInt16 *height,
                             EON_uChar **pal, EON_uChar **data)
 {
     EON_uInt16 sx, sy, ex, ey;
@@ -323,8 +324,12 @@ static void eon_RescaleImage(EON_uChar *in, EON_uChar *out, EON_uInt inx,
     } while (--outy);
 }
 
-
-EON_Texture *EONx_ReadPCXTex(char *fn, EON_Bool rescale, EON_Bool optimize)
+/*
+  rescale: will rescale image if not whole log2 dimensions (USE THIS)
+  optimize: will optimize colors (USE THIS TOO)
+*/
+EON_Texture *eon_ReadPCXTex(const char *fn,
+                            EON_Bool rescale, EON_Bool optimize)
 {
     EON_uChar *data, *pal;
     EON_uInt16 x, y;
@@ -370,6 +375,10 @@ EON_Texture *EONx_ReadPCXTex(char *fn, EON_Bool rescale, EON_Bool optimize)
     return t;
 }
 
+EON_Texture *EONx_ReadPCXTex(const char *filename)
+{
+    return eon_ReadPCXTex(filename, 1, 1);
+}
 
 /* vim: set ts=4 sw=4 et */
 /* EOF */

@@ -46,7 +46,7 @@ void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
     mat[0]->Specular[1] = 127-pal[1];
     mat[0]->Specular[2] = 127-pal[2];
     mat[0]->FadeDist = 10000.0;
-    mat[0]->Texture = EONx_ReadPCXTex("ground.pcx",1,1);
+    mat[0]->Texture = EONx_ReadPCXTex("ground.pcx");
     mat[0]->TexScaling = 40.0*LAND_SIZE/50000;
     mat[0]->PerspectiveCorrect = 16;
 
@@ -64,7 +64,7 @@ void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
     mat[1]->Specular[1] = 127-pal[1];
     mat[1]->Specular[2] = 127-pal[2];
     mat[1]->FadeDist = 10000.0;
-    mat[1]->Texture = EONx_ReadPCXTex("sky.pcx",1,1);
+    mat[1]->Texture = EONx_ReadPCXTex("sky.pcx");
     mat[1]->TexScaling = 45.0*LAND_SIZE/50000;
     mat[1]->PerspectiveCorrect = 32;
 
@@ -72,7 +72,7 @@ void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
     mat[2]->ShadeType = EON_SHADE_NONE;
     mat[2]->Shininess = 1;
     mat[2]->NumGradients = 1500;
-    mat[2]->Texture = EONx_ReadPCXTex("sky2.pcx",1,1);
+    mat[2]->Texture = EONx_ReadPCXTex("sky2.pcx");
     mat[2]->TexScaling = 10.0; //200.0*LAND_SIZE/50000;
     mat[2]->PerspectiveCorrect = 2;
 
