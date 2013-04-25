@@ -1276,7 +1276,7 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame)
                 newface.eMappingV[a] = (EON_sInt32)clip->CL[0].eMappingV[w];
                 newface.Scrz[a] = 1.0f/newface.Vertices[a]->xformedz;
                 tmp2 = clip->Fov * newface.Scrz[a];
-                tmp = tmp2*newface.Vertices[a]->xformedx;
+                tmp  = tmp2*newface.Vertices[a]->xformedx;
                 tmp2 *= newface.Vertices[a]->xformedy;
                 newface.Scrx[a] = clip->Cx + ((EON_sInt32)((tmp*(float) (1<<20))));
                 newface.Scry[a] = clip->Cy - ((EON_sInt32)((tmp2*clip->AdjAsp*(float) (1<<20))));
@@ -1527,7 +1527,7 @@ inline static void eon_DrawLine(EON_uInt32 *fb, EON_sInt32 pitch,
 
     while (x0 != x1 || y0 != y1) {
         EON_sInt32 e2 = 2 * err;
-        EON_sInt32 offset = (x0 + (y0 * pitch)) * 4; // XXX
+        EON_sInt32 offset = x0 + y0 * pitch;
 
         fb[offset] = pixel;
 
@@ -1564,9 +1564,15 @@ static void EON_PF_WireF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
     X0 = eon_ToScreen(TriFace->Scrx[i0]);
     X1 = eon_ToScreen(TriFace->Scrx[i1]);
     X2 = eon_ToScreen(TriFace->Scrx[i2]);
+    X0 = EON_Clamp(X0, 0, Frame->Width-1);
+    X1 = EON_Clamp(X1, 0, Frame->Width-1);
+    X2 = EON_Clamp(X2, 0, Frame->Width-1);
     Y0 = eon_ToScreen(TriFace->Scry[i0]);
     Y1 = eon_ToScreen(TriFace->Scry[i1]);
     Y2 = eon_ToScreen(TriFace->Scry[i2]);
+    Y0 = EON_Clamp(Y0, 0, Frame->Height-1);
+    Y1 = EON_Clamp(Y1, 0, Frame->Height-1);
+    Y2 = EON_Clamp(Y2, 0, Frame->Height-1);
 
     eon_DrawLine(gmem, cam->ScreenWidth, X0, Y0, X1, Y1, color);
     eon_DrawLine(gmem, cam->ScreenWidth, X0, Y0, X2, Y2, color);
@@ -3076,6 +3082,15 @@ inline static void eon_RenderShadeObjEnviron(EON_Rend *rend, EON_Face *face)
     return;
 }
 
+inline static void eon_RenderShadeObjWireframe(EON_Rend *rend, EON_Face *face)
+{
+    face->fShade = 1.0;
+    face->Shades[0] = 1.0;
+    face->Shades[1] = 1.0;
+    face->Shades[2] = 1.0;
+    return;
+}
+
 static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                           EON_Float *bmatrix, EON_Float *bnmatrix)
 {
@@ -3154,6 +3169,9 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                 face->Vertices[0]->xformedx, face->Vertices[0]->xformedy,
                 face->Vertices[0]->xformedz) < 0.0000001)) {
             if (EON_ClipNeeded(&rend->Clip, face)) {
+                if (face->Material->_st & EON_SHADE_WIREFRAME) {
+                    eon_RenderShadeObjWireframe(rend, face);
+                }
                 if (face->Material->_st & (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE)) {
                     eon_RenderShadeObjFlat(rend, face, obj->BackfaceIllumination, nx, ny, nz);
                 }
