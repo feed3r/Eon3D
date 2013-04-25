@@ -5,6 +5,7 @@
 
 #include <unistd.h>
 #include <stdlib.h>
+#include <strings.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -29,6 +30,50 @@ typedef struct _EONViewer {
     Options opts;
     CX_LogContext *logger;
 } EONViewer;
+
+typedef struct _EnumDesc {
+    int value;
+    const char *desc;
+} EnumDesc;
+
+static const EnumDesc ShadeModes[] = {
+    { EON_SHADE_NONE,             "None" },
+    { EON_SHADE_FLAT,             "Flat" },
+    { EON_SHADE_FLAT_DISTANCE,    "FlatDistance" },
+    { EON_SHADE_GOURAUD,          "Gourad" },
+    { EON_SHADE_GOURAUD_DISTANCE, "GouradDistance" },
+    { EON_SHADE_WIREFRAME,        "Wireframe" },
+    { 0,                          NULL }
+};
+
+static const char *shade_ModeToStr(int shade)
+{
+    int i = 0;
+    int found = 0;
+    const char *desc = NULL;
+    for (i = 0; !found && ShadeModes[i].desc; i++) {
+        if (shade == ShadeModes[i].value) {
+            desc = ShadeModes[i].desc;
+            found = 1;
+        }
+    }
+    return (found) ?desc :"unknown";
+}
+
+static int shade_StrToMode(const char *str)
+{
+    int i = 0;
+    int found = 0;
+    int mode = 0;
+    for (i = 0; !found && ShadeModes[i].desc; i++) {
+        if (!strcasecmp(str, ShadeModes[i].desc)) {
+            mode = ShadeModes[i].value;
+            found = 1;
+        }
+    }
+
+    return (found) ?mode :EON_SHADE_NONE;
+}
 
 #define EXE "eonview"
 
@@ -98,7 +143,7 @@ static int opts_Parse(Options *opts, int argc, char *argv[])
             }
             break;
           case 'S':
-            opts->shade = atoi(optarg);
+            opts->shade = shade_StrToMode(optarg);
             break;
           case '?': /* fallthrough */
           case 'h': /* fallthrough */
@@ -177,8 +222,8 @@ int main(int argc, char *argv[])
     }
 
     CX_log_trace(view.logger, CX_LOG_INFO, EXE,
-                 "Shading mode: %i",
-                 view.opts.shade);
+                 "Shading mode: %s",
+                 shade_ModeToStr(view.opts.shade));
     CX_log_trace(view.logger, CX_LOG_INFO, EXE,
                  "Frame Size: %ix%i",
                  view.opts.width, view.opts.height);
