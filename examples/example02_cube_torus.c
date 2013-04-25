@@ -70,10 +70,10 @@ int main()
     EON_MatMapToPal(CubeMat,ThePalette,0,255); // Map the material to our palette
     EON_MatMapToPal(TorusMat,ThePalette,0,255); // Map the material to our palette
 
-    TheConsole = EONx_ConsoleNew(800, // Screen width
-                          600, // Screen height
-                          90.0 // Field of view
-                          );
+    TheConsole = EONx_ConsoleCreate(800, // Screen width
+                                    600, // Screen height
+                                    90.0 // Field of view
+                                    );
 
     EONx_ConsoleSetPalette(TheConsole, ThePalette, 256);
 

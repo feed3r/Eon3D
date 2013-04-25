@@ -148,10 +148,10 @@ int main(int argc, char *argv[])
     srand(0); // initialize prng
 
     EONx_ConsoleStartup("Eon3D :: Fly v1.1", NULL);
-    con = EONx_ConsoleNew(800, // Screen width
-                          600, // Screen height
-                          90.0 // Field of view
-                          );
+    con = EONx_ConsoleCreate(800, // Screen width
+                             600, // Screen height
+                             90.0 // Field of view
+                             );
 
     frame = EONx_ConsoleGetFrame(con);
     cam = EONx_ConsoleGetCamera(con);

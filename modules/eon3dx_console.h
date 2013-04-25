@@ -65,7 +65,7 @@ int EONx_ConsoleStartup(const char *title, const char *icon);
 int EONx_ConsoleShutdown(void);
 
 /*
-  EONx_ConsoleNew() gets a new console instance. Depending on the
+  EONx_ConsoleCreate() gets a new console instance. Depending on the
   actual implementation, a console can have multiple independent
   instance, multiple references to the same instance (aka the
   singleton pattern) or exactly one instance.
@@ -81,11 +81,11 @@ int EONx_ConsoleShutdown(void);
     a return value of NULL does NOT necessarely means an error
     is occurred.
 */
-EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov);
+EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh, EON_Float fov);
 
 /*
   EONx_ConsoleDelte() releases a console instance obtained through
-  EONx_ConsoleNew.
+  EONx_ConsoleCreate.
   Parameters:
     ctx: a pointer to the console to be freed.
   Returns:

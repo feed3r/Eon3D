@@ -47,10 +47,10 @@ int main(int argc, char *argv[])
 
     EON_MatInit(ModelMat);          // Initialize the material
 
-    TheConsole = EONx_ConsoleNew(800, // Screen width
-                                 600, // Screen height
-                                 90.0 // Field of view
-                                 );
+    TheConsole = EONx_ConsoleCreate(800, // Screen width
+                                    600, // Screen height
+                                    90.0 // Field of view
+                                    );
 
     TheModel = EONx_ReadPLYObj(filename, ModelMat);
 

@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
 
     EON_MatInit(material);
 
-    console = EONx_ConsoleNew(view.opts.width, view.opts.height, 90);
+    console = EONx_ConsoleCreate(view.opts.width, view.opts.height, 90);
 
     EONx_ConsoleBindEventKey(console, 's', onkey_Screenshot, &view); // XXX
     EONx_ConsoleBindEventKey(console, 'q', onkey_Quit, &view); // XXX

@@ -170,7 +170,7 @@ EONx_Console *eon_ConsoleCreate(EON_uInt sw, EON_uInt sh,
     return ctx;
 }
 
-EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov)
+EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh, EON_Float fov)
 {
     return eon_ConsoleCreate(sw, sh, 1.0, fov,
                               EONx_CONSOLE_FLAG_NONE);
@@ -324,7 +324,7 @@ EONx_Console *eon_ConsoleCreate(EON_uInt sw, EON_uInt sh,
     return NULL;
 }
 
-EONx_Console *EONx_ConsoleNew(EON_uInt sw, EON_uInt sh, EON_Float fov)
+EONx_Console *EONx_ConsoleCreate(EON_uInt sw, EON_uInt sh, EON_Float fov)
 {
     return NULL;
 }

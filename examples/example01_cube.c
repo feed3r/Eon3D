@@ -33,10 +33,10 @@ int main()
 
     EON_MatInit(CubeMat);    // Initialize the material
 
-    TheConsole = EONx_ConsoleNew(800, // Screen width
-                                 600, // Screen height
-                                 90.0 // Field of view
-                                 );
+    TheConsole = EONx_ConsoleCreate(800, // Screen width
+                                    600, // Screen height
+                                    90.0 // Field of view
+                                    );
 
     TheCube = EON_MakeBox(edge,edge,edge,CubeMat); // Create the cube
 
