@@ -241,6 +241,7 @@ int main(int argc, char *argv[])
     material->Ambient[2] = 200;
 
     EON_MatInit(material);
+    EON_MatInfo(material, view.logger);
 
     console = EONx_ConsoleCreate(view.opts.width, view.opts.height, 90);
 
@@ -248,6 +249,7 @@ int main(int argc, char *argv[])
     EONx_ConsoleBindEventKey(console, 'q', onkey_Quit, &view); // XXX
 
     model = EONx_ReadPLYObj(view.opts.filename, material);
+    EON_ObjInfo(model, view.logger);
 
     frame = EONx_ConsoleGetFrame(console);
     camera = EONx_ConsoleGetCamera(console);
