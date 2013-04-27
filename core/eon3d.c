@@ -113,8 +113,8 @@ enum {
 void EON_MatrixRotate(EON_Float matrix[], EON_uChar m, EON_Float Deg)
 {
     EON_uChar m1, m2;
-    double c,s;
-    double d = Deg * EON_PI / 180.0;
+    EON_Double c,s;
+    EON_Double d = Deg * EON_PI / 180.0;
     memset(matrix, 0, sizeof(EON_Float) * 16);
     matrix[((m-1)<<2)+m-1] = matrix[15] = 1.0;
     m1 = (m % 3);
@@ -173,7 +173,7 @@ EON_Float EON_DotProduct(EON_Float x1, EON_Float y1, EON_Float z1,
 
 void EON_NormalizeVector(EON_Float *x, EON_Float *y, EON_Float *z)
 {
-    double length = (*x)*(*x)+(*y)*(*y)+(*z)*(*z);
+    EON_Double length = (*x)*(*x)+(*y)*(*y)+(*z)*(*z);
     if (length > 0.0000000001) {
         EON_Float t = (EON_Float)sqrt(length);
         *x /= t;
@@ -448,7 +448,7 @@ EON_Obj *EON_ObjCalcNormals(EON_Obj *obj)
     EON_uInt32 i;
     EON_Vertex *v = obj->Vertices;
     EON_Face *f = obj->Faces;
-    double x1, x2, y1, y2, z1, z2;
+    EON_Double x1, x2, y1, y2, z1, z2;
     i = obj->NumVertices;
     while (i--) {
         v->nx = 0.0;
@@ -711,7 +711,7 @@ static void eon_GenerateTexturePalette(EON_Mat *m, EON_Texture *t)
 
 static void eon_GeneratePhongTexturePalette(EON_Mat *m, EON_Texture *t)
 {
-    double a, ca, da, cb;
+    EON_Double a, ca, da, cb;
     EON_uInt16 *addtable;
     EON_uChar *ppal, *pal;
     EON_sInt c, i, i2, x;
@@ -736,9 +736,9 @@ static void eon_GeneratePhongTexturePalette(EON_Mat *m, EON_Texture *t)
     i2 = num_shades;
     do {
         ppal = t->PaletteData;
-        ca = cos((double) a);
+        ca = cos((EON_Double) a);
         a += da;
-        cb = pow(ca, (double) m->Shininess);
+        cb = pow(ca, (EON_Double) m->Shininess);
         i = t->NumColors;
         do {
             for (x = 0; x < 3; x ++) {
@@ -1046,7 +1046,7 @@ void EON_CamDelete(EON_Cam *c)
 
 void EON_CamSetTarget(EON_Cam *c, EON_Float x, EON_Float y, EON_Float z)
 {
-    double dx, dy, dz;
+    EON_Double dx, dy, dz;
     dx = x - c->Pos.X;
     dy = y - c->Pos.Y;
     dz = z - c->Pos.Z;
@@ -1091,19 +1091,19 @@ EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov)
 // clip.c
 //
 
-static void eon_FindNormal(double x2, double x3,
-                           double y2, double y3,
-                           double zv,
-                           double *res);
+static void eon_FindNormal(EON_Double x2, EON_Double x3,
+                           EON_Double y2, EON_Double y3,
+                           EON_Double zv,
+                           EON_Double *res);
 
  /* Returns: 0 if nothing gets in,  1 or 2 if pout1 & pout2 get in */
-static EON_uInt eon_ClipToPlane(EON_Clip *clip, EON_uInt numVerts, double *plane);
+static EON_uInt eon_ClipToPlane(EON_Clip *clip, EON_uInt numVerts, EON_Double *plane);
 
 void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam)
 {
     clip->AdjAsp = 1.0 / cam->AspectRatio;
     clip->Fov = EON_Clamp(cam->Fov,1.0,179.0);
-    clip->Fov = (1.0/tan(clip->Fov*(EON_PI/360.0)))*(double) (cam->ClipRight-cam->ClipLeft);
+    clip->Fov = (1.0/tan(clip->Fov*(EON_PI/360.0)))*(EON_Double) (cam->ClipRight-cam->ClipLeft);
     clip->Cx = cam->CenterX<<20;
     clip->Cy = cam->CenterY<<20;
     clip->Cam = cam;
@@ -1236,11 +1236,11 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame)
 
 EON_sInt EON_ClipNeeded(EON_Clip *clip, EON_Face *face)
 {
-    double dr = (clip->Cam->ClipRight - clip->Cam->CenterX);
-    double dl = (clip->Cam->ClipLeft - clip->Cam->CenterX);
-    double db = (clip->Cam->ClipBottom - clip->Cam->CenterY);
-    double dt = (clip->Cam->ClipTop - clip->Cam->CenterY);
-    double f = clip->Fov * clip->AdjAsp;
+    EON_Double dr = (clip->Cam->ClipRight - clip->Cam->CenterX);
+    EON_Double dl = (clip->Cam->ClipLeft - clip->Cam->CenterX);
+    EON_Double db = (clip->Cam->ClipBottom - clip->Cam->CenterY);
+    EON_Double dt = (clip->Cam->ClipTop - clip->Cam->CenterY);
+    EON_Double f = clip->Fov * clip->AdjAsp;
     return ((clip->Cam->ClipBack <= 0.0 ||
             face->Vertices[0]->xformedz <= clip->Cam->ClipBack ||
             face->Vertices[1]->xformedz <= clip->Cam->ClipBack ||
@@ -1264,8 +1264,8 @@ EON_sInt EON_ClipNeeded(EON_Clip *clip, EON_Face *face)
 
 
 
-static void eon_FindNormal(double x2, double x3,double y2, double y3,
-                           double zv, double *res)
+static void eon_FindNormal(EON_Double x2, EON_Double x3,EON_Double y2, EON_Double y3,
+                           EON_Double zv, EON_Double *res)
 {
     res[0] = zv*(y2-y3);
     res[1] = zv*(x3-x2);
@@ -1274,10 +1274,10 @@ static void eon_FindNormal(double x2, double x3,double y2, double y3,
 
  /* Returns: 0 if nothing gets in,  1 or 2 if pout1 & pout2 get in */
 static EON_uInt eon_ClipToPlane(EON_Clip *clip,
-                                EON_uInt numVerts, double *plane)
+                                EON_uInt numVerts, EON_Double *plane)
 {
     EON_uInt i, nextvert, curin, nextin;
-    double curdot, nextdot, scale;
+    EON_Double curdot, nextdot, scale;
     EON_uInt invert = 0, outvert = 0;
     curdot = clip->CL[0].newVertices[0].xformedx*plane[0] +
              clip->CL[0].newVertices[0].xformedy*plane[1] +
@@ -2862,7 +2862,7 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
       ((( x1 )*( x2 ))+(( y1 )*( y2 ))+(( z1 )*( z2 )))
 
 #define MACRO_eon_NormalizeVector(x,y,z) { \
-    register double length; \
+    register EON_Double length; \
     length = ( x )*( x )+( y )*( y )+( z )*( z ); \
     if (length > 0.0000000001) { \
         EON_Float l = (EON_Float) sqrt(length); \
