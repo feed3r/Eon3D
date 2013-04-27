@@ -294,16 +294,16 @@ struct _EON_Cam {
     const EON_Byte *Palette;
 };
 
+enum {
+    TRI_STAT_INITIAL = 0,
+    TRI_STAT_CULLING,       /* after the culling */
+    TRI_STAT_CLIPPING,      /* after the real clipping */
+    TRI_STAT_TESSELLATION,  /* after the tessellation */
+    TRI_STAT_NUM            /* MUST be the last one! */
+};
+
 typedef struct _EON_RenderInfo {
-    EON_uInt32 TriStats[4];
-    /*
-    Three different triangle counts from
-    the last EON_Render() block:
-    0: initial tris
-    1: tris after culling
-    2: final polys after real clipping
-    3: final tris after tesselation
-    */
+    EON_uInt32 TriStats[TRI_STAT_NUM];
 } EON_RenderInfo;
 
 enum {

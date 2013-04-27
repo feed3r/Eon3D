@@ -1228,9 +1228,9 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame)
                 eon_ClipVertexToScreen(&newface, a, clip);
             }
             newface.Material->_PutFace(clip->Cam, &newface, frame);
-            clip->Info->TriStats[3]++;
+            clip->Info->TriStats[TRI_STAT_TESSELLATION]++;
         }
-        clip->Info->TriStats[2]++;
+        clip->Info->TriStats[TRI_STAT_CLIPPING]++;
     }
 }
 
@@ -3099,7 +3099,7 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
         return;
     }
 
-    rend->Info.TriStats[0] += obj->NumFaces;
+    rend->Info.TriStats[TRI_STAT_INITIAL] += obj->NumFaces;
     rend->NumFaces += obj->NumFaces;
     x = obj->NumFaces;
 
@@ -3128,7 +3128,7 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                 rend->Faces[facepos].zd = face->Vertices[0]->xformedz + face->Vertices[1]->xformedz + face->Vertices[2]->xformedz;
                 rend->Faces[facepos].face = face;
                 facepos++;
-                rend->Info.TriStats[1] ++;
+                rend->Info.TriStats[TRI_STAT_CULLING]++;
             } /* Is it in our area Check */
         } /* Backface Check */
         rend->NumFaces = facepos;
