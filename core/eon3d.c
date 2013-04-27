@@ -1736,9 +1736,9 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
     Z2 = TriFace->Scrz[i1];
     Z3 = TriFace->Scrz[i2];
 
-    Y0 = (TriFace->Scry[i0]+(1<<19))>>20;
-    Y1 = (TriFace->Scry[i1]+(1<<19))>>20;
-    Y2 = (TriFace->Scry[i2]+(1<<19))>>20;
+    Y0 = eon_ToScreen(TriFace->Scry[i0]);
+    Y1 = eon_ToScreen(TriFace->Scry[i1]);
+    Y2 = eon_ToScreen(TriFace->Scry[i2]);
 
     dY = Y2 - Y0;
     if (dY) {
@@ -1776,7 +1776,7 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
     gmem += (Y0 * cam->ScreenWidth);
     zbuf += (Y0 * cam->ScreenWidth);
 
-    XL1 = (((dX1-dX2)*dY+(1<<19))>>20);
+    XL1 = eon_ToScreen((dX1-dX2)*dY);
     if (XL1) {
         dCL = ((dC1-dC2)*dY)/XL1;
         dZL = ((dZ1-dZ2)*dY)/XL1;
@@ -1790,7 +1790,7 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 
     while (Y0 < Y2) {
         if (Y0 == Y1) {
-            dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
+            dY = Y2 - eon_ToScreen(TriFace->Scry[i1]);
             if (dY) {
                 dZ1 = (Z3-Z1)/dY;
                 dC1 = (C3-C1) / dY;
@@ -1813,8 +1813,8 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
             }
         }
         CL = C1;
-        XL1 = (X1+(1<<19))>>20;
-        XL2 = (X2+(1<<19))>>20;
+        XL1 = eon_ToScreen(X1);
+        XL2 = eon_ToScreen(X2);
         ZL = Z1;
         XL2 -= XL1;
         if (XL2 > 0) {
