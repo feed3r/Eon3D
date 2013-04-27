@@ -549,12 +549,7 @@ void EON_MatInit(EON_Mat *m)
     if (m->_ft == (EON_FILL_TEXTURE|EON_FILL_ENVIRONMENT))
         m->_st = EON_SHADE_NONE;
 
-    if (m->_ft == EON_FILL_SOLID) {
-//        if (m->_st == EON_SHADE_NONE)
-//            eon_GenerateSinglePalette(m);
-//        else
-//            eon_GeneratePhongPalette(m);
-    } else if (m->_ft == EON_FILL_TEXTURE) {
+    if (m->_ft == EON_FILL_TEXTURE) {
         if (m->_st == EON_SHADE_NONE)
             eon_GenerateTexturePalette(m,m->Texture);
         else
@@ -566,11 +561,6 @@ void EON_MatInit(EON_Mat *m)
             eon_GeneratePhongTexturePalette(m,m->Environment);
     } else if (m->_ft == (EON_FILL_ENVIRONMENT|EON_FILL_TEXTURE)) {
         eon_GenerateTextureEnvPalette(m);
-//    } else if (m->_ft == EON_FILL_TRANSPARENT) {
-//        if (m->_st == EON_SHADE_NONE)
-//            eon_GenerateTransparentPalette(m);
-//        else
-//            eon_GeneratePhongTransparentPalette(m);
     }
     eon_SetMaterialPutFace(m);
 }
@@ -785,12 +775,12 @@ static void eon_SetMaterialPutFace(EON_Mat *m)
         case EON_SHADE_FLAT:
         case EON_SHADE_FLAT_DISTANCE:
         case EON_SHADE_FLAT_DISTANCE|EON_SHADE_FLAT:
-//            m->_PutFace = EON_PF_TransF;
+            m->_PutFace = EON_PF_Null; // enforce
             break;
         case EON_SHADE_GOURAUD:
         case EON_SHADE_GOURAUD_DISTANCE:
         case EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE:
-//            m->_PutFace = EON_PF_TransG;
+            m->_PutFace = EON_PF_Null; // enforce
             break;
         }
         break;
