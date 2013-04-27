@@ -312,22 +312,22 @@ enum {
 
 typedef struct _EON_ClipInfo {
     EON_Vertex newVertices[8];
-    double Shades[8];
-    double MappingU[8];
-    double MappingV[8];
-    double eMappingU[8];
-    double eMappingV[8];
+    EON_Double Shades[8];
+    EON_Double MappingU[8];
+    EON_Double MappingV[8];
+    EON_Double eMappingU[8];
+    EON_Double eMappingV[8];
 } EON_ClipInfo;
 
 typedef struct _EON_Clip {
     EON_RenderInfo *Info;
     EON_ClipInfo CL[2];
-    double ClipPlanes[NUM_CLIP_PLANES][4];
+    EON_Double ClipPlanes[NUM_CLIP_PLANES][4];
     EON_Cam *Cam;
     EON_sInt32 Cx;
     EON_sInt32 Cy;
-    double Fov;
-    double AdjAsp;
+    EON_Double Fov;
+    EON_Double AdjAsp;
 } EON_Clip;
 
 typedef struct _EON_FaceInfo {
