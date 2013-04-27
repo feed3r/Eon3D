@@ -1176,6 +1176,18 @@ void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam)
     return;
 }
 
+inline static void eon_ClipVertexToScreen(EON_Face *face, EON_uInt a, EON_Clip *clip)
+{
+    EON_Double xf, yf, zf;
+    face->Scrz[a] = 1.0f/face->Vertices[a]->xformedz;
+    zf = clip->Fov * face->Scrz[a];
+    xf = zf * face->Vertices[a]->xformedx;
+    yf = zf * face->Vertices[a]->xformedy;
+    face->Scrx[a] = clip->Cx + ((EON_sInt32)((xf *                (float)(1<<20))));
+    face->Scry[a] = clip->Cy - ((EON_sInt32)((yf * clip->AdjAsp * (float)(1<<20))));
+    return;
+}
+
 
 void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame)
 {
@@ -1198,7 +1210,6 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame)
     }
     if (numVerts > 2) {
         EON_uInt k, w;
-        double tmp, tmp2;
         EON_Face newface;
         memcpy(&newface, face, sizeof(EON_Face));
         for (k = 2; k < numVerts; k ++) {
@@ -1214,12 +1225,7 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame)
                 newface.MappingV[a] = (EON_sInt32)clip->CL[0].MappingV[w];
                 newface.eMappingU[a] = (EON_sInt32)clip->CL[0].eMappingU[w];
                 newface.eMappingV[a] = (EON_sInt32)clip->CL[0].eMappingV[w];
-                newface.Scrz[a] = 1.0f/newface.Vertices[a]->xformedz;
-                tmp2 = clip->Fov * newface.Scrz[a];
-                tmp  = tmp2*newface.Vertices[a]->xformedx;
-                tmp2 *= newface.Vertices[a]->xformedy;
-                newface.Scrx[a] = clip->Cx + ((EON_sInt32)((tmp*(float) (1<<20))));
-                newface.Scry[a] = clip->Cy - ((EON_sInt32)((tmp2*clip->AdjAsp*(float) (1<<20))));
+                eon_ClipVertexToScreen(&newface, a, clip);
             }
             newface.Material->_PutFace(clip->Cam, &newface, frame);
             clip->Info->TriStats[3]++;
