@@ -629,37 +629,6 @@ void EON_MatMapToPal(EON_Mat *m, EON_uChar *pal, EON_sInt pstart, EON_sInt pend)
     eon_MatSetupTransparent(m,pal);
 }
 
-static void eon_GeneratePhongPalette(EON_Mat *m)
-{
-    EON_uInt i = m->NumGradients, x;
-    EON_sInt c;
-    EON_uChar *pal;
-    double a, da, ca, cb;
-    m->_ColorsUsed = m->NumGradients;
-    if (m->_RequestedColors)
-        CX_free(m->_RequestedColors);
-    pal =  m->_RequestedColors = CX_malloc(m->_ColorsUsed*3);
-    a = EON_PI/2.0;
-
-    if (m->NumGradients > 1)
-        da = -EON_PI/((m->NumGradients-1)<<1);
-    else
-        da=0.0;
-
-    do {
-        if (m->NumGradients == 1)
-            ca = 1;
-        else {
-            ca = cos((double) a);
-            a += da;
-        }
-        cb = pow((double) ca, (double) m->Shininess);
-        for (x = 0; x < 3; x ++) {
-            c = (EON_sInt) ((cb*m->Specular[x])+(ca*m->Diffuse[x])+m->Ambient[x]);
-            *(pal++) = EON_Clamp(c,0,255);
-        }
-    } while (--i);
-}
 
 static void eon_GenerateTextureEnvPalette(EON_Mat *m)
 {
@@ -1696,6 +1665,8 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
     }
 }
 
+// full(er) Phong Eq:
+//  c = (EON_sInt) ((cb*m->Specular[x])+(ca*m->Diffuse[x])+m->Ambient[x]);
 static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
     EON_uChar i0, i1, i2;
