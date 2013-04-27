@@ -385,10 +385,15 @@ EON_Obj *EON_ObjClone(EON_Obj *o)
 {
     EON_Face *iff, *of;
     EON_uInt32 i;
-    EON_Obj *out;
-    if (!(out = EON_ObjCreate(o->NumVertices,o->NumFaces))) return 0;
-    for (i = 0; i < EON_MAX_CHILDREN; i ++)
-        if (o->Children[i]) out->Children[i] = EON_ObjClone(o->Children[i]);
+    EON_Obj *out = EON_ObjCreate(o->NumVertices,o->NumFaces);
+    if (out) {
+        return 0;
+    }
+    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
+        if (o->Children[i]) {
+            out->Children[i] = EON_ObjClone(o->Children[i]);
+        }
+    }
     out->Xa = o->Xa; out->Ya = o->Ya; out->Za = o->Za;
     out->Xp = o->Xp; out->Yp = o->Yp; out->Zp = o->Zp;
     out->BackfaceCull = o->BackfaceCull;
@@ -425,12 +430,16 @@ void EON_ObjSetMat(EON_Obj *o, EON_Mat *m, EON_Bool th)
 {
     EON_sInt32 i = o->NumFaces;
     EON_Face *f = o->Faces;
-    while (i--)
+    while (i--) {
         (f++)->Material = m;
-    if (th)
-        for (i = 0; i < EON_MAX_CHILDREN; i++)
-            if (o->Children[i])
+    }
+    if (th) {
+        for (i = 0; i < EON_MAX_CHILDREN; i++) {
+            if (o->Children[i]) {
                 EON_ObjSetMat(o->Children[i],m,th);
+            }
+        }
+    }
     return;
 }
 
@@ -476,17 +485,17 @@ EON_Obj *EON_ObjCalcNormals(EON_Obj *obj)
         EON_NormalizeVector(&v->nx, &v->ny, &v->nz);
         v++;
     } while (--i);
-    for (i = 0; i < EON_MAX_CHILDREN; i ++)
-        if (obj->Children[i])
+    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
+        if (obj->Children[i]) {
             EON_ObjCalcNormals(obj->Children[i]);
+        }
+    }
     return obj;
 }
 
 // mat.c
 //
 
-static void eon_GenerateSinglePalette(EON_Mat *);
-static void eon_GeneratePhongPalette(EON_Mat *);
 static void eon_GenerateTextureEnvPalette(EON_Mat *);
 static void eon_GenerateTexturePalette(EON_Mat *, EON_Texture *);
 static void eon_GeneratePhongTexturePalette(EON_Mat *, EON_Texture *);
@@ -541,10 +550,10 @@ void EON_MatInit(EON_Mat *m)
         m->_st = EON_SHADE_NONE;
 
     if (m->_ft == EON_FILL_SOLID) {
-        if (m->_st == EON_SHADE_NONE)
-            eon_GenerateSinglePalette(m);
-        else
-            eon_GeneratePhongPalette(m);
+//        if (m->_st == EON_SHADE_NONE)
+//            eon_GenerateSinglePalette(m);
+//        else
+//            eon_GeneratePhongPalette(m);
     } else if (m->_ft == EON_FILL_TEXTURE) {
         if (m->_st == EON_SHADE_NONE)
             eon_GenerateTexturePalette(m,m->Texture);
@@ -557,11 +566,11 @@ void EON_MatInit(EON_Mat *m)
             eon_GeneratePhongTexturePalette(m,m->Environment);
     } else if (m->_ft == (EON_FILL_ENVIRONMENT|EON_FILL_TEXTURE)) {
         eon_GenerateTextureEnvPalette(m);
-    } else if (m->_ft == EON_FILL_TRANSPARENT) {
-        if (m->_st == EON_SHADE_NONE)
-            eon_GenerateTransparentPalette(m);
-        else
-            eon_GeneratePhongTransparentPalette(m);
+//    } else if (m->_ft == EON_FILL_TRANSPARENT) {
+//        if (m->_st == EON_SHADE_NONE)
+//            eon_GenerateTransparentPalette(m);
+//        else
+//            eon_GeneratePhongTransparentPalette(m);
     }
     eon_SetMaterialPutFace(m);
 }
@@ -570,8 +579,9 @@ static void eon_MatSetupTransparent(EON_Mat *m, EON_uChar *pal)
 {
     EON_uInt x, intensity;
     if (m->Transparent) {
-        if (m->_AddTable)
+        if (m->_AddTable) {
             CX_free(m->_AddTable);
+        }
         m->_AddTable = CX_malloc(256 * sizeof(EON_uInt16));
         for (x = 0; x < 256; x++) {
             intensity  = *pal++;
@@ -617,17 +627,6 @@ void EON_MatMapToPal(EON_Mat *m, EON_uChar *pal, EON_sInt pstart, EON_sInt pend)
         m->_ReMapTable[i] = bestpos;
     }
     eon_MatSetupTransparent(m,pal);
-}
-
-static void eon_GenerateSinglePalette(EON_Mat *m)
-{
-    m->_ColorsUsed = 1;
-    if (m->_RequestedColors)
-        CX_free(m->_RequestedColors);
-    m->_RequestedColors = CX_malloc(3); // FIXME
-    m->_RequestedColors[0] = EON_Clamp(m->Ambient[0],0,255);
-    m->_RequestedColors[1] = EON_Clamp(m->Ambient[1],0,255);
-    m->_RequestedColors[2] = EON_Clamp(m->Ambient[2],0,255);
 }
 
 static void eon_GeneratePhongPalette(EON_Mat *m)
@@ -802,18 +801,6 @@ static void eon_GeneratePhongTexturePalette(EON_Mat *m, EON_Texture *t)
         ca += EON_PI/512.0;
         *addtable++ = ((EON_sInt) a)*t->NumColors;
     } while (--i);
-}
-
-static void eon_GeneratePhongTransparentPalette(EON_Mat *m)
-{
-    m->_tsfact = (EON_sInt) (m->NumGradients*(1.0/(1+m->Transparent)));
-    eon_GeneratePhongPalette(m);
-}
-
-static void eon_GenerateTransparentPalette(EON_Mat *m)
-{
-    m->_tsfact = 0;
-    eon_GeneratePhongPalette(m);
 }
 
 static void eon_SetMaterialPutFace(EON_Mat *m)
@@ -1023,10 +1010,6 @@ static const char *eon_PutFaceName(void *addr)
         name = "PTexF";
     } else if (addr == EON_PF_PTexG) {
         name = "PTexG";
-//    } else if (addr == EON_PF_TransF) {
-//        name = "TransF";
-//    } else if (addr == EON_PF_TransG) {
-//        name = "TransG";
     } else if (addr == EON_PF_WireF) {
         name = "WireF";
     }
