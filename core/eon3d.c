@@ -499,8 +499,6 @@ EON_Obj *EON_ObjCalcNormals(EON_Obj *obj)
 static void eon_GenerateTextureEnvPalette(EON_Mat *);
 static void eon_GenerateTexturePalette(EON_Mat *, EON_Texture *);
 static void eon_GeneratePhongTexturePalette(EON_Mat *, EON_Texture *);
-static void eon_GeneratePhongTransparentPalette(EON_Mat *m);
-static void eon_GenerateTransparentPalette(EON_Mat *);
 static void eon_SetMaterialPutFace(EON_Mat *m);
 static void eon_MatSetupTransparent(EON_Mat *m, EON_uChar *pal);
 
