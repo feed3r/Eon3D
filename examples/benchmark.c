@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
 
     TheFrame = TheConsole->fb;
     TheCamera = TheConsole->cam;
-    TheCamera->Z = -distance; // Back the camera up from the origin
+    TheCamera->Pos.Z = -distance; // Back the camera up from the origin
 
     TheLight = EON_LightNew(EON_LIGHT_VECTOR, // vector light
                             0.0, 0.0, 0.0, // rotation angles

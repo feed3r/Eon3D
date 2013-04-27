@@ -127,6 +127,12 @@ enum {
 };
 
 
+typedef struct _EON_Point3D {
+    EON_Float X;
+    EON_Float Y;
+    EON_Float Z;
+} EON_Point3D;
+
 typedef struct _EON_Color {
     EON_Byte R;
     EON_Byte G;
@@ -263,7 +269,7 @@ typedef struct _EON_Spline {
 */
 typedef struct _EON_Light {
     EON_uChar Type;               /* Type of light: EON_LIGHT_* */
-    EON_Float Xp, Yp, Zp;         /* If Type=EON_LIGHT_POINT*,
+    EON_Point3D Pos;              /* If Type=EON_LIGHT_POINT*,
                                   this is Position (EON_LIGHT_POINT_*),
                                   otherwise if EON_LIGHT_VECTOR,
                                   Unit vector */
@@ -283,7 +289,7 @@ struct _EON_Cam {
     EON_sInt ClipBottom, ClipRight;
     EON_uInt ScreenWidth, ScreenHeight; /* Screen dimensions */
     EON_sInt CenterX, CenterY;      /* Center of screen */
-    EON_Float X, Y, Z;              /* Camera position in worldspace */
+    EON_Point3D Pos;                /* Camera position in worldspace */
     EON_Float Pitch, Pan, Roll;     /* Camera angle in degrees in worldspace */
     const EON_Byte *Palette;
 };
@@ -331,7 +337,7 @@ typedef struct _EON_FaceInfo {
 
 typedef struct _EON_LightInfo {
     EON_Light *light;
-    EON_Float l[3];
+    EON_Point3D pos;
 } EON_LightInfo;
 
 typedef struct _EON_Rend {

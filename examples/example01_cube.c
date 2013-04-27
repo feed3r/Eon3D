@@ -42,7 +42,7 @@ int main()
 
     TheFrame = EONx_ConsoleGetFrame(TheConsole);
     TheCamera = EONx_ConsoleGetCamera(TheConsole);
-    TheCamera->Z = -300; // Back the camera up from the origin
+    TheCamera->Pos.Z = -300; // Back the camera up from the origin
 
     TheLight = EON_LightNew(EON_LIGHT_VECTOR, // vector light
                             0.0,0.0,0.0, // rotation angles

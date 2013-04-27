@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
     frame = EONx_ConsoleGetFrame(con);
     cam = EONx_ConsoleGetCamera(con);
     rend = EON_RendCreate(cam);
-    cam->Y = 800; // move the camera up from the ground
+    cam->Pos.Y = 800; // move the camera up from the ground
 
     font = EON_TextDefaultFont();
 
@@ -179,11 +179,11 @@ int main(int argc, char *argv[])
         uint64_t elapsed = 0;
         frames++;
 
-        cam->Z += 1;
+        cam->Pos.Z += 1;
 
         EONx_ConsoleClearFrame(con);
 
-        if (cam->Y > 2000) {
+        if (cam->Pos.Y > 2000) {
             // if above the sky, only render the skies, with no far clip plane
             cam->ClipBack = 0.0;
             EON_RenderBegin(rend);
@@ -206,19 +206,19 @@ int main(int argc, char *argv[])
                       (frames/ (double) elapsed));
         CX_log_trace(Logger, CX_LOG_INFO, "fly",
                       "Camera={%f,%f,%f) %i frames %li elapsed %.3f FPS\r",
-                      cam->X, cam->Y, cam->Z,
+                      cam->Pos.X, cam->Pos.Y, cam->Pos.Z,
                       frames, (long)elapsed,
                       (frames/ (double) elapsed));
         
         EONx_ConsoleShowFrame(con);
 
         // wraparound
-        if (cam->X >  LAND_SIZE/2) cam->X = -LAND_SIZE/2;
-        if (cam->X < -LAND_SIZE/2) cam->X =  LAND_SIZE/2;
-        if (cam->Z >  LAND_SIZE/2) cam->Z = -LAND_SIZE/2;
-        if (cam->Z < -LAND_SIZE/2) cam->Z =  LAND_SIZE/2;
-        if (cam->Y <  0          ) cam->Y =  8999;
-        if (cam->Y >  8999       ) cam->Y =  0;
+        if (cam->Pos.X >  LAND_SIZE/2) cam->Pos.X = -LAND_SIZE/2;
+        if (cam->Pos.X < -LAND_SIZE/2) cam->Pos.X =  LAND_SIZE/2;
+        if (cam->Pos.Z >  LAND_SIZE/2) cam->Pos.Z = -LAND_SIZE/2;
+        if (cam->Pos.Z < -LAND_SIZE/2) cam->Pos.Z =  LAND_SIZE/2;
+        if (cam->Pos.Y <  0          ) cam->Pos.Y =  8999;
+        if (cam->Pos.Y >  8999       ) cam->Pos.Y =  0;
     }
 
     EON_FontDelete(font);

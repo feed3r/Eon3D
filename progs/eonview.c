@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
 
     frame = EONx_ConsoleGetFrame(console);
     camera = EONx_ConsoleGetCamera(console);
-    camera->Z = -view.opts.distance;
+    camera->Pos.Z = -view.opts.distance;
 
     light = EON_LightNew(EON_LIGHT_VECTOR, 0.0, 0.0, 0.0, 1.0, 1.0);
 

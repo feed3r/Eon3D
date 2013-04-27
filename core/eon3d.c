@@ -1002,14 +1002,14 @@ EON_Light *EON_LightSet(EON_Light *light, EON_uChar mode, EON_Float x, EON_Float
         EON_MatrixRotate(m2, 3, z);
         EON_MatrixMultiply(m, m2);
         EON_MatrixApply(m, 0.0, 0.0, -1.0,
-                        &light->Xp, &light->Yp, &light->Zp);
+                        &light->Pos.X, &light->Pos.Y, &light->Pos.Z);
         break;
     case EON_LIGHT_POINT_ANGLE:
     case EON_LIGHT_POINT_DISTANCE:
     case EON_LIGHT_POINT:
-        light->Xp = x;
-        light->Yp = y;
-        light->Zp = z;
+        light->Pos.X = x;
+        light->Pos.Y = y;
+        light->Pos.Z = z;
         break;
     }
     return light;
@@ -1047,9 +1047,9 @@ void EON_CamDelete(EON_Cam *c)
 void EON_CamSetTarget(EON_Cam *c, EON_Float x, EON_Float y, EON_Float z)
 {
     double dx, dy, dz;
-    dx = x - c->X;
-    dy = y - c->Y;
-    dz = z - c->Z;
+    dx = x - c->Pos.X;
+    dy = y - c->Pos.Y;
+    dz = z - c->Pos.Z;
     c->Roll = 0;
     if (dz > 0.0001f) {
         c->Pan = (EON_Float) (-atan(dx/dz)*(180.0/EON_PI));
@@ -2903,20 +2903,21 @@ void EON_RenderBegin(EON_Rend *rend)
 
 void EON_RenderLight(EON_Rend *rend, EON_Light *light)
 {
-    EON_Float *pl, xp, yp, zp;
+    EON_Point3D *pl;
+    EON_Float xp, yp, zp;
     if (light->Type == EON_LIGHT_NONE || rend->NumLights >= EON_MAX_LIGHTS)
         return;
-    pl = rend->Lights[rend->NumLights].l;
+    pl = &(rend->Lights[rend->NumLights].pos);
     if (light->Type == EON_LIGHT_VECTOR) {
-        xp = light->Xp;
-        yp = light->Yp;
-        zp = light->Zp;
-        MACRO_eon_MatrixApply(rend->CMatrix,xp,yp,zp,pl[0],pl[1],pl[2]);
+        xp = light->Pos.X;
+        yp = light->Pos.Y;
+        zp = light->Pos.Z;
+        MACRO_eon_MatrixApply(rend->CMatrix,xp,yp,zp,pl->X,pl->Y,pl->Z);
     } else if (light->Type & EON_LIGHT_POINT) {
-        xp = light->Xp - rend->Cam->X;
-        yp = light->Yp - rend->Cam->Y;
-        zp = light->Zp - rend->Cam->Z;
-        MACRO_eon_MatrixApply(rend->CMatrix,xp,yp,zp,pl[0],pl[1],pl[2]);
+        xp = light->Pos.X - rend->Cam->Pos.X;
+        yp = light->Pos.Y - rend->Cam->Pos.Y;
+        zp = light->Pos.Z - rend->Cam->Pos.Z;
+        MACRO_eon_MatrixApply(rend->CMatrix,xp,yp,zp,pl->X,pl->Y,pl->Z);
     }
     rend->Lights[rend->NumLights].light = light;
     rend->NumLights++;
@@ -2932,24 +2933,24 @@ inline static EON_Double eon_RenderVertexLights(EON_Rend *rend, EON_Vertex *vert
         EON_Double CurShade = 0.0;
         EON_Light *light = rend->Lights[i].light;
         if (light->Type & EON_LIGHT_POINT_ANGLE) {
-            EON_Double nx2 = rend->Lights[i].l[0] - vertex->xformedx;
-            EON_Double ny2 = rend->Lights[i].l[1] - vertex->xformedy;
-            EON_Double nz2 = rend->Lights[i].l[2] - vertex->xformedz;
+            EON_Double nx2 = rend->Lights[i].pos.X - vertex->xformedx;
+            EON_Double ny2 = rend->Lights[i].pos.Y - vertex->xformedy;
+            EON_Double nz2 = rend->Lights[i].pos.Z - vertex->xformedz;
             MACRO_eon_NormalizeVector(nx2,ny2,nz2);
             CurShade = MACRO_eon_DotProduct(nx,ny,nz,nx2,ny2,nz2)*light->Intensity;
         }
         if (light->Type & EON_LIGHT_POINT_DISTANCE) {
-            EON_Double nx2 = rend->Lights[i].l[0] - vertex->xformedx;
-            EON_Double ny2 = rend->Lights[i].l[1] - vertex->xformedy;
-            EON_Double nz2 = rend->Lights[i].l[2] - vertex->xformedz;
+            EON_Double nx2 = rend->Lights[i].pos.X - vertex->xformedx;
+            EON_Double ny2 = rend->Lights[i].pos.Y - vertex->xformedy;
+            EON_Double nz2 = rend->Lights[i].pos.Z - vertex->xformedz;
             EON_Double t = (1.0 - 0.5*((nx2*nx2+ny2*ny2+nz2*nz2)/light->HalfDistSquared));
             CurShade *= EON_Clamp(t,0,1.0)*light->Intensity; // FIXME
         }
         if (light->Type == EON_LIGHT_VECTOR) {
             CurShade = MACRO_eon_DotProduct(nx,ny,nz,
-                                            rend->Lights[i].l[0],
-                                            rend->Lights[i].l[1],
-                                            rend->Lights[i].l[2]);
+                                            rend->Lights[i].pos.X,
+                                            rend->Lights[i].pos.Y,
+                                            rend->Lights[i].pos.Z);
             CurShade *= light->Intensity;
         }
         if (CurShade > 0.0) {
@@ -3069,7 +3070,7 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
     }
 
     EON_MatrixTranslate(tempMatrix,
-                        -rend->Cam->X, -rend->Cam->Y, -rend->Cam->Z);
+                        -rend->Cam->Pos.X, -rend->Cam->Pos.Y, -rend->Cam->Pos.Z);
     EON_MatrixMultiply(oMatrix, tempMatrix);
     EON_MatrixMultiply(oMatrix, rend->CMatrix);
     EON_MatrixMultiply(nMatrix, rend->CMatrix);
