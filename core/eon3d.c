@@ -1460,7 +1460,7 @@ inline static EON_uInt32 eon_PickColorP(EON_Cam *cam, EON_Byte value)
     return (A | R << 16 | G << 8| B);
 }
 
-inline static EON_uInt32 eon_PickColorF(const EON_Face *f, EON_Float shade)
+inline static EON_uInt32 eon_PickColorS(const EON_Face *f, EON_Float shade)
 {
     EON_uInt32 R = ((EON_uInt32)(f->Material->Ambient[0] * shade)) & 0xFF;
     EON_uInt32 G = ((EON_uInt32)(f->Material->Ambient[1] * shade)) & 0xFF;
@@ -1519,7 +1519,7 @@ static void EON_PF_WireF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 
     EON_sInt32 X0, X1, X2;
     EON_sInt32 Y0, Y1, Y2;
-    EON_uInt32 color = eon_PickColorF(TriFace, 1.0);
+    EON_uInt32 color = eon_PickColorS(TriFace, 1.0);
 
     X0 = eon_ToScreen(TriFace->Scrx[i0]);
     X1 = eon_ToScreen(TriFace->Scrx[i1]);
@@ -1559,7 +1559,7 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
     EON_sInt32 Y1, Y2, Y0, dY;
     EON_uChar stat;
     EON_Bool zb = TriFace->Material->zBufferable;
-    EON_uInt32 color = eon_PickColorF(TriFace, TriFace->fShade);
+    EON_uInt32 color = eon_PickColorS(TriFace, TriFace->fShade);
 
     PUTFACE_SORT();
 
@@ -1787,7 +1787,7 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
                 do {
                     if (*zbuf < ZL) {
                         *zbuf = ZL;
-                        *gmem = eon_PickColorF(TriFace, CL);
+                        *gmem = eon_PickColorS(TriFace, CL);
                     }
                     gmem++;
                     zbuf++;
@@ -1796,7 +1796,7 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
                 } while (--XL2);
             else
                 do {
-                    *gmem = eon_PickColorF(TriFace, CL);
+                    *gmem = eon_PickColorS(TriFace, CL);
                     gmem++;
                     CL += dCL;
                 } while (--XL2);
