@@ -595,12 +595,12 @@ void EON_MatMapToPal(EON_Mat *m, EON_uChar *pal, EON_sInt pstart, EON_sInt pend)
     if (m->_ReMapTable)
         CX_free(m->_ReMapTable);
     m->_ReMapTable = CX_malloc(m->_ColorsUsed);
-    for (i = 0; i < m->_ColorsUsed; i ++) {
+    for (i = 0; i < m->_ColorsUsed; i++) {
         bestdiff = 1000000000;
         bestpos = pstart;
-        r = m->_RequestedColors[i*3];
-        g = m->_RequestedColors[i*3+1];
-        b = m->_RequestedColors[i*3+2];
+        r = m->_RequestedColors[i * 3 + 0];
+        g = m->_RequestedColors[i * 3 + 1];
+        b = m->_RequestedColors[i * 3 + 2];
         p = pal + pstart*3;
         for (k = pstart; k <= (EON_sInt)pend; k++) {
             r2 = p[0] - r;
@@ -1456,6 +1456,15 @@ inline static EON_uInt32 eon_PickColorP(EON_Cam *cam, EON_Byte value)
     EON_uInt32 R = cam->Palette[3 * value + 0];
     EON_uInt32 G = cam->Palette[3 * value + 1];
     EON_uInt32 B = cam->Palette[3 * value + 2];
+    EON_uInt32 A = 0xFF000000;
+    return (A | R << 16 | G << 8| B);
+}
+
+inline static EON_uInt32 eon_PickColorPS(const EON_Byte *pal, EON_Byte v, EON_Float shade)
+{
+    EON_uInt32 R = ((EON_uInt32)(pal[3 * v + 0] * shade)) & 0xFF;
+    EON_uInt32 G = ((EON_uInt32)(pal[3 * v + 1] * shade)) & 0xFF;
+    EON_uInt32 B = ((EON_uInt32)(pal[3 * v + 2] * shade)) & 0xFF;
     EON_uInt32 A = 0xFF000000;
     return (A | R << 16 | G << 8| B);
 }
@@ -2650,7 +2659,6 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 
   /* Cache line */
   EON_Float dU1=0, U1, dZ1=0, Z1, V1, dV1=0;
-  EON_sInt32 scrwidth = cam->ScreenWidth;
   EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
   EON_ZBuffer *zbuf = Frame->ZBuffer;
 
@@ -2736,8 +2744,8 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
     }
   }
 
-  gmem += (Y0 * scrwidth);
-  zbuf += (Y0 * scrwidth);
+  gmem += (Y0 * cam->ScreenWidth);
+  zbuf += (Y0 * cam->ScreenWidth);
 
   XL1 = (((dX1-dX2)*dY+(1<<19))>>20);
   if (XL1) {
@@ -2796,7 +2804,7 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
       VL = V1;
       gmem += XL1;
       zbuf += XL1;
-      XL1 += Xlen-scrwidth;
+      XL1 += Xlen - cam->ScreenWidth;
       t = 65536.0f / ZL;
       iUL = iULnext = ((EON_sInt32) (UL*t));
       iVL = iVLnext = ((EON_sInt32) (VL*t));
@@ -2816,15 +2824,13 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
         if (Xlen < 0) n += Xlen;
         if (zb) do {
             if (*zbuf < ZL) {
+              int tv = ((iUL>>16)&MappingU_AND) + ((iVL>>vshift)&MappingV_AND);
               int av;
               if (CL < 0) av=addtable[0];
               else if (CL > (255<<8)) av=addtable[255];
               else av=addtable[CL>>8];
               *zbuf = ZL;
-              *gmem = eon_PickColorP(cam,
-                      remap[av +
-                      texture[((iUL>>16)&MappingU_AND) +
-                              ((iVL>>vshift)&MappingV_AND)]]);
+              *gmem = eon_PickColorPS(cam->Palette, remap[av + texture[tv]], 1.0);
             }
             zbuf++;
             gmem++;
@@ -2834,14 +2840,12 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
             iVL += idVL;
           } while (--n);
         else do {
+            int tv = ((iUL>>16)&MappingU_AND) + ((iVL>>vshift)&MappingV_AND);
             int av;
             if (CL < 0) av=addtable[0];
             else if (CL > (255<<8)) av=addtable[255];
             else av=addtable[CL>>8];
-            *gmem = eon_PickColorP(cam,
-                      remap[av +
-                      texture[((iUL>>16)&MappingU_AND) +
-                              ((iVL>>vshift)&MappingV_AND)]]);
+            *gmem = eon_PickColorPS(cam->Palette, remap[av + texture[tv]], 1.0);
             gmem++;
             CL += dCL;
             iUL += idUL;
@@ -2851,8 +2855,8 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
       gmem -= XL1;
       zbuf -= XL1;
     } else {
-      zbuf += scrwidth;
-      gmem += scrwidth;
+      zbuf += cam->ScreenWidth;
+      gmem += cam->ScreenWidth;
     }
     Z1 += dZ1;
     U1 += dU1;
