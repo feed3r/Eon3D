@@ -87,15 +87,7 @@ void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
     EON_MatInit(mat[2]);
     EON_MatInfo(mat[2], Logger);
 
-    // make a nice palette
-    EON_MatMakeOptPal(pal,1,255,mat,3);
-
-    // map the materials to this new palette
-    EON_MatMapToPal(mat[0],pal,0,255);
-    EON_MatMapToPal(mat[1],pal,0,255);
-    EON_MatMapToPal(mat[2],pal,0,255);
-
-    EONx_ConsoleSetPalette(con, pal, 256);
+    return;
 }
 
 

@@ -20,12 +20,10 @@ int main()
     EON_Obj *TheTorus;     // Our torus object
     EON_Mat *CubeMat;      // The material for the cube
     EON_Mat *TorusMat;     // The material for the torus
-    EON_Mat *AllMaterials[3]; // Used for creating palette
     EON_Cam *TheCamera; // Our camera
     EON_Rend *TheRend;
     EON_Frame *TheFrame;
     EONx_Console *TheConsole;
-    uint8_t ThePalette[3 * 256];
 
     EONx_ConsoleStartup("Eon3D :: example 2", NULL);
 
@@ -60,22 +58,12 @@ int main()
     TorusMat->Specular[1] = 200; // Set green specular component
     TorusMat->Specular[2] = 150; // Set blue specular component
 
-    AllMaterials[0] = CubeMat; // Make list of materials
-    AllMaterials[1] = TorusMat; // Make list of materials
-    AllMaterials[2] = 0; // Null terminate list of materials
-    EON_MatMakeOptPal(ThePalette,1,255,AllMaterials,3); // Create a nice palette
-
-    ThePalette[0] = ThePalette[1] = ThePalette[2] = 0; // Color 0 is black
-
-    EON_MatMapToPal(CubeMat,ThePalette,0,255); // Map the material to our palette
-    EON_MatMapToPal(TorusMat,ThePalette,0,255); // Map the material to our palette
+    EON_MatInit(TorusMat);
 
     TheConsole = EONx_ConsoleCreate(800, // Screen width
                                     600, // Screen height
                                     90.0 // Field of view
                                     );
-
-    EONx_ConsoleSetPalette(TheConsole, ThePalette, 256);
 
     TheCube = EON_MakeBox(100.0,100.0,100.0,CubeMat); // Create the cube
     TheTorus = EON_MakeTorus(40.0,100.0,10,8,TorusMat); // Create the torus

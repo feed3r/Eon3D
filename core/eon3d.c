@@ -498,10 +498,7 @@ EON_Obj *EON_ObjCalcNormals(EON_Obj *obj)
 //
 
 static void eon_GenerateTextureEnvPalette(EON_Mat *);
-static void eon_GenerateTexturePalette(EON_Mat *, EON_Texture *);
-static void eon_GeneratePhongTexturePalette(EON_Mat *, EON_Texture *);
 static void eon_SetMaterialPutFace(EON_Mat *m);
-static void eon_MatSetupTransparent(EON_Mat *m, EON_uChar *pal);
 
 EON_Mat *EON_MatCreate()
 {
@@ -548,74 +545,10 @@ void EON_MatInit(EON_Mat *m)
     if (m->_ft == (EON_FILL_TEXTURE|EON_FILL_ENVIRONMENT))
         m->_st = EON_SHADE_NONE;
 
-    if (m->_ft == EON_FILL_TEXTURE) {
-        if (m->_st == EON_SHADE_NONE)
-            eon_GenerateTexturePalette(m,m->Texture);
-        else
-            eon_GeneratePhongTexturePalette(m,m->Texture);
-    } else if (m->_ft == EON_FILL_ENVIRONMENT) {
-        if (m->_st == EON_SHADE_NONE)
-            eon_GenerateTexturePalette(m,m->Environment);
-        else
-            eon_GeneratePhongTexturePalette(m,m->Environment);
-    } else if (m->_ft == (EON_FILL_ENVIRONMENT|EON_FILL_TEXTURE)) {
+    if (m->_ft == (EON_FILL_ENVIRONMENT|EON_FILL_TEXTURE)) {
         eon_GenerateTextureEnvPalette(m);
     }
     eon_SetMaterialPutFace(m);
-}
-
-static void eon_MatSetupTransparent(EON_Mat *m, EON_uChar *pal)
-{
-    EON_uInt x, intensity;
-    if (m->Transparent) {
-        if (m->_AddTable) {
-            CX_free(m->_AddTable);
-        }
-        m->_AddTable = CX_malloc(256 * sizeof(EON_uInt16));
-        for (x = 0; x < 256; x++) {
-            intensity  = *pal++;
-            intensity += *pal++;
-            intensity += *pal++;
-            m->_AddTable[x] = ((intensity*(m->_ColorsUsed-m->_tsfact))/768);
-        }
-    }
-    return;
-}
-
-void EON_MatMapToPal(EON_Mat *m, EON_uChar *pal, EON_sInt pstart, EON_sInt pend)
-{
-    EON_sInt32 j, r, g, b, bestdiff, r2, g2, b2;
-    EON_sInt bestpos,k;
-    EON_uInt32 i;
-    EON_uChar *p;
-    if (!m->_RequestedColors)
-        EON_MatInit(m);
-    if (!m->_RequestedColors)
-        return;
-    if (m->_ReMapTable)
-        CX_free(m->_ReMapTable);
-    m->_ReMapTable = CX_malloc(m->_ColorsUsed);
-    for (i = 0; i < m->_ColorsUsed; i++) {
-        bestdiff = 1000000000;
-        bestpos = pstart;
-        r = m->_RequestedColors[i * 3 + 0];
-        g = m->_RequestedColors[i * 3 + 1];
-        b = m->_RequestedColors[i * 3 + 2];
-        p = pal + pstart*3;
-        for (k = pstart; k <= (EON_sInt)pend; k++) {
-            r2 = p[0] - r;
-            g2 = p[1] - g;
-            b2 = p[2] - b;
-            p += 3;
-            j = r2*r2+g2*g2+b2*b2;
-            if (j < bestdiff) {
-                bestdiff = j;
-                bestpos = k;
-            }
-        }
-        m->_ReMapTable[i] = bestpos;
-    }
-    eon_MatSetupTransparent(m,pal);
 }
 
 
@@ -690,75 +623,6 @@ static void eon_GenerateTextureEnvPalette(EON_Mat *m)
         envpal += 3;
         m->_AddTable[whichlevel] = whichlevel*m->Texture->NumColors;
     }
-}
-
-static void eon_GenerateTexturePalette(EON_Mat *m, EON_Texture *t)
-{
-    EON_uChar *ppal, *pal;
-    EON_sInt c, i, x;
-    m->_ColorsUsed = t->NumColors;
-    if (m->_RequestedColors)
-        CX_free(m->_RequestedColors);
-    pal = m->_RequestedColors = CX_malloc(m->_ColorsUsed * 3);
-    ppal = t->PaletteData;
-    i = t->NumColors;
-    do {
-        for (x = 0; x < 3; x ++) {
-            c = m->Ambient[x] + *ppal++;
-            *(pal++) = EON_Clamp(c,0,255);
-        }
-    } while (--i);
-}
-
-static void eon_GeneratePhongTexturePalette(EON_Mat *m, EON_Texture *t)
-{
-    EON_Double a, ca, da, cb;
-    EON_uInt16 *addtable;
-    EON_uChar *ppal, *pal;
-    EON_sInt c, i, i2, x;
-    EON_uInt num_shades;
-
-    if (t->NumColors)
-        num_shades = (m->NumGradients / t->NumColors);
-    else
-        num_shades=1;
-
-    if (!num_shades)
-        num_shades = 1;
-    m->_ColorsUsed = num_shades*t->NumColors;
-    if (m->_RequestedColors)
-        CX_free(m->_RequestedColors);
-    pal = m->_RequestedColors = CX_malloc(m->_ColorsUsed * 3);
-    a = EON_PI/2.0;
-    if (num_shades > 1)
-        da = (-EON_PI/2.0)/(num_shades-1);
-    else
-        da = 0.0;
-    i2 = num_shades;
-    do {
-        ppal = t->PaletteData;
-        ca = cos((EON_Double) a);
-        a += da;
-        cb = pow(ca, (EON_Double) m->Shininess);
-        i = t->NumColors;
-        do {
-            for (x = 0; x < 3; x ++) {
-                c = (EON_sInt) ((cb*m->Specular[x])+(ca*m->Diffuse[x])+m->Ambient[x] + *ppal++);
-                *(pal++) = EON_Clamp(c,0,255);
-            }
-        } while (--i);
-    } while (--i2);
-    ca = 0;
-    if (m->_AddTable)
-        CX_free(m->_AddTable);
-    m->_AddTable = CX_malloc(256 * sizeof(EON_uInt16));
-    addtable = m->_AddTable;
-    i = 256;
-    do {
-        a = sin(ca) * num_shades;
-        ca += EON_PI/512.0;
-        *addtable++ = ((EON_sInt) a)*t->NumColors;
-    } while (--i);
 }
 
 static void eon_SetMaterialPutFace(EON_Mat *m)
@@ -836,117 +700,6 @@ static void eon_SetMaterialPutFace(EON_Mat *m)
         m->_PutFace = EON_PF_TexEnv;
         break;
     }
-}
-
-typedef struct __ct {
-    struct __ct *next;
-    EON_uChar r,g,b;
-    EON_Bool visited;
-} _ct;
-
-static int mdist(_ct *a, _ct *b)
-{
-    return ((a->r-b->r)*(a->r-b->r)+(a->g-b->g)*(a->g-b->g)+(a->b-b->b)*(a->b-b->b));
-}
-
-void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
-                       EON_sInt pend, EON_Mat **materials, EON_sInt nmats)
-{
-    EON_uChar *allColors = 0;
-    EON_sInt numColors = 0, nc, x;
-    EON_sInt len = pend + 1 - pstart;
-    EON_sInt32 current, newnext, bestdist, thisdist;
-    _ct *colorBlock, *best, *cp;
-
-    for (x = 0; x < nmats; x ++) {
-        if (materials[x]) {
-            if (!materials[x]->_RequestedColors)
-                EON_MatInit(materials[x]);
-            if (materials[x]->_RequestedColors)
-                numColors+=materials[x]->_ColorsUsed;
-        }
-    }
-    if (!numColors)
-        return;
-
-    allColors = CX_malloc(numColors * 3);
-    numColors = 0;
-
-    for (x = 0; x < nmats; x ++) {
-        if (materials[x]) {
-            if (materials[x]->_RequestedColors)
-                memcpy(allColors + (numColors*3), materials[x]->_RequestedColors,
-            materials[x]->_ColorsUsed*3);
-            numColors += materials[x]->_ColorsUsed;
-        }
-    }
-
-    if (numColors <= len) {
-        memcpy(p+pstart*3,allColors,numColors*3);
-        CX_free(allColors);
-        return;
-    }
-
-    colorBlock = CX_malloc(sizeof(_ct) * numColors);
-    for (x = 0; x < numColors; x++) {
-        colorBlock[x].r = allColors[x*3];
-        colorBlock[x].g = allColors[x*3+1];
-        colorBlock[x].b = allColors[x*3+2];
-        colorBlock[x].visited = 0;
-        colorBlock[x].next = 0;
-    }
-    CX_free(allColors);
-
-    /* Build a list, starting at color 0 */
-    current = 0;
-    nc = numColors;
-    do {
-        newnext = -1;
-        bestdist = 300000000;
-        colorBlock[current].visited = 1;
-        for (x = 0; x < nc; x ++) {
-            if (!colorBlock[x].visited) {
-                thisdist = mdist(colorBlock + x, colorBlock + current);
-                if (thisdist < 5) {
-                    colorBlock[x].visited = 1;
-                    numColors--;
-                } else if (thisdist < bestdist) {
-                    bestdist = thisdist;
-                    newnext = x;
-                }
-            }
-        }
-        if (newnext != -1) {
-            colorBlock[current].next = colorBlock + newnext;
-            current = newnext;
-        }
-    } while (newnext != -1);
-    colorBlock[current].next = 0; /* terminate the list */
-
-    /* we now have a linked list starting at colorBlock, which is each one and
-       it's closest neighbor */
-
-    while (numColors > len) {
-        bestdist = mdist(colorBlock,colorBlock->next);
-        for (best = cp = colorBlock; cp->next; cp = cp->next) {
-            if (bestdist > (thisdist = mdist(cp,cp->next))) {
-                best = cp;
-                bestdist = thisdist;
-            }
-        }
-        best->r = ((int) best->r + (int) best->next->r)>>1;
-        best->g = ((int) best->g + (int) best->next->g)>>1;
-        best->b = ((int) best->b + (int) best->next->b)>>1;
-        best->next = best->next->next;
-        numColors--;
-    }
-    x = pstart*3;
-    for (cp = colorBlock; cp; cp = cp->next) {
-        p[x++] = cp->r;
-        p[x++] = cp->g;
-        p[x++] = cp->b;
-    }
-    CX_free(colorBlock);
 }
 
 static const char *eon_PutFaceName(void *addr)

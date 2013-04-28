@@ -423,42 +423,9 @@ void EON_MatDelete(EON_Mat *m);
   Returns:
     nothing
   Notes:
-    you *must* do this before calling EON_MatMapToPal() or EON_MatMakeOptPal().
+    you *must* call this before calling any rendering function.
 */
 void EON_MatInit(EON_Mat *m);
-
-/*
-  EON_MatMapToPal() maps a material that was created with EON_MatCreate() and
-    initialized with EON_MatInit() to a palette.
-  Parameters:
-    mat: material to map
-    pal: a 768 byte array of unsigned chars, each 3 being a rgb triEON_et
-         (0-255, *not* the cheesy vga 0-63)
-    pstart: starting offset to use colors of, usually 0
-    pend: ending offset to use colors of, usually 255
-  Returns:
-    nothing
-  Notes:
-    Mapping a material with > 2000 colors can take up to a second or two.
-      Be careful, and go easy on EON_Mat.NumGradients ;)
-*/
-void EON_MatMapToPal(EON_Mat *m, EON_uChar *pal, EON_sInt pstart, EON_sInt pend);
-
-
-/*
-  EON_MatMakeOptPal() makes an almost optimal palette from materials
-    created with EON_MatCreate() and initialized with EON_MatInit().
-  Parameters:
-    p: palette to create
-    pstart: first color entry to use
-    pend: last color entry to use
-    materials: an array of pointers to materials to generate the palette from
-    nmats: number of materials
-  Returns:
-    nothing
-*/
-void EON_MatMakeOptPal(EON_uChar *p, EON_sInt pstart,
-                       EON_sInt pend, EON_Mat **materials, EON_sInt nmats);
 
 /*
   EON_MatInfo() dumps the internal informations about a Material to a
