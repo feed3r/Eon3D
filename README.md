@@ -142,11 +142,5 @@ The AVI output module uses (and embeds) AVILIB, which is released under
 the GPL2 license. If you enable the AVI output module, the license of
 Eon3D will thus become GPL2.
 
-TODO
-----
-
-* console: more input handling, logging, timestamping.
-* core: truecolor handling, drop the palette
-
 ### EOF ###
 

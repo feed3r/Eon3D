@@ -1,0 +1,26 @@
+In not a particular order
+=========================
+
+* truecolor (AKA RGBA) support for each rasterizer; drop the palette
+* doxygenize docs
+* write and enforce coding style
+* autoformat script
+* better testing
+* better logging (\r support)
+* STL model loader
+* generic image loader for texturing
+* recording module
+* lplants application
+* terragen application
+* noise tool
+* MUD/labyrinth application
+* LUA translation (manual)
+* JS translation (emscripten)
+* parallelism (slice rendering? figure out)
+* performance (either single and multi core)
+
+Outstanding bugs:
+=================
+
+* image corruption when screenshotting.
+
