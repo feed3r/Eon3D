@@ -1462,9 +1462,9 @@ inline static EON_uInt32 eon_PickColorP(EON_Cam *cam, EON_Byte value)
 
 inline static EON_uInt32 eon_PickColorF(const EON_Face *f, EON_Float shade)
 {
-    EON_uInt32 R = ((EON_sInt32)(f->Material->Ambient[0] * shade)) & 0xFF;
-    EON_uInt32 G = ((EON_sInt32)(f->Material->Ambient[1] * shade)) & 0xFF;
-    EON_uInt32 B = ((EON_sInt32)(f->Material->Ambient[2] * shade)) & 0xFF;
+    EON_uInt32 R = ((EON_uInt32)(f->Material->Ambient[0] * shade)) & 0xFF;
+    EON_uInt32 G = ((EON_uInt32)(f->Material->Ambient[1] * shade)) & 0xFF;
+    EON_uInt32 B = ((EON_uInt32)(f->Material->Ambient[2] * shade)) & 0xFF;
     EON_uInt32 A = 0xFF000000;
     return (A | R << 16 | G << 8| B);
 }
