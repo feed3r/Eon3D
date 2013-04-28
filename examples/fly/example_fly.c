@@ -49,6 +49,7 @@ void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
     mat[0]->Texture = EONx_ReadPCXTex("ground.pcx");
     mat[0]->TexScaling = 40.0*LAND_SIZE/50000;
     mat[0]->PerspectiveCorrect = 16;
+    EON_TexInfo(mat[0]->Texture, Logger);
 
     // set up material 1 (the sky)
     mat[1]->ShadeType = EON_SHADE_GOURAUD_DISTANCE;
@@ -67,6 +68,7 @@ void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
     mat[1]->Texture = EONx_ReadPCXTex("sky.pcx");
     mat[1]->TexScaling = 45.0*LAND_SIZE/50000;
     mat[1]->PerspectiveCorrect = 32;
+    EON_TexInfo(mat[1]->Texture, Logger);
 
     // set up material 2 (the second sky)
     mat[2]->ShadeType = EON_SHADE_NONE;
@@ -75,6 +77,7 @@ void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
     mat[2]->Texture = EONx_ReadPCXTex("sky2.pcx");
     mat[2]->TexScaling = 10.0; //200.0*LAND_SIZE/50000;
     mat[2]->PerspectiveCorrect = 2;
+    EON_TexInfo(mat[2]->Texture, Logger);
 
     // intialize the materials
     EON_MatInit(mat[0]);

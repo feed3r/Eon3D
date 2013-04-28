@@ -379,6 +379,7 @@ void EON_ObjInfo(EON_Obj *o, void *logger)
                  "* Generate Matrix: %s", (o->GenMatrix) ?"Yes" :"No");
     CX_log_trace(logger, CX_LOG_INFO, EON_TAG,
                  "* Backface Cull: %s", (o->GenMatrix) ?"Yes" :"No");
+    return;
 }
 
 EON_Obj *EON_ObjClone(EON_Obj *o) 
@@ -982,6 +983,7 @@ void EON_MatInfo(EON_Mat *m, void *logger)
     CX_log_trace(logger, CX_LOG_INFO, EON_TAG,
                  "* Rasterizer: %s",
                  eon_PutFaceName(m->_PutFace));
+    return;
 }
 
 // light.c
@@ -1389,6 +1391,18 @@ void EON_TexDelete(EON_Texture *t)
             CX_free(t->PaletteData);
         CX_free(t);
     }
+}
+
+void EON_TexInfo(EON_Texture *t, void *logger)
+{
+    CX_log_trace(logger, CX_LOG_INFO, EON_TAG, "Texture (%p)", t);
+    CX_log_trace(logger, CX_LOG_INFO, EON_TAG,
+                 "* Colors: %i", t->NumColors);
+    CX_log_trace(logger, CX_LOG_INFO, EON_TAG,
+                 "* Data: %p (Palette=%p)", t->Data, t->PaletteData);
+    CX_log_trace(logger, CX_LOG_INFO, EON_TAG,
+                 "* Dimensions: %ix%i", t->iWidth, t->iHeight);
+    return;
 }
 
 // putface.h

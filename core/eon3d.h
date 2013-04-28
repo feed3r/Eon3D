@@ -645,6 +645,7 @@ void EON_LightDelete(EON_Light *l);
 */
 void EON_TexDelete(EON_Texture *t);
 
+void EON_TexInfo(EON_Texture *t, void *logger);
 
 /******************************************************************************
 ** Camera Handling Routines (cam.c)
