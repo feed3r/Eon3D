@@ -176,8 +176,6 @@ typedef struct _EON_Mat {
     EON_Float FadeDist;           /* For distance fading, distance at
                                   which intensity is 0 */
     EON_uChar ShadeType;          /* Shade type: EON_SHADE_* */
-    EON_uChar Transparent;        /* Transparency index (0 = none), 4 = alot
-                                  Note: transparencies disable textures */
     EON_uChar PerspectiveCorrect; /* Correct textures every n pixels */
     EON_Texture *Texture;         /* Texture map (see EON_Texture) above */
     EON_Texture *Environment;     /* Environment map (ditto) */

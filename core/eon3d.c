@@ -103,8 +103,7 @@ static void EON_PF_PTexG(EON_Cam *, EON_Face *, EON_Frame *);
 enum {
     EON_FILL_SOLID       = 0x0,
     EON_FILL_TEXTURE     = 0x1,
-    EON_FILL_ENVIRONMENT = 0x2,
-    EON_FILL_TRANSPARENT = 0x4
+    EON_FILL_ENVIRONMENT = 0x2
 };
 
 
@@ -539,9 +538,6 @@ void EON_MatInit(EON_Mat *m)
                (m->Texture ? EON_FILL_TEXTURE : EON_FILL_SOLID));
     m->_st = m->ShadeType;
 
-    if (m->Transparent)
-        m->_ft = EON_FILL_TRANSPARENT;
-
     if (m->_ft == (EON_FILL_TEXTURE|EON_FILL_ENVIRONMENT))
         m->_st = EON_SHADE_NONE;
 
@@ -629,24 +625,6 @@ static void eon_SetMaterialPutFace(EON_Mat *m)
 {
     m->_PutFace = EON_PF_Null;
     switch (m->_ft) {
-    case EON_FILL_TRANSPARENT:
-        switch(m->_st) {
-        case EON_SHADE_WIREFRAME:
-            m->_PutFace = EON_PF_WireF;
-            break;
-        case EON_SHADE_NONE:
-        case EON_SHADE_FLAT:
-        case EON_SHADE_FLAT_DISTANCE:
-        case EON_SHADE_FLAT_DISTANCE|EON_SHADE_FLAT:
-            m->_PutFace = EON_PF_Null; // enforce
-            break;
-        case EON_SHADE_GOURAUD:
-        case EON_SHADE_GOURAUD_DISTANCE:
-        case EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE:
-            m->_PutFace = EON_PF_Null; // enforce
-            break;
-        }
-        break;
     case EON_FILL_SOLID:
         switch(m->_st) {
         case EON_SHADE_WIREFRAME:
