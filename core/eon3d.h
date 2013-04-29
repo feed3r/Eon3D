@@ -127,11 +127,11 @@ enum {
 };
 
 
-typedef struct _EON_Point3D {
+typedef struct _EON_3DPoint {
     EON_Float X;
     EON_Float Y;
     EON_Float Z;
-} EON_Point3D;
+} EON_3DPoint;
 
 typedef struct _EON_Color {
     EON_Byte R;
@@ -157,8 +157,8 @@ typedef struct _EON_Cam EON_Cam;
 ** EON_Mat.Environment or EON_Mat.Texture.
 */
 typedef struct _EON_Texture {
-    EON_uChar *Data;            /* Texture data */
-    EON_uChar *PaletteData;     /* Palette data (NumColors bytes) */
+    EON_Byte *Data;            /* Texture data */
+    EON_Byte *PaletteData;     /* Palette data (NumColors bytes) */
     EON_uChar Width, Height;    /* Log2 of dimensions */
     EON_uInt iWidth, iHeight;   /* Integer dimensions */
     EON_Float uScale, vScale;   /* Scaling (usually 2**Width, 2**Height) */
@@ -174,7 +174,7 @@ typedef struct _EON_Mat {
     EON_sInt Specular[3];         /* RGB of "specular" highlights (0-255) */
     EON_uInt Shininess;           /* Shininess of material. 1 is dullest */
     EON_Float FadeDist;           /* For distance fading, distance at
-                                  which intensity is 0 */
+                                     which intensity is 0 */
     EON_uChar ShadeType;          /* Shade type: EON_SHADE_* */
     EON_uChar PerspectiveCorrect; /* Correct textures every n pixels */
     EON_Texture *Texture;         /* Texture map (see EON_Texture) above */
@@ -260,7 +260,7 @@ typedef struct _EON_Spline {
 */
 typedef struct _EON_Light {
     EON_uChar Type;               /* Type of light: EON_LIGHT_* */
-    EON_Point3D Pos;              /* If Type=EON_LIGHT_POINT*,
+    EON_3DPoint Pos;              /* If Type=EON_LIGHT_POINT*,
                                   this is Position (EON_LIGHT_POINT_*),
                                   otherwise if EON_LIGHT_VECTOR,
                                   Unit vector */
@@ -280,7 +280,7 @@ struct _EON_Cam {
     EON_sInt ClipBottom, ClipRight;
     EON_uInt ScreenWidth, ScreenHeight; /* Screen dimensions */
     EON_sInt CenterX, CenterY;      /* Center of screen */
-    EON_Point3D Pos;                /* Camera position in worldspace */
+    EON_3DPoint Pos;                /* Camera position in worldspace */
     EON_Float Pitch, Pan, Roll;     /* Camera angle in degrees in worldspace */
     const EON_Byte *Palette;
 };
@@ -328,7 +328,7 @@ typedef struct _EON_FaceInfo {
 
 typedef struct _EON_LightInfo {
     EON_Light *light;
-    EON_Point3D pos;
+    EON_3DPoint pos;
 } EON_LightInfo;
 
 typedef struct _EON_Rend {

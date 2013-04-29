@@ -2298,7 +2298,7 @@ void EON_RenderBegin(EON_Rend *rend)
 
 void EON_RenderLight(EON_Rend *rend, EON_Light *light)
 {
-    EON_Point3D *pl;
+    EON_3DPoint *pl;
     EON_Float xp, yp, zp;
     if (light->Type == EON_LIGHT_NONE || rend->NumLights >= EON_MAX_LIGHTS)
         return;
