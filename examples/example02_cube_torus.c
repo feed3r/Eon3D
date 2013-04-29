@@ -28,7 +28,6 @@ int main()
     EONx_ConsoleStartup("Eon3D :: example 2", NULL);
 
     CubeMat = EON_MatCreate();    // Create the material for the cube
-    CubeMat->NumGradients = 100; // Have it use 100 colors
     CubeMat->ShadeType = EON_SHADE_FLAT; // Make the cube flat shaded
 
     CubeMat->Ambient[0] = 132; // Set red ambient component
@@ -42,7 +41,6 @@ int main()
     EON_MatInit(CubeMat);          // Initialize the material
 
     TorusMat = EON_MatCreate();    // Create the material for the torus
-    TorusMat->NumGradients = 100; // Have it use 100 colors
     TorusMat->ShadeType = EON_SHADE_GOURAUD; // Make the torus gouraud shaded
     TorusMat->Shininess = 10; // Make the torus a bit more shiny
 

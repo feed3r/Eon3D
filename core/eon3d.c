@@ -507,7 +507,6 @@ EON_Mat *EON_MatCreate()
         m->Diffuse[0] = m->Diffuse[1] = m->Diffuse[2] = 128;
         m->Specular[0] = m->Specular[1] = m->Specular[2] = 128;
         m->Shininess = 4;
-        m->NumGradients = 32;
         m->FadeDist = 1000.0;
         m->zBufferable = 1;
     }
@@ -517,12 +516,6 @@ EON_Mat *EON_MatCreate()
 void EON_MatDelete(EON_Mat *m)
 {
     if (m) {
-        if (m->_ReMapTable)
-            CX_free(m->_ReMapTable);
-        if (m->_RequestedColors)
-            CX_free(m->_RequestedColors);
-        if (m->_AddTable)
-            CX_free(m->_AddTable);
         CX_free(m);
     }
     return;
@@ -625,9 +618,6 @@ static const char *eon_PutFaceName(void *addr)
 void EON_MatInfo(EON_Mat *m, void *logger)
 {
     CX_log_trace(logger, CX_LOG_INFO, EON_TAG, "Material (%p)", m);
-    CX_log_trace(logger, CX_LOG_INFO, EON_TAG,
-                 "* Colors: Grads=%i Used=%i Requested=%i",
-                 m->NumGradients, m->_ColorsUsed, m->_RequestedColors);
     CX_log_trace(logger, CX_LOG_INFO, EON_TAG,
                  "* Rasterizer: %s",
                  eon_PutFaceName(m->_PutFace));

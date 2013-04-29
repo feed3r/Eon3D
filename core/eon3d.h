@@ -181,16 +181,9 @@ typedef struct _EON_Mat {
     EON_Texture *Environment;     /* Environment map (ditto) */
     EON_Float TexScaling;         /* Texture map scaling */
     EON_Float EnvScaling;         /* Environment map scaling */
-    EON_uChar TexEnvMode;         /* TexEnv combining mode (EON_TEXENV_*) */
     EON_Bool zBufferable;         /* Can this material be zbuffered? */
-    EON_uInt NumGradients;        /* Desired number of gradients to be used */
     /* The following are used mostly internally */
-    EON_uInt _ColorsUsed;         /* Number of colors actually used */
     EON_uChar _st, _ft;           /* The shadetype and filltype */
-    EON_uInt _tsfact;             /* Translucent shading factor */
-    EON_uInt16 *_AddTable;        /* Shading/Translucent/etc table */
-    EON_uChar *_ReMapTable;       /* Table to remap colors to palette */
-    EON_uChar *_RequestedColors;  /* _ColorsUsed colors, desired colors */
     void (*_PutFace)(EON_Cam *, EON_Face *, EON_Frame *);
     /* Renders the triangle with this material */
 } EON_Mat;

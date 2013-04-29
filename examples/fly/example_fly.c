@@ -35,7 +35,6 @@ void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
     // set up material 0 (the ground)
     mat[0]->ShadeType = EON_SHADE_GOURAUD_DISTANCE;
     mat[0]->Shininess = 1;
-    mat[0]->NumGradients = 2500;
     mat[0]->Ambient[0] = pal[0]*2 - 255; // these calculations are to get the
     mat[0]->Ambient[1] = pal[1]*2 - 255; // distance shading to work right
     mat[0]->Ambient[2] = pal[2]*2 - 255;
@@ -54,7 +53,6 @@ void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
     // set up material 1 (the sky)
     mat[1]->ShadeType = EON_SHADE_GOURAUD_DISTANCE;
     mat[1]->Shininess = 1;
-    mat[1]->NumGradients = 1500;
     mat[1]->Ambient[0] = pal[0]*2 - 255;
     mat[1]->Ambient[1] = pal[1]*2 - 255;
     mat[1]->Ambient[2] = pal[2]*2 - 255;
@@ -73,7 +71,6 @@ void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
     // set up material 2 (the second sky)
     mat[2]->ShadeType = EON_SHADE_NONE;
     mat[2]->Shininess = 1;
-    mat[2]->NumGradients = 1500;
     mat[2]->Texture = EONx_ReadPCXTex("sky2.pcx");
     mat[2]->TexScaling = 10.0; //200.0*LAND_SIZE/50000;
     mat[2]->PerspectiveCorrect = 2;
