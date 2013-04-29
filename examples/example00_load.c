@@ -41,9 +41,9 @@ int main(int argc, char *argv[])
     ModelMat = EON_MatCreate(); 
     ModelMat->ShadeType = EON_SHADE_FLAT;
 
-    ModelMat->Ambient[0] = 200; // Set red ambient component
-    ModelMat->Ambient[1] = 200; // Set green ambient component
-    ModelMat->Ambient[2] = 200; // Set blue ambient component
+    ModelMat->Ambient.R = 200;
+    ModelMat->Ambient.G = 200;
+    ModelMat->Ambient.B = 200;
 
     EON_MatInit(ModelMat);          // Initialize the material
 

@@ -503,9 +503,9 @@ EON_Mat *EON_MatCreate()
     if (m) {
         m->EnvScaling = 1.0f;
         m->TexScaling = 1.0f;
-        m->Ambient[0] = m->Ambient[1] = m->Ambient[2] = 0;
-        m->Diffuse[0] = m->Diffuse[1] = m->Diffuse[2] = 128;
-        m->Specular[0] = m->Specular[1] = m->Specular[2] = 128;
+        m->Ambient.R = m->Ambient.G = m->Ambient.B = 0;
+        m->Diffuse.R = m->Diffuse.G = m->Diffuse.B = 128;
+        m->Specular.R = m->Specular.G = m->Specular.B = 128;
         m->Shininess = 4;
         m->FadeDist = 1000.0;
         m->zBufferable = 1;
@@ -1109,9 +1109,9 @@ inline static EON_uInt32 eon_PickColorPS(const EON_Byte *pal, EON_Byte v, EON_Fl
 
 inline static EON_uInt32 eon_PickColorS(const EON_Face *f, EON_Float shade)
 {
-    EON_uInt32 R = ((EON_uInt32)(f->Material->Ambient[0] * shade)) & 0xFF;
-    EON_uInt32 G = ((EON_uInt32)(f->Material->Ambient[1] * shade)) & 0xFF;
-    EON_uInt32 B = ((EON_uInt32)(f->Material->Ambient[2] * shade)) & 0xFF;
+    EON_uInt32 R = ((EON_uInt32)(f->Material->Ambient.R * shade)) & 0xFF;
+    EON_uInt32 G = ((EON_uInt32)(f->Material->Ambient.G * shade)) & 0xFF;
+    EON_uInt32 B = ((EON_uInt32)(f->Material->Ambient.B * shade)) & 0xFF;
     EON_uInt32 A = 0xFF000000;
     return (A | R << 16 | G << 8| B);
 }

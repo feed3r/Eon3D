@@ -236,9 +236,9 @@ int main(int argc, char *argv[])
     material = EON_MatCreate(); 
     material->ShadeType = view.opts.shade;
 
-    material->Ambient[0] = 200;
-    material->Ambient[1] = 200;
-    material->Ambient[2] = 200;
+    material->Ambient.R = 200;
+    material->Ambient.G = 200;
+    material->Ambient.B = 200;
 
     EON_MatInit(material);
     EON_MatInfo(material, view.logger);

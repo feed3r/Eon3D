@@ -30,13 +30,13 @@ int main()
     CubeMat = EON_MatCreate();    // Create the material for the cube
     CubeMat->ShadeType = EON_SHADE_FLAT; // Make the cube flat shaded
 
-    CubeMat->Ambient[0] = 132; // Set red ambient component
-    CubeMat->Ambient[1] = 0;  // Set green ambient component
-    CubeMat->Ambient[2] = 16; // Set blue ambient component
+    CubeMat->Ambient.R = 132;
+    CubeMat->Ambient.G = 0;
+    CubeMat->Ambient.B = 16;
 
-    CubeMat->Diffuse[0] = 200; // Set red diffuse component
-    CubeMat->Diffuse[1] = 100; // Set green diffuse component
-    CubeMat->Diffuse[2] = 150; // Set blue diffuse component
+    CubeMat->Diffuse.R = 200;
+    CubeMat->Diffuse.G = 100;
+    CubeMat->Diffuse.B = 150;
 
     EON_MatInit(CubeMat);          // Initialize the material
 
@@ -44,17 +44,17 @@ int main()
     TorusMat->ShadeType = EON_SHADE_GOURAUD; // Make the torus gouraud shaded
     TorusMat->Shininess = 10; // Make the torus a bit more shiny
 
-    TorusMat->Ambient[0] = 0; // Set red ambient component
-    TorusMat->Ambient[1] = 132;  // Set green ambient component
-    TorusMat->Ambient[2] = 4; // Set blue ambient component
+    TorusMat->Ambient.R = 0;
+    TorusMat->Ambient.G = 132;
+    TorusMat->Ambient.B = 4;
 
-    TorusMat->Diffuse[0] = 20; // Set red diffuse component
-    TorusMat->Diffuse[1] = 60; // Set green diffuse component
-    TorusMat->Diffuse[2] = 70; // Set blue diffuse component
+    TorusMat->Diffuse.R = 20;
+    TorusMat->Diffuse.G = 60;
+    TorusMat->Diffuse.B = 70;
 
-    TorusMat->Specular[0] = 100; // Set red specular component
-    TorusMat->Specular[1] = 200; // Set green specular component
-    TorusMat->Specular[2] = 150; // Set blue specular component
+    TorusMat->Specular.R = 100;
+    TorusMat->Specular.G = 200;
+    TorusMat->Specular.B = 150;
 
     EON_MatInit(TorusMat);
 

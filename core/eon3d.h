@@ -126,6 +126,11 @@ enum {
     EON_TEXENV_MAX         = 6
 };
 
+typedef struct _EON_ScrPoint {
+    EON_sInt32 X;
+    EON_sInt32 Y;
+    EON_Float Z;
+} EON_ScrPoint;
 
 typedef struct _EON_3DPoint {
     EON_Float X;
@@ -169,9 +174,9 @@ typedef struct _EON_Texture {
 ** Material type. Create materials with EON_MatCreate().
 */
 typedef struct _EON_Mat {
-    EON_sInt Ambient[3];          /* RGB of surface (0-255 is a good range) */
-    EON_sInt Diffuse[3];          /* RGB of diffuse (0-255 is a good range) */
-    EON_sInt Specular[3];         /* RGB of "specular" highlights (0-255) */
+    EON_Color Ambient;
+    EON_Color Diffuse;
+    EON_Color Specular;
     EON_uInt Shininess;           /* Shininess of material. 1 is dullest */
     EON_Float FadeDist;           /* For distance fading, distance at
                                      which intensity is 0 */

@@ -27,9 +27,9 @@ int main()
     CubeMat = EON_MatCreate();    // Create the material for the cube
     CubeMat->ShadeType = EON_SHADE_FLAT; // Make the cube flat shaded
 
-    CubeMat->Ambient[0] = 132; // Set red ambient component
-    CubeMat->Ambient[1] = 0;   // Set green ambient component
-    CubeMat->Ambient[2] = 0;   // Set blue ambient component
+    CubeMat->Ambient.R = 132;
+    CubeMat->Ambient.G = 0;
+    CubeMat->Ambient.B = 0;
 
     EON_MatInit(CubeMat);    // Initialize the material
 
