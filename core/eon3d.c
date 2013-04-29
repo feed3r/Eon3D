@@ -1048,46 +1048,46 @@ void EON_TexInfo(EON_Texture *t, void *logger)
 
 #define PUTFACE_SORT() \
     i0 = 0; i1 = 1; i2 = 2; \
-    if (TriFace->Scr[0].Y > TriFace->Scr[1].Y) { \
+    if (Face->Scr[0].Y > Face->Scr[1].Y) { \
         i0 = 1; i1 = 0; \
     } \
-    if (TriFace->Scr[i0].Y > TriFace->Scr[2].Y) { \
+    if (Face->Scr[i0].Y > Face->Scr[2].Y) { \
         i2 ^= i0; i0 ^= i2; i2 ^= i0; \
     } \
-    if (TriFace->Scr[i1].Y > TriFace->Scr[i2].Y) { \
+    if (Face->Scr[i1].Y > Face->Scr[i2].Y) { \
         i2 ^= i1; i1 ^= i2; i2 ^= i1; \
     }
 
 
 #define PUTFACE_SORT_ENV() \
     PUTFACE_SORT(); \
-    MappingU1=TriFace->eMappingU[i0]*Texture->uScale*\
-              TriFace->Material->EnvScaling;\
-    MappingV1=TriFace->eMappingV[i0]*Texture->vScale*\
-              TriFace->Material->EnvScaling;\
-    MappingU2=TriFace->eMappingU[i1]*Texture->uScale*\
-              TriFace->Material->EnvScaling;\
-    MappingV2=TriFace->eMappingV[i1]*Texture->vScale*\
-              TriFace->Material->EnvScaling;\
-    MappingU3=TriFace->eMappingU[i2]*Texture->uScale*\
-              TriFace->Material->EnvScaling;\
-    MappingV3=TriFace->eMappingV[i2]*Texture->vScale*\
-              TriFace->Material->EnvScaling;
+    MappingU1=Face->eMappingU[i0]*Texture->uScale*\
+              Face->Material->EnvScaling;\
+    MappingV1=Face->eMappingV[i0]*Texture->vScale*\
+              Face->Material->EnvScaling;\
+    MappingU2=Face->eMappingU[i1]*Texture->uScale*\
+              Face->Material->EnvScaling;\
+    MappingV2=Face->eMappingV[i1]*Texture->vScale*\
+              Face->Material->EnvScaling;\
+    MappingU3=Face->eMappingU[i2]*Texture->uScale*\
+              Face->Material->EnvScaling;\
+    MappingV3=Face->eMappingV[i2]*Texture->vScale*\
+              Face->Material->EnvScaling;
 
 #define PUTFACE_SORT_TEX() \
     PUTFACE_SORT(); \
-    MappingU1=TriFace->MappingU[i0]*Texture->uScale*\
-              TriFace->Material->TexScaling;\
-    MappingV1=TriFace->MappingV[i0]*Texture->vScale*\
-              TriFace->Material->TexScaling;\
-    MappingU2=TriFace->MappingU[i1]*Texture->uScale*\
-              TriFace->Material->TexScaling;\
-    MappingV2=TriFace->MappingV[i1]*Texture->vScale*\
-              TriFace->Material->TexScaling;\
-    MappingU3=TriFace->MappingU[i2]*Texture->uScale*\
-              TriFace->Material->TexScaling;\
-    MappingV3=TriFace->MappingV[i2]*Texture->vScale*\
-              TriFace->Material->TexScaling;
+    MappingU1=Face->MappingU[i0]*Texture->uScale*\
+              Face->Material->TexScaling;\
+    MappingV1=Face->MappingV[i0]*Texture->vScale*\
+              Face->Material->TexScaling;\
+    MappingU2=Face->MappingU[i1]*Texture->uScale*\
+              Face->Material->TexScaling;\
+    MappingV2=Face->MappingV[i1]*Texture->vScale*\
+              Face->Material->TexScaling;\
+    MappingU3=Face->MappingU[i2]*Texture->uScale*\
+              Face->Material->TexScaling;\
+    MappingV3=Face->MappingV[i2]*Texture->vScale*\
+              Face->Material->TexScaling;
 
 inline static EON_uInt32 eon_PickColorP(EON_Cam *cam, EON_Byte value)
 {
@@ -1153,12 +1153,12 @@ inline static void eon_DrawLine(EON_uInt32 *fb, EON_sInt32 pitch,
 
 // pf misc
 
-static void EON_PF_Null(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
+static void EON_PF_Null(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
 {
     return; /* nothing to do */
 }
 
-static void EON_PF_WireF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
+static void EON_PF_WireF(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
 {
     EON_uChar i0 = 0, i1 = 1, i2 = 2;
 
@@ -1166,17 +1166,17 @@ static void EON_PF_WireF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 
     EON_sInt32 X0, X1, X2;
     EON_sInt32 Y0, Y1, Y2;
-    EON_uInt32 color = eon_PickColorS(TriFace, 1.0);
+    EON_uInt32 color = eon_PickColorS(Face, 1.0);
 
-    X0 = eon_ToScreen(TriFace->Scr[i0].X);
-    X1 = eon_ToScreen(TriFace->Scr[i1].X);
-    X2 = eon_ToScreen(TriFace->Scr[i2].X);
+    X0 = eon_ToScreen(Face->Scr[i0].X);
+    X1 = eon_ToScreen(Face->Scr[i1].X);
+    X2 = eon_ToScreen(Face->Scr[i2].X);
     X0 = EON_Clamp(X0, 0, Frame->Width-1);
     X1 = EON_Clamp(X1, 0, Frame->Width-1);
     X2 = EON_Clamp(X2, 0, Frame->Width-1);
-    Y0 = eon_ToScreen(TriFace->Scr[i0].Y);
-    Y1 = eon_ToScreen(TriFace->Scr[i1].Y);
-    Y2 = eon_ToScreen(TriFace->Scr[i2].Y);
+    Y0 = eon_ToScreen(Face->Scr[i0].Y);
+    Y1 = eon_ToScreen(Face->Scr[i1].Y);
+    Y2 = eon_ToScreen(Face->Scr[i2].Y);
     Y0 = EON_Clamp(Y0, 0, Frame->Height-1);
     Y1 = EON_Clamp(Y1, 0, Frame->Height-1);
     Y2 = EON_Clamp(Y2, 0, Frame->Height-1);
@@ -1191,7 +1191,7 @@ static void EON_PF_WireF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 // pf_solid.c
 //
 
-static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
+static void EON_PF_SolidF(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
 {
     EON_uChar i0, i1, i2;
 
@@ -1205,28 +1205,28 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
     EON_ZBuffer Z0, Z1, Z2, ZL;
     EON_sInt32 Y1, Y2, Y0, dY;
     EON_uChar stat;
-    EON_Bool zb = TriFace->Material->zBufferable;
-    EON_uInt32 color = eon_PickColorS(TriFace, TriFace->fShade);
+    EON_Bool zb = Face->Material->zBufferable;
+    EON_uInt32 color = eon_PickColorS(Face, Face->fShade);
 
     PUTFACE_SORT();
 
-    X1 = TriFace->Scr[i0].X;
-    X2 = TriFace->Scr[i0].X;
-    Z0 = TriFace->Scr[i0].Z;
-    Z1 = TriFace->Scr[i1].Z;
-    Z2 = TriFace->Scr[i2].Z;
-    Y0 = eon_ToScreen(TriFace->Scr[i0].Y);
-    Y1 = eon_ToScreen(TriFace->Scr[i1].Y);
-    Y2 = eon_ToScreen(TriFace->Scr[i2].Y);
+    X1 = Face->Scr[i0].X;
+    X2 = Face->Scr[i0].X;
+    Z0 = Face->Scr[i0].Z;
+    Z1 = Face->Scr[i1].Z;
+    Z2 = Face->Scr[i2].Z;
+    Y0 = eon_ToScreen(Face->Scr[i0].Y);
+    Y1 = eon_ToScreen(Face->Scr[i1].Y);
+    Y2 = eon_ToScreen(Face->Scr[i2].Y);
 
     dY = Y2-Y0;
     if (dY) {
-        dX2 = (TriFace->Scr[i2].X - X1) / dY;
+        dX2 = (Face->Scr[i2].X - X1) / dY;
         dZ2 = (Z2 - Z0) / dY;
     }
     dY = Y1-Y0;
     if (dY) {
-        dX1 = (TriFace->Scr[i1].X - X1) / dY;
+        dX1 = (Face->Scr[i1].X - X1) / dY;
         dZ1 = (Z1 - Z0) / dY;
         if (dX2 < dX1) {
             dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
@@ -1236,11 +1236,11 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
             stat = 1;
         Z1 = Z0;
     } else {
-        if (TriFace->Scr[i1].X > X1) {
-            X2 = TriFace->Scr[i1].X;
+        if (Face->Scr[i1].X > X1) {
+            X2 = Face->Scr[i1].X;
             stat = 2|4;
         } else {
-            X1 = TriFace->Scr[i1].X;
+            X1 = Face->Scr[i1].X;
             ZL = Z0; Z0 = Z1; Z1 = ZL;
             stat = 1|8;
         }
@@ -1264,23 +1264,23 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 
     while (Y0 < Y2) {
         if (Y0 == Y1) {
-            dY = Y2 - eon_ToScreen(TriFace->Scr[i1].Y);
+            dY = Y2 - eon_ToScreen(Face->Scr[i1].Y);
             if (dY) {
                 if (stat & 1) {
-                    X1 = TriFace->Scr[i1].X;
-                    dX1 = (TriFace->Scr[i2].X - TriFace->Scr[i1].X)/dY;
+                    X1 = Face->Scr[i1].X;
+                    dX1 = (Face->Scr[i2].X - Face->Scr[i1].X)/dY;
                 }
                 if (stat & 2) {
-                    X2 = TriFace->Scr[i1].X;
-                    dX2 = (TriFace->Scr[i2].X - TriFace->Scr[i1].X)/dY;
+                    X2 = Face->Scr[i1].X;
+                    dX2 = (Face->Scr[i2].X - Face->Scr[i1].X)/dY;
                 }
                 if (stat & 4) {
-                    X1 = TriFace->Scr[i0].X;
-                    dX1 = (TriFace->Scr[i2].X - TriFace->Scr[i0].X)/dY;
+                    X1 = Face->Scr[i0].X;
+                    dX1 = (Face->Scr[i2].X - Face->Scr[i0].X)/dY;
                 }
                 if (stat & 8) {
-                    X2 = TriFace->Scr[i0].X;
-                    dX2 = (TriFace->Scr[i2].X - TriFace->Scr[i0].X)/dY;
+                    X2 = Face->Scr[i0].X;
+                    dX2 = (Face->Scr[i2].X - Face->Scr[i0].X)/dY;
                 }
                 dZ1 = (Z2-Z0)/dY;
             }
@@ -1322,7 +1322,7 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 
 // full(er) Phong Eq:
 //  c = (EON_sInt) ((cb*m->Specular[x])+(ca*m->Diffuse[x])+m->Ambient[x]);
-static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
+static void EON_PF_SolidG(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
 {
     EON_uChar i0, i1, i2;
     EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
@@ -1332,32 +1332,32 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
     EON_Float C1, C2, dC1=0, dC2=0, dCL=0, CL, C3;
     EON_sInt32 Y1, Y2, Y0, dY;
     EON_uChar stat;
-    EON_Bool zb = TriFace->Material->zBufferable;
+    EON_Bool zb = Face->Material->zBufferable;
 
     PUTFACE_SORT();
 
-    C1 = TriFace->Shades[i0];
-    C2 = TriFace->Shades[i1];
-    C3 = TriFace->Shades[i2];
-    X1 = TriFace->Scr[i0].X;
-    X2 = TriFace->Scr[i0].X;
-    Z1 = TriFace->Scr[i0].Z;
-    Z2 = TriFace->Scr[i1].Z;
-    Z3 = TriFace->Scr[i2].Z;
+    C1 = Face->Shades[i0];
+    C2 = Face->Shades[i1];
+    C3 = Face->Shades[i2];
+    X1 = Face->Scr[i0].X;
+    X2 = Face->Scr[i0].X;
+    Z1 = Face->Scr[i0].Z;
+    Z2 = Face->Scr[i1].Z;
+    Z3 = Face->Scr[i2].Z;
 
-    Y0 = eon_ToScreen(TriFace->Scr[i0].Y);
-    Y1 = eon_ToScreen(TriFace->Scr[i1].Y);
-    Y2 = eon_ToScreen(TriFace->Scr[i2].Y);
+    Y0 = eon_ToScreen(Face->Scr[i0].Y);
+    Y1 = eon_ToScreen(Face->Scr[i1].Y);
+    Y2 = eon_ToScreen(Face->Scr[i2].Y);
 
     dY = Y2 - Y0;
     if (dY) {
-        dX2 = (TriFace->Scr[i2].X - X1) / dY;
+        dX2 = (Face->Scr[i2].X - X1) / dY;
         dC2 = (C3 - C1) / dY;
         dZ2 = (Z3 - Z1) / dY;
     }
     dY = Y1 - Y0;
     if (dY) {
-        dX1 = (TriFace->Scr[i1].X - X1) / dY;
+        dX1 = (Face->Scr[i1].X - X1) / dY;
         dC1 = (C2 - C1) / dY;
         dZ1 = (Z2 - Z1) / dY;
         if (dX2 < dX1) {
@@ -1371,13 +1371,13 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
         Z2 = Z1;
         C2 = C1;
     } else {
-        if (TriFace->Scr[i1].X > X1) {
-            X2 = TriFace->Scr[i1].X;
+        if (Face->Scr[i1].X > X1) {
+            X2 = Face->Scr[i1].X;
             stat = 2|4;
         } else {
             X1 = C1; C1 = C2; C2 = X1;
             ZL = Z1; Z1 = Z2; Z2 = ZL;
-            X1 = TriFace->Scr[i1].X;
+            X1 = Face->Scr[i1].X;
             stat = 1|8;
         }
     }
@@ -1399,25 +1399,25 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 
     while (Y0 < Y2) {
         if (Y0 == Y1) {
-            dY = Y2 - eon_ToScreen(TriFace->Scr[i1].Y);
+            dY = Y2 - eon_ToScreen(Face->Scr[i1].Y);
             if (dY) {
                 dZ1 = (Z3-Z1)/dY;
                 dC1 = (C3-C1) / dY;
                 if (stat & 1) {
-                    X1 = TriFace->Scr[i1].X;
-                    dX1 = (TriFace->Scr[i2].X - TriFace->Scr[i1].X)/dY;
+                    X1 = Face->Scr[i1].X;
+                    dX1 = (Face->Scr[i2].X - Face->Scr[i1].X)/dY;
                 }
                 if (stat & 2) {
-                    X2 = TriFace->Scr[i1].X;
-                    dX2 = (TriFace->Scr[i2].X - TriFace->Scr[i1].X)/dY;
+                    X2 = Face->Scr[i1].X;
+                    dX2 = (Face->Scr[i2].X - Face->Scr[i1].X)/dY;
                 }
                 if (stat & 4) {
-                    X1 = TriFace->Scr[i0].X;
-                    dX1 = (TriFace->Scr[i2].X - TriFace->Scr[i0].X)/dY;
+                    X1 = Face->Scr[i0].X;
+                    dX1 = (Face->Scr[i2].X - Face->Scr[i0].X)/dY;
                 }
                 if (stat & 8) {
-                    X2 = TriFace->Scr[i0].X;
-                    dX2 = (TriFace->Scr[i2].X - TriFace->Scr[i0].X)/dY;
+                    X2 = Face->Scr[i0].X;
+                    dX2 = (Face->Scr[i2].X - Face->Scr[i0].X)/dY;
                 }
             }
         }
@@ -1434,7 +1434,7 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
                 do {
                     if (*zbuf < ZL) {
                         *zbuf = ZL;
-                        *gmem = eon_PickColorS(TriFace, CL);
+                        *gmem = eon_PickColorS(Face, CL);
                     }
                     gmem++;
                     zbuf++;
@@ -1443,7 +1443,7 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
                 } while (--XL2);
             else
                 do {
-                    *gmem = eon_PickColorS(TriFace, CL);
+                    *gmem = eon_PickColorS(Face, CL);
                     gmem++;
                     CL += dCL;
                 } while (--XL2);
@@ -1463,7 +1463,7 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 // pf_tex.c
 //
 
-static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
+static void EON_PF_TexF(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
   EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
@@ -1481,10 +1481,10 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   EON_sInt32 dUL=0, dVL=0, UL, VL;
   EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
   EON_sInt32 Y1, Y2, Y0, dY;
-  EON_Bool zb = TriFace->Material->zBufferable;
+  EON_Bool zb = Face->Material->zBufferable;
 
-  if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
-  else Texture = TriFace->Material->Texture;
+  if (Face->Material->Environment) Texture = Face->Material->Environment;
+  else Texture = Face->Material->Texture;
 
   if (!Texture) return;
   texture = Texture->Data;
@@ -1492,7 +1492,7 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   MappingV_AND = ((1<<Texture->Height)-1)<<Texture->Width;
   MappingU_AND = (1<<Texture->Width)-1;
 
-  if (TriFace->Material->Environment) {
+  if (Face->Material->Environment) {
     PUTFACE_SORT_ENV();
   } else {
     PUTFACE_SORT_TEX();
@@ -1500,23 +1500,23 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 
   U1 = U2 = MappingU1;
   V1 = V2 = MappingV1;
-  X2 = X1 = TriFace->Scr[i0].X;
-  Z2 = Z1 = TriFace->Scr[i0].Z;
-  Y0 = (TriFace->Scr[i0].Y+(1<<19))>>20;
-  Y1 = (TriFace->Scr[i1].Y+(1<<19))>>20;
-  Y2 = (TriFace->Scr[i2].Y+(1<<19))>>20;
+  X2 = X1 = Face->Scr[i0].X;
+  Z2 = Z1 = Face->Scr[i0].Z;
+  Y0 = (Face->Scr[i0].Y+(1<<19))>>20;
+  Y1 = (Face->Scr[i1].Y+(1<<19))>>20;
+  Y2 = (Face->Scr[i2].Y+(1<<19))>>20;
 
   dY = Y2 - Y0;
   if (dY) {
-    dX2 = (TriFace->Scr[i2].X - X1) / dY;
+    dX2 = (Face->Scr[i2].X - X1) / dY;
     dV2 = (MappingV3 - V1) / dY;
     dU2 = (MappingU3 - U1) / dY;
-    dZ2 = (TriFace->Scr[i2].Z - Z1) / dY;
+    dZ2 = (Face->Scr[i2].Z - Z1) / dY;
   }
   dY = Y1-Y0;
   if (dY) {
-    dX1 = (TriFace->Scr[i1].X - X1) / dY;
-    dZ1 = (TriFace->Scr[i1].Z - Z1) / dY;
+    dX1 = (Face->Scr[i1].X - X1) / dY;
+    dZ1 = (Face->Scr[i1].Z - Z1) / dY;
     dU1 = (MappingU2 - U1) / dY;
     dV1 = (MappingV2 - V1) / dY;
     if (dX2 < dX1) {
@@ -1527,15 +1527,15 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
       stat = 2;
     } else stat = 1;
   } else {
-    if (TriFace->Scr[i1].X > X1) {
-      X2 = TriFace->Scr[i1].X;
-      Z2 = TriFace->Scr[i1].Z;
+    if (Face->Scr[i1].X > X1) {
+      X2 = Face->Scr[i1].X;
+      Z2 = Face->Scr[i1].Z;
       U2 = MappingU2;
       V2 = MappingV2;
       stat = 2|4;
     } else {
-      X1 = TriFace->Scr[i1].X;
-      Z1 = TriFace->Scr[i1].Z;
+      X1 = Face->Scr[i1].X;
+      Z1 = Face->Scr[i1].Z;
       U1 = MappingU2;
       V1 = MappingV2;
       stat = 1|8;
@@ -1561,25 +1561,25 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 
   while (Y0 < Y2) {
     if (Y0 == Y1) {
-      dY = Y2 - ((TriFace->Scr[i1].Y+(1<<19))>>20);
+      dY = Y2 - ((Face->Scr[i1].Y+(1<<19))>>20);
       if (dY) {
         if (stat & 1) {
-          X1 = TriFace->Scr[i1].X;
-          dX1 = (TriFace->Scr[i2].X-TriFace->Scr[i1].X)/dY;
+          X1 = Face->Scr[i1].X;
+          dX1 = (Face->Scr[i2].X-Face->Scr[i1].X)/dY;
         }
         if (stat & 2) {
-          X2 = TriFace->Scr[i1].X;
-          dX2 = (TriFace->Scr[i2].X-TriFace->Scr[i1].X)/dY;
+          X2 = Face->Scr[i1].X;
+          dX2 = (Face->Scr[i2].X-Face->Scr[i1].X)/dY;
         }
         if (stat & 4) {
-          X1 = TriFace->Scr[i0].X;
-          dX1 = (TriFace->Scr[i2].X-TriFace->Scr[i0].X)/dY;
+          X1 = Face->Scr[i0].X;
+          dX1 = (Face->Scr[i2].X-Face->Scr[i0].X)/dY;
         }
         if (stat & 8) {
-          X2 = TriFace->Scr[i0].X;
-          dX2 = (TriFace->Scr[i2].X-TriFace->Scr[i0].X)/dY;
+          X2 = Face->Scr[i0].X;
+          dX2 = (Face->Scr[i2].X-Face->Scr[i0].X)/dY;
         }
-        dZ1 = (TriFace->Scr[i2].Z-Z1) / dY;
+        dZ1 = (Face->Scr[i2].Z-Z1) / dY;
         dV1 = (MappingV3 - V1) / dY;
         dU1 = (MappingU3 - U1) / dY;
       }
@@ -1598,7 +1598,7 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
           if (*zbuf < ZL) {
             int tv = ((UL>>16)&MappingU_AND) + ((VL>>vshift)&MappingV_AND);
             *zbuf = ZL;
-            *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], TriFace->fShade);
+            *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], Face->fShade);
           }
           zbuf++;
           gmem++;
@@ -1608,7 +1608,7 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
         } while (--XL2);
       else do {
           int tv = ((UL>>16)&MappingU_AND) + ((VL>>vshift)&MappingV_AND);
-          *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], TriFace->fShade);
+          *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], Face->fShade);
           gmem++;
           UL += dUL;
           VL += dVL;
@@ -1627,7 +1627,7 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   }
 }
 
-static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
+static void EON_PF_TexG(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
   EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
@@ -1646,10 +1646,10 @@ static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   EON_sInt32 Y1, Y2, Y0, dY;
   EON_uChar stat;
 
-  EON_Bool zb = TriFace->Material->zBufferable;
+  EON_Bool zb = Face->Material->zBufferable;
 
-  if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
-  else Texture = TriFace->Material->Texture;
+  if (Face->Material->Environment) Texture = Face->Material->Environment;
+  else Texture = Face->Material->Texture;
 
   if (!Texture) return;
   texture = Texture->Data;
@@ -1657,34 +1657,34 @@ static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   MappingV_AND = ((1<<Texture->Height)-1)<<Texture->Width;
   MappingU_AND = (1<<Texture->Width)-1;
 
-  if (TriFace->Material->Environment) {
+  if (Face->Material->Environment) {
     PUTFACE_SORT_ENV();
   } else {
     PUTFACE_SORT_TEX();
   }
 
-  C1 = C2 = TriFace->Shades[i0]*65535.0f;
+  C1 = C2 = Face->Shades[i0]*65535.0f;
   U1 = U2 = MappingU1;
   V1 = V2 = MappingV1;
-  X2 = X1 = TriFace->Scr[i0].X;
-  Z2 = Z1 = TriFace->Scr[i0].Z;
-  Y0 = (TriFace->Scr[i0].Y+(1<<19))>>20;
-  Y1 = (TriFace->Scr[i1].Y+(1<<19))>>20;
-  Y2 = (TriFace->Scr[i2].Y+(1<<19))>>20;
+  X2 = X1 = Face->Scr[i0].X;
+  Z2 = Z1 = Face->Scr[i0].Z;
+  Y0 = (Face->Scr[i0].Y+(1<<19))>>20;
+  Y1 = (Face->Scr[i1].Y+(1<<19))>>20;
+  Y2 = (Face->Scr[i2].Y+(1<<19))>>20;
 
   dY = Y2 - Y0;
   if (dY) {
-    dX2 = (TriFace->Scr[i2].X - X1) / dY;
-    dZ2 = (TriFace->Scr[i2].Z - Z1) / dY;
-    dC2 = (TriFace->Shades[i2]*65535.0f - C1) / dY;
+    dX2 = (Face->Scr[i2].X - X1) / dY;
+    dZ2 = (Face->Scr[i2].Z - Z1) / dY;
+    dC2 = (Face->Shades[i2]*65535.0f - C1) / dY;
     dU2 = (MappingU3 - U1) / dY;
     dV2 = (MappingV3 - V1) / dY;
   }
   dY = Y1-Y0;
   if (dY) {
-    dX1 = (TriFace->Scr[i1].X - X1) / dY;
-    dZ1 = (TriFace->Scr[i1].Z - Z1) / dY;
-    dC1 = (TriFace->Shades[i1]*65535.0f - C1) / dY;
+    dX1 = (Face->Scr[i1].X - X1) / dY;
+    dZ1 = (Face->Scr[i1].Z - Z1) / dY;
+    dC1 = (Face->Shades[i1]*65535.0f - C1) / dY;
     dU1 = (MappingU2 - U1) / dY;
     dV1 = (MappingV2 - V1) / dY;
     if (dX2 < dX1) {
@@ -1696,17 +1696,17 @@ static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
       stat = 2;
     } else stat = 1;
   } else {
-    if (TriFace->Scr[i1].X > X1) {
-      X2 = TriFace->Scr[i1].X;
-      Z2 = TriFace->Scr[i1].Z;
-      C2 = TriFace->Shades[i1]*65535.0f;
+    if (Face->Scr[i1].X > X1) {
+      X2 = Face->Scr[i1].X;
+      Z2 = Face->Scr[i1].Z;
+      C2 = Face->Shades[i1]*65535.0f;
       U2 = MappingU2;
       V2 = MappingV2;
       stat = 2|4;
     } else {
-      X1 = TriFace->Scr[i1].X;
-      Z1 = TriFace->Scr[i1].Z;
-      C1 = TriFace->Shades[i1]*65535.0f;
+      X1 = Face->Scr[i1].X;
+      Z1 = Face->Scr[i1].Z;
+      C1 = Face->Shades[i1]*65535.0f;
       U1 = MappingU2;
       V1 = MappingV2;
       stat = 1|8;
@@ -1733,28 +1733,28 @@ static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   }
   while (Y0 < Y2) {
     if (Y0 == Y1) {
-      dY = Y2 - ((TriFace->Scr[i1].Y+(1<<19))>>20);
+      dY = Y2 - ((Face->Scr[i1].Y+(1<<19))>>20);
       if (dY) {
         if (stat & 1) {
-          X1 = TriFace->Scr[i1].X;
-          dX1 = (TriFace->Scr[i2].X-TriFace->Scr[i1].X)/dY;
+          X1 = Face->Scr[i1].X;
+          dX1 = (Face->Scr[i2].X-Face->Scr[i1].X)/dY;
         }
         if (stat & 2) {
-          X2 = TriFace->Scr[i1].X;
-          dX2 = (TriFace->Scr[i2].X-TriFace->Scr[i1].X)/dY;
+          X2 = Face->Scr[i1].X;
+          dX2 = (Face->Scr[i2].X-Face->Scr[i1].X)/dY;
         }
         if (stat & 4) {
-          X1 = TriFace->Scr[i0].X;
-          dX1 = (TriFace->Scr[i2].X-TriFace->Scr[i0].X)/dY;
+          X1 = Face->Scr[i0].X;
+          dX1 = (Face->Scr[i2].X-Face->Scr[i0].X)/dY;
         }
         if (stat & 8) {
-          X2 = TriFace->Scr[i0].X;
-          dX2 = (TriFace->Scr[i2].X-TriFace->Scr[i0].X)/dY;
+          X2 = Face->Scr[i0].X;
+          dX2 = (Face->Scr[i2].X-Face->Scr[i0].X)/dY;
         }
-        dZ1 = (TriFace->Scr[i2].Z-Z1)/dY;
+        dZ1 = (Face->Scr[i2].Z-Z1)/dY;
         dV1 = (MappingV3 - V1) / dY;
         dU1 = (MappingU3 - U1) / dY;
-        dC1 = (TriFace->Shades[i2]*65535.0f-C1)/dY;
+        dC1 = (Face->Shades[i2]*65535.0f-C1)/dY;
       }
     }
     XL1 = (X1+(1<<19))>>20;
@@ -1807,7 +1807,7 @@ static void EON_PF_TexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 // pf_ptex.c
 //
 
-static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
+static void EON_PF_PTexF(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
   EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
@@ -1830,15 +1830,15 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   EON_sInt32 Y1, Y2, Y0, dY;
   EON_uChar stat;
 
-  EON_Bool zb = TriFace->Material->zBufferable;
+  EON_Bool zb = Face->Material->zBufferable;
 
-  if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
-  else Texture = TriFace->Material->Texture;
+  if (Face->Material->Environment) Texture = Face->Material->Environment;
+  else Texture = Face->Material->Texture;
 
   if (!Texture) return;
   texture = Texture->Data;
 
-  nm = TriFace->Material->PerspectiveCorrect;
+  nm = Face->Material->PerspectiveCorrect;
   nmb = 0; while (nm) { nmb++; nm >>= 1; }
   nmb = EON_Min(6,nmb);
   nm = 1<<nmb;
@@ -1846,38 +1846,38 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   MappingU_AND = (1<<Texture->Width)-1;
   vshift = 16 - Texture->Width;
 
-  if (TriFace->Material->Environment) {
+  if (Face->Material->Environment) {
     PUTFACE_SORT_ENV();
   } else {
     PUTFACE_SORT_TEX();
   }
 
-  MappingU1 *= TriFace->Scr[i0].Z/65536.0f;
-  MappingV1 *= TriFace->Scr[i0].Z/65536.0f;
-  MappingU2 *= TriFace->Scr[i1].Z/65536.0f;
-  MappingV2 *= TriFace->Scr[i1].Z/65536.0f;
-  MappingU3 *= TriFace->Scr[i2].Z/65536.0f;
-  MappingV3 *= TriFace->Scr[i2].Z/65536.0f;
+  MappingU1 *= Face->Scr[i0].Z/65536.0f;
+  MappingV1 *= Face->Scr[i0].Z/65536.0f;
+  MappingU2 *= Face->Scr[i1].Z/65536.0f;
+  MappingV2 *= Face->Scr[i1].Z/65536.0f;
+  MappingU3 *= Face->Scr[i2].Z/65536.0f;
+  MappingV3 *= Face->Scr[i2].Z/65536.0f;
 
   U1 = U2 = MappingU1;
   V1 = V2 = MappingV1;
-  X2 = X1 = TriFace->Scr[i0].X;
-  Z2 = Z1 = TriFace->Scr[i0].Z;
-  Y0 = (TriFace->Scr[i0].Y+(1<<19))>>20;
-  Y1 = (TriFace->Scr[i1].Y+(1<<19))>>20;
-  Y2 = (TriFace->Scr[i2].Y+(1<<19))>>20;
+  X2 = X1 = Face->Scr[i0].X;
+  Z2 = Z1 = Face->Scr[i0].Z;
+  Y0 = (Face->Scr[i0].Y+(1<<19))>>20;
+  Y1 = (Face->Scr[i1].Y+(1<<19))>>20;
+  Y2 = (Face->Scr[i2].Y+(1<<19))>>20;
 
   dY = Y2-Y0;
   if (dY) {
-    dX2 = (TriFace->Scr[i2].X - X1) / dY;
-    dZ2 = (TriFace->Scr[i2].Z - Z1) / dY;
+    dX2 = (Face->Scr[i2].X - X1) / dY;
+    dZ2 = (Face->Scr[i2].Z - Z1) / dY;
     dU2 = (MappingU3 - U1) / dY;
     dV2 = (MappingV3 - V1) / dY;
   }
   dY = Y1-Y0;
   if (dY) {
-    dX1 = (TriFace->Scr[i1].X - X1) / dY;
-    dZ1 = (TriFace->Scr[i1].Z - Z1) / dY;
+    dX1 = (Face->Scr[i1].X - X1) / dY;
+    dZ1 = (Face->Scr[i1].Z - Z1) / dY;
     dU1 = (MappingU2 - U1) / dY;
     dV1 = (MappingV2 - V1) / dY;
     if (dX2 < dX1) {
@@ -1888,15 +1888,15 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
       stat = 2;
     } else stat = 1;
   } else {
-    if (TriFace->Scr[i1].X > X1) {
-      X2 = TriFace->Scr[i1].X;
-      Z2 = TriFace->Scr[i1].Z;
+    if (Face->Scr[i1].X > X1) {
+      X2 = Face->Scr[i1].X;
+      Z2 = Face->Scr[i1].Z;
       U2 = MappingU2;
       V2 = MappingV2;
       stat = 2|4;
     } else {
-      X1 = TriFace->Scr[i1].X;
-      Z1 = TriFace->Scr[i1].Z;
+      X1 = Face->Scr[i1].X;
+      Z1 = Face->Scr[i1].Z;
       U1 = MappingU2;
       V1 = MappingV2;
       stat = 1|8;
@@ -1926,25 +1926,25 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 
   while (Y0 < Y2) {
     if (Y0 == Y1) {
-      dY = Y2-((TriFace->Scr[i1].Y+(1<<19))>>20);
+      dY = Y2-((Face->Scr[i1].Y+(1<<19))>>20);
       if (dY) {
         if (stat & 1) {
-          X1 = TriFace->Scr[i1].X;
-          dX1 = (TriFace->Scr[i2].X-TriFace->Scr[i1].X)/dY;
+          X1 = Face->Scr[i1].X;
+          dX1 = (Face->Scr[i2].X-Face->Scr[i1].X)/dY;
         }
         if (stat & 2) {
-          X2 = TriFace->Scr[i1].X;
-          dX2 = (TriFace->Scr[i2].X-TriFace->Scr[i1].X)/dY;
+          X2 = Face->Scr[i1].X;
+          dX2 = (Face->Scr[i2].X-Face->Scr[i1].X)/dY;
         }
         if (stat & 4) {
-          X1 = TriFace->Scr[i0].X;
-          dX1 = (TriFace->Scr[i2].X-TriFace->Scr[i0].X)/dY;
+          X1 = Face->Scr[i0].X;
+          dX1 = (Face->Scr[i2].X-Face->Scr[i0].X)/dY;
         }
         if (stat & 8) {
-          X2 = TriFace->Scr[i0].X;
-          dX2 = (TriFace->Scr[i2].X-TriFace->Scr[i0].X)/dY;
+          X2 = Face->Scr[i0].X;
+          dX2 = (Face->Scr[i2].X-Face->Scr[i0].X)/dY;
         }
-        dZ1 = (TriFace->Scr[i2].Z-Z1)/dY;
+        dZ1 = (Face->Scr[i2].Z-Z1)/dY;
         dV1 = (MappingV3 - V1) / dY;
         dU1 = (MappingU3 - U1) / dY;
       }
@@ -1980,7 +1980,7 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
             if (*zbuf < ZL) {
               int tv = ((iUL>>16)&MappingU_AND) + ((iVL>>vshift)&MappingV_AND);
               *zbuf = ZL;
-              *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], TriFace->fShade);
+              *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], Face->fShade);
             }
             zbuf++;
             gmem++;
@@ -1990,7 +1990,7 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
           } while (--n);
         else do {
             int tv = ((iUL>>16)&MappingU_AND) + ((iVL>>vshift)&MappingV_AND);
-            *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], TriFace->fShade);
+            *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], Face->fShade);
             gmem++;
             iUL += idUL;
             iVL += idVL;
@@ -2011,14 +2011,14 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   }
 }
 
-static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
+static void EON_PF_PTexG(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
 {
   EON_uChar i0, i1, i2;
   EON_Float MappingU1, MappingU2, MappingU3;
   EON_Float MappingV1, MappingV2, MappingV3;
 
   EON_Texture *Texture;
-  EON_Bool zb = TriFace->Material->zBufferable;
+  EON_Bool zb = Face->Material->zBufferable;
 
   EON_uChar nm, nmb;
   EON_uInt n;
@@ -2043,13 +2043,13 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
   EON_ZBuffer *zbuf = Frame->ZBuffer;
 
-  if (TriFace->Material->Environment) Texture = TriFace->Material->Environment;
-  else Texture = TriFace->Material->Texture;
+  if (Face->Material->Environment) Texture = Face->Material->Environment;
+  else Texture = Face->Material->Texture;
 
   if (!Texture) return;
   texture = Texture->Data;
 
-  nm = TriFace->Material->PerspectiveCorrect;
+  nm = Face->Material->PerspectiveCorrect;
   nmb = 0; while (nm) { nmb++; nm >>= 1; }
   nmb = EON_Min(6,nmb);
   nm = 1<<nmb;
@@ -2057,44 +2057,44 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   MappingU_AND = (1<<Texture->Width)-1;
   vshift = 16 - Texture->Width;
 
-  if (TriFace->Material->Environment) {
+  if (Face->Material->Environment) {
     PUTFACE_SORT_ENV();
   } else {
     PUTFACE_SORT_TEX();
   }
 
-  MappingU1 *= TriFace->Scr[i0].Z/65536.0f;
-  MappingV1 *= TriFace->Scr[i0].Z/65536.0f;
-  MappingU2 *= TriFace->Scr[i1].Z/65536.0f;
-  MappingV2 *= TriFace->Scr[i1].Z/65536.0f;
-  MappingU3 *= TriFace->Scr[i2].Z/65536.0f;
-  MappingV3 *= TriFace->Scr[i2].Z/65536.0f;
-  TriFace->Shades[0] *= 65536.0f;
-  TriFace->Shades[1] *= 65536.0f;
-  TriFace->Shades[2] *= 65536.0f;
+  MappingU1 *= Face->Scr[i0].Z/65536.0f;
+  MappingV1 *= Face->Scr[i0].Z/65536.0f;
+  MappingU2 *= Face->Scr[i1].Z/65536.0f;
+  MappingV2 *= Face->Scr[i1].Z/65536.0f;
+  MappingU3 *= Face->Scr[i2].Z/65536.0f;
+  MappingV3 *= Face->Scr[i2].Z/65536.0f;
+  Face->Shades[0] *= 65536.0f;
+  Face->Shades[1] *= 65536.0f;
+  Face->Shades[2] *= 65536.0f;
 
-  C1 = C2 = (EON_sInt32) TriFace->Shades[i0];
+  C1 = C2 = (EON_sInt32) Face->Shades[i0];
   U1 = U2 = MappingU1;
   V1 = V2 = MappingV1;
-  X2 = X1 = TriFace->Scr[i0].X;
-  Z2 = Z1 = TriFace->Scr[i0].Z;
-  Y0 = (TriFace->Scr[i0].Y+(1<<19))>>20;
-  Y1 = (TriFace->Scr[i1].Y+(1<<19))>>20;
-  Y2 = (TriFace->Scr[i2].Y+(1<<19))>>20;
+  X2 = X1 = Face->Scr[i0].X;
+  Z2 = Z1 = Face->Scr[i0].Z;
+  Y0 = (Face->Scr[i0].Y+(1<<19))>>20;
+  Y1 = (Face->Scr[i1].Y+(1<<19))>>20;
+  Y2 = (Face->Scr[i2].Y+(1<<19))>>20;
 
   dY = Y2-Y0;
   if (dY) {
-    dX2 = (TriFace->Scr[i2].X - X1) / dY;
-    dZ2 = (TriFace->Scr[i2].Z - Z1) / dY;
-    dC2 = (EON_sInt32) ((TriFace->Shades[i2] - C1) / dY);
+    dX2 = (Face->Scr[i2].X - X1) / dY;
+    dZ2 = (Face->Scr[i2].Z - Z1) / dY;
+    dC2 = (EON_sInt32) ((Face->Shades[i2] - C1) / dY);
     dU2 = (MappingU3 - U1) / dY;
     dV2 = (MappingV3 - V1) / dY;
   }
   dY = Y1-Y0;
   if (dY) {
-    dX1 = (TriFace->Scr[i1].X - X1) / dY;
-    dZ1 = (TriFace->Scr[i1].Z - Z1) / dY;
-    dC1 = (EON_sInt32) ((TriFace->Shades[i1] - C1) / dY);
+    dX1 = (Face->Scr[i1].X - X1) / dY;
+    dZ1 = (Face->Scr[i1].Z - Z1) / dY;
+    dC1 = (EON_sInt32) ((Face->Shades[i1] - C1) / dY);
     dU1 = (MappingU2 - U1) / dY;
     dV1 = (MappingV2 - V1) / dY;
     if (dX2 < dX1) {
@@ -2106,17 +2106,17 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
       stat = 2;
     } else stat = 1;
   } else {
-    if (TriFace->Scr[i1].X > X1) {
-      X2 = TriFace->Scr[i1].X;
-      Z2 = TriFace->Scr[i1].Z;
-      C2 = (EON_sInt32)TriFace->Shades[i1];
+    if (Face->Scr[i1].X > X1) {
+      X2 = Face->Scr[i1].X;
+      Z2 = Face->Scr[i1].Z;
+      C2 = (EON_sInt32)Face->Shades[i1];
       U2 = MappingU2;
       V2 = MappingV2;
       stat = 2|4;
     } else {
-      X1 = TriFace->Scr[i1].X;
-      Z1 = TriFace->Scr[i1].Z;
-      C1 = (EON_sInt32)TriFace->Shades[i1];
+      X1 = Face->Scr[i1].X;
+      Z1 = Face->Scr[i1].Z;
+      C1 = (EON_sInt32)Face->Shades[i1];
       U1 = MappingU2;
       V1 = MappingV2;
       stat = 1|8;
@@ -2149,26 +2149,26 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
   Y0 = Y2-Y0;
   while (Y0--) {
     if (!Y1--) {
-      dY = Y2-((TriFace->Scr[i1].Y+(1<<19))>>20);
+      dY = Y2-((Face->Scr[i1].Y+(1<<19))>>20);
       if (dY) {
         if (stat & 1) {
-          X1 = TriFace->Scr[i1].X;
-          dX1 = (TriFace->Scr[i2].X-TriFace->Scr[i1].X)/dY;
+          X1 = Face->Scr[i1].X;
+          dX1 = (Face->Scr[i2].X-Face->Scr[i1].X)/dY;
         }
         if (stat & 2) {
-          X2 = TriFace->Scr[i1].X;
-          dX2 = (TriFace->Scr[i2].X-TriFace->Scr[i1].X)/dY;
+          X2 = Face->Scr[i1].X;
+          dX2 = (Face->Scr[i2].X-Face->Scr[i1].X)/dY;
         }
         if (stat & 4) {
-          X1 = TriFace->Scr[i0].X;
-          dX1 = (TriFace->Scr[i2].X-TriFace->Scr[i0].X)/dY;
+          X1 = Face->Scr[i0].X;
+          dX1 = (Face->Scr[i2].X-Face->Scr[i0].X)/dY;
         }
         if (stat & 8) {
-          X2 = TriFace->Scr[i0].X;
-          dX2 = (TriFace->Scr[i2].X-TriFace->Scr[i0].X)/dY;
+          X2 = Face->Scr[i0].X;
+          dX2 = (Face->Scr[i2].X-Face->Scr[i0].X)/dY;
         }
-        dZ1 = (TriFace->Scr[i2].Z-Z1)/dY;
-        dC1 = (EON_sInt32)((TriFace->Shades[i2]-C1)/dY);
+        dZ1 = (Face->Scr[i2].Z-Z1)/dY;
+        dC1 = (EON_sInt32)((Face->Shades[i2]-C1)/dY);
         dV1 = (MappingV3 - V1) / dY;
         dU1 = (MappingU3 - U1) / dY;
       }
