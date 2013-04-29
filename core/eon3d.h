@@ -231,21 +231,22 @@ struct _EON_Face {
 ** Object
 */
 typedef struct _EON_Obj {
-    EON_uInt32 NumVertices;              /* Number of vertices */
-    EON_uInt32 NumFaces;                 /* Number of faces */
-    EON_Vertex *Vertices;                /* Array of vertices */
-    EON_Face *Faces;                     /* Array of faces */
+    EON_uInt32 NumVertices;         /* Number of vertices */
+    EON_uInt32 NumFaces;            /* Number of faces */
+    EON_Vertex *Vertices;           /* Array of vertices */
+    EON_Face *Faces;                /* Array of faces */
     struct _EON_Obj *Children[EON_MAX_CHILDREN];
-                                      /* Children */
-    EON_Bool BackfaceCull;               /* Are backfacing polys drawn? */
-    EON_Bool BackfaceIllumination;       /* Illuminated by lights behind them? */
-    EON_Bool GenMatrix;                  /* Generate Matrix from the following
-                                         if set */
-    EON_Float Xp, Yp, Zp, Xa, Ya, Za;    /* Position and rotation of object:
-                                         Note: rotations are around
-                                         X then Y then Z. Measured in degrees */
-    EON_Float Matrix[16];                /* Transformation matrix */
-    EON_Float RotMatrix[16];             /* Rotation only matrix (for normals) */
+                                    /* Children */
+    EON_Bool BackfaceCull;          /* Are backfacing polys drawn? */
+    EON_Bool BackfaceIllumination;  /* Illuminated by lights behind them? */
+    EON_Bool GenMatrix;             /* Generate Matrix from the following
+                                       if set */
+    EON_Float Xp, Yp, Zp;           /* Position of the object */
+    EON_Float Xa, Ya, Za;           /* Rotation of object:
+                                       Note: rotations are around
+                                       X then Y then Z. Measured in degrees */
+    EON_Float Matrix[16];           /* Transformation matrix */
+    EON_Float RotMatrix[16];        /* Rotation only matrix (for normals) */
 } EON_Obj;
 
 /*
