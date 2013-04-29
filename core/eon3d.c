@@ -94,7 +94,6 @@ static void EON_PF_SolidF(EON_Cam *, EON_Face *, EON_Frame *);
 static void EON_PF_SolidG(EON_Cam *, EON_Face *, EON_Frame *);
 static void EON_PF_TexF(EON_Cam *, EON_Face *, EON_Frame *);
 static void EON_PF_TexG(EON_Cam *, EON_Face *, EON_Frame *);
-static void EON_PF_TexEnv(EON_Cam *, EON_Face *, EON_Frame *);
 static void EON_PF_PTexF(EON_Cam *, EON_Face *, EON_Frame *);
 static void EON_PF_PTexG(EON_Cam *, EON_Face *, EON_Frame *);
 
@@ -496,7 +495,6 @@ EON_Obj *EON_ObjCalcNormals(EON_Obj *obj)
 // mat.c
 //
 
-static void eon_GenerateTextureEnvPalette(EON_Mat *);
 static void eon_SetMaterialPutFace(EON_Mat *m);
 
 EON_Mat *EON_MatCreate()
@@ -538,88 +536,11 @@ void EON_MatInit(EON_Mat *m)
                (m->Texture ? EON_FILL_TEXTURE : EON_FILL_SOLID));
     m->_st = m->ShadeType;
 
-    if (m->_ft == (EON_FILL_TEXTURE|EON_FILL_ENVIRONMENT))
-        m->_st = EON_SHADE_NONE;
-
-    if (m->_ft == (EON_FILL_ENVIRONMENT|EON_FILL_TEXTURE)) {
-        eon_GenerateTextureEnvPalette(m);
-    }
     eon_SetMaterialPutFace(m);
+
+    return;
 }
 
-
-static void eon_GenerateTextureEnvPalette(EON_Mat *m)
-{
-    EON_sInt c;
-    EON_uInt whichlevel,whichindex;
-    EON_uChar *texpal, *envpal, *pal;
-    m->_ColorsUsed = m->Texture->NumColors*m->Environment->NumColors;
-    if (m->_RequestedColors)
-        CX_free(m->_RequestedColors);
-    pal = m->_RequestedColors = CX_malloc(m->_ColorsUsed*3);
-    envpal = m->Environment->PaletteData;
-    if (m->_AddTable)
-        CX_free(m->_AddTable);
-    m->_AddTable = CX_malloc(m->Environment->NumColors*sizeof(EON_uInt16));
-    for (whichlevel = 0; whichlevel < m->Environment->NumColors; whichlevel++) {
-        texpal = m->Texture->PaletteData;
-        switch (m->TexEnvMode) {
-        case EON_TEXENV_MUL: // multiply
-            for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
-                *pal++ = (EON_uChar) (((EON_sInt) (*texpal++) * (EON_sInt) envpal[0])>>8);
-                *pal++ = (EON_uChar) (((EON_sInt) (*texpal++) * (EON_sInt) envpal[1])>>8);
-                *pal++ = (EON_uChar) (((EON_sInt) (*texpal++) * (EON_sInt) envpal[2])>>8);
-            }
-            break;
-        case EON_TEXENV_AVG: // average
-            for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
-                *pal++ = (EON_uChar) (((EON_sInt) (*texpal++) + (EON_sInt) envpal[0])>>1);
-                *pal++ = (EON_uChar) (((EON_sInt) (*texpal++) + (EON_sInt) envpal[1])>>1);
-                *pal++ = (EON_uChar) (((EON_sInt) (*texpal++) + (EON_sInt) envpal[2])>>1);
-            }
-            break;
-        case EON_TEXENV_TEXMINUSENV: // tex-env
-            for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
-                c = (EON_sInt) (*texpal++) - (EON_sInt) envpal[0]; *pal++ = EON_Clamp(c,0,255);
-                c = (EON_sInt) (*texpal++) - (EON_sInt) envpal[1]; *pal++ = EON_Clamp(c,0,255);
-                c = (EON_sInt) (*texpal++) - (EON_sInt) envpal[2]; *pal++ = EON_Clamp(c,0,255);
-            }
-            break;
-        case EON_TEXENV_ENVMINUSTEX: // env-tex
-            for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
-                c = -(EON_sInt) (*texpal++) - (EON_sInt) envpal[0]; *pal++ = EON_Clamp(c,0,255);
-                c = -(EON_sInt) (*texpal++) - (EON_sInt) envpal[1]; *pal++ = EON_Clamp(c,0,255);
-                c = -(EON_sInt) (*texpal++) - (EON_sInt) envpal[2]; *pal++ = EON_Clamp(c,0,255);
-            }
-            break;
-        case EON_TEXENV_MIN:
-            for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
-                *pal++ = EON_Min(texpal[0],envpal[0]);
-                *pal++ = EON_Min(texpal[1],envpal[1]);
-                *pal++ = EON_Min(texpal[2],envpal[2]);
-                texpal+=3;
-            }
-            break;
-        case EON_TEXENV_MAX:
-            for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
-                *pal++ = EON_Max(texpal[0],envpal[0]);
-                *pal++ = EON_Max(texpal[1],envpal[1]);
-                *pal++ = EON_Max(texpal[2],envpal[2]);
-                texpal+=3;
-            }
-            break;
-        default: // add
-            for (whichindex = 0; whichindex < m->Texture->NumColors; whichindex++) {
-                c = (EON_sInt) (*texpal++) + (EON_sInt) envpal[0]; *pal++ = EON_Clamp(c,0,255);
-                c = (EON_sInt) (*texpal++) + (EON_sInt) envpal[1]; *pal++ = EON_Clamp(c,0,255);
-                c = (EON_sInt) (*texpal++) + (EON_sInt) envpal[2]; *pal++ = EON_Clamp(c,0,255);
-            }
-            break;
-        }
-        envpal += 3;
-        m->_AddTable[whichlevel] = whichlevel*m->Texture->NumColors;
-    }
-}
 
 static void eon_SetMaterialPutFace(EON_Mat *m)
 {
@@ -643,7 +564,7 @@ static void eon_SetMaterialPutFace(EON_Mat *m)
             break;
         }
         break;
-    case EON_FILL_ENVIRONMENT:
+    case EON_FILL_ENVIRONMENT: // fallthrough
     case EON_FILL_TEXTURE:
         if (m->PerspectiveCorrect)
             switch (m->_st) {
@@ -674,10 +595,8 @@ static void eon_SetMaterialPutFace(EON_Mat *m)
                 break;
             }
         break;
-    case EON_FILL_TEXTURE|EON_FILL_ENVIRONMENT:
-        m->_PutFace = EON_PF_TexEnv;
-        break;
     }
+    return;
 }
 
 static const char *eon_PutFaceName(void *addr)
@@ -693,8 +612,6 @@ static const char *eon_PutFaceName(void *addr)
         name = "TexF";
     } else if (addr == EON_PF_TexG) {
         name = "TexG";
-    } else if (addr == EON_PF_TexEnv) {
-        name = "TexEnv";
     } else if (addr == EON_PF_PTexF) {
         name = "PTexF";
     } else if (addr == EON_PF_PTexG) {
@@ -1555,221 +1472,6 @@ static void EON_PF_SolidG(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 
 // pf_tex.c
 //
-
-static void EON_PF_TexEnv(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
-{
-  EON_uChar i0, i1, i2;
-  EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
-  EON_uChar *remap;
-  EON_ZBuffer *zbuf = Frame->ZBuffer;
-
-  EON_sInt32 MappingU1, MappingU2, MappingU3;
-  EON_sInt32 MappingV1, MappingV2, MappingV3;
-  EON_sInt32 MappingU_AND, MappingV_AND;
-  EON_sInt32 eMappingU1, eMappingU2, eMappingU3;
-  EON_sInt32 eMappingV1, eMappingV2, eMappingV3;
-  EON_sInt32 eMappingU_AND, eMappingV_AND;
-
-  EON_uChar *texture, *environment;
-  EON_uChar vshift;
-  EON_uChar evshift;
-  EON_uInt16 *addtable;
-  EON_Texture *Texture, *Environment;
-  EON_uChar stat;
-  EON_Bool zb = TriFace->Material->zBufferable;
-
-  EON_sInt32 U1, V1, U2, V2, dU1=0, dU2=0, dV1=0, dV2=0, dUL=0, dVL=0, UL, VL;
-  EON_sInt32 eU1, eV1, eU2, eV2, edU1=0, edU2=0, edV1=0,
-            edV2=0, edUL=0, edVL=0, eUL, eVL;
-  EON_sInt32 X1, X2, dX1=0, dX2=0, XL1, XL2;
-  EON_Float Z1, ZL, dZ1=0, dZ2=0, dZL=0, Z2;
-  EON_sInt32 Y1, Y2, Y0, dY;
-
-  Environment = TriFace->Material->Environment;
-  Texture = TriFace->Material->Texture;
-
-  if (!Texture || !Environment) return;
-  texture = Texture->Data;
-  environment = Environment->Data;
-  addtable = TriFace->Material->_AddTable;
-  remap = TriFace->Material->_ReMapTable;
-
-  MappingV_AND = ((1<<Texture->Height)-1)<<Texture->Width;
-  MappingU_AND = (1<<Texture->Width)-1;
-  vshift = 16 - Texture->Width;
-  eMappingV_AND = ((1<<Environment->Height)-1)<<Environment->Width;
-  eMappingU_AND = (1<<Environment->Width)-1;
-  evshift = 16 - Environment->Width;
-
-  PUTFACE_SORT_TEX();
-
-  eMappingU1=(EON_sInt32) (TriFace->eMappingU[i0]*Environment->uScale*TriFace->Material->EnvScaling);
-  eMappingV1=(EON_sInt32) (TriFace->eMappingV[i0]*Environment->vScale*TriFace->Material->EnvScaling);
-  eMappingU2=(EON_sInt32) (TriFace->eMappingU[i1]*Environment->uScale*TriFace->Material->EnvScaling);
-  eMappingV2=(EON_sInt32) (TriFace->eMappingV[i1]*Environment->vScale*TriFace->Material->EnvScaling);
-  eMappingU3=(EON_sInt32) (TriFace->eMappingU[i2]*Environment->uScale*TriFace->Material->EnvScaling);
-  eMappingV3=(EON_sInt32) (TriFace->eMappingV[i2]*Environment->vScale*TriFace->Material->EnvScaling);
-
-  U1 = U2 = MappingU1;
-  V1 = V2 = MappingV1;
-  eU1 = eU2 = eMappingU1;
-  eV1 = eV2 = eMappingV1;
-  X2 = X1 = TriFace->Scrx[i0];
-  Z2 = Z1 = TriFace->Scrz[i0];
-  Y0 = (TriFace->Scry[i0]+(1<<19))>>20;
-  Y1 = (TriFace->Scry[i1]+(1<<19))>>20;
-  Y2 = (TriFace->Scry[i2]+(1<<19))>>20;
-
-  dY = Y2 - Y0;
-  if (dY) {
-    dU2 = (MappingU3 - U1) / dY;
-    dV2 = (MappingV3 - V1) / dY;
-    edU2 = (eMappingU3 - eU1) / dY;
-    edV2 = (eMappingV3 - eV1) / dY;
-    dX2 = (TriFace->Scrx[i2] - X1) / dY;
-    dZ2 = (TriFace->Scrz[i2] - Z1) / dY;
-  }
-  dY = Y1-Y0;
-  if (dY) {
-    dX1 = (TriFace->Scrx[i1] - X1) / dY;
-    dU1 = (MappingU2 - U1) / dY;
-    dV1 = (MappingV2 - V1) / dY;
-    edU1 = (eMappingU2 - eU1) / dY;
-    edV1 = (eMappingV2 - eV1) / dY;
-    dZ1 = (TriFace->Scrz[i1] - Z1) / dY;
-    if (dX2 < dX1) {
-      dX2 ^= dX1; dX1 ^= dX2; dX2 ^= dX1;
-      dU2 ^= dU1; dU1 ^= dU2; dU2 ^= dU1;
-      dV2 ^= dV1; dV1 ^= dV2; dV2 ^= dV1;
-      edU2 ^= edU1; edU1 ^= edU2; edU2 ^= edU1;
-      edV2 ^= edV1; edV1 ^= edV2; edV2 ^= edV1;
-      dZL = dZ1; dZ1 = dZ2; dZ2 = dZL;
-      stat = 2;
-    } else stat = 1;
-  } else {
-    if (TriFace->Scrx[i1] > X1) {
-      X2 = TriFace->Scrx[i1];
-      Z2 = TriFace->Scrz[i1];
-      U2 = MappingU2;
-      V2 = MappingV2;
-      eU2 = eMappingU2;
-      eV2 = eMappingV2;
-      stat = 2|4;
-    } else {
-      X1 = TriFace->Scrx[i1];
-      Z1 = TriFace->Scrz[i1];
-      U1 = MappingU2;
-      V1 = MappingV2;
-      eU1 = eMappingU2;
-      eV1 = eMappingV2;
-      stat = 1|8;
-    }
-  }
-
-  gmem += (Y0 * cam->ScreenWidth);
-  zbuf += (Y0 * cam->ScreenWidth);
-
-  XL1 = (((dX1-dX2)*dY+(1<<19))>>20);
-  if (XL1) {
-    dUL = ((dU1-dU2)*dY)/XL1;
-    dVL = ((dV1-dV2)*dY)/XL1;
-    edUL = ((edU1-edU2)*dY)/XL1;
-    edVL = ((edV1-edV2)*dY)/XL1;
-    dZL = ((dZ1-dZ2)*dY)/XL1;
-  } else {
-    XL1 = ((X2-X1+(1<<19))>>20);
-    if (XL1) {
-      edUL = (eU2-eU1)/XL1;
-      edVL = (eV2-eV1)/XL1;
-      dUL = (U2-U1)/XL1;
-      dVL = (V2-V1)/XL1;
-      dZL = (Z2-Z1)/XL1;
-    }
-  }
-
-  while (Y0 < Y2) {
-    if (Y0 == Y1) {
-      dY = Y2 - ((TriFace->Scry[i1]+(1<<19))>>20);
-      if (dY) {
-        if (stat & 1) {
-          X1 = TriFace->Scrx[i1];
-          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
-        }
-        if (stat & 2) {
-          X2 = TriFace->Scrx[i1];
-          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i1])/dY;
-        }
-        if (stat & 4) {
-          X1 = TriFace->Scrx[i0];
-          dX1 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
-        }
-        if (stat & 8) {
-          X2 = TriFace->Scrx[i0];
-          dX2 = (TriFace->Scrx[i2]-TriFace->Scrx[i0])/dY;
-        }
-        dZ1 = (TriFace->Scrz[i2]-Z1)/dY;
-        dV1 = (MappingV3 - V1) / dY;
-        dU1 = (MappingU3 - U1) / dY;
-        edV1 = (eMappingV3 - eV1) / dY;
-        edU1 = (eMappingU3 - eU1) / dY;
-      }
-    }
-    XL1 = (X1+(1<<19))>>20;
-    XL2 = (X2+(1<<19))>>20;
-    ZL = Z1;
-    UL = U1;
-    VL = V1;
-    eUL = eU1;
-    eVL = eV1;
-    if ((XL2-XL1) > 0) {
-      XL2 -= XL1;
-      gmem += XL1;
-      zbuf += XL1;
-      XL1 += XL2;
-      if (zb) do {
-          if (*zbuf < ZL) {
-            *zbuf = ZL;
-            *gmem = eon_PickColorP(cam,
-                                   remap[addtable[environment[
-                ((eUL>>16)&eMappingU_AND)+((eVL>>evshift)&eMappingV_AND)]] +
-                            texture[((UL>>16)&MappingU_AND) +
-                                    ((VL>>vshift)&MappingV_AND)]]);
-          }
-          zbuf++;
-          gmem++;
-          ZL += dZL;
-          UL += dUL;
-          VL += dVL;
-          eUL += edUL;
-          eVL += edVL;
-        } while (--XL2);
-      else do {
-          *gmem = eon_PickColorP(cam,
-              remap[addtable[environment[
-              ((eUL>>16)&eMappingU_AND)+((eVL>>evshift)&eMappingV_AND)]] +
-                          texture[((UL>>16)&MappingU_AND) +
-                                  ((VL>>vshift)&MappingV_AND)]]);
-          gmem++;
-          UL += dUL;
-          VL += dVL;
-          eUL += edUL;
-          eVL += edVL;
-        } while (--XL2);
-      gmem -= XL1;
-      zbuf -= XL1;
-    }
-    zbuf += cam->ScreenWidth;
-    gmem += cam->ScreenWidth;
-    Z1 += dZ1;
-    X1 += dX1;
-    X2 += dX2;
-    U1 += dU1;
-    V1 += dV1;
-    eU1 += edU1;
-    eV1 += edV1;
-    Y0++;
-  }
-}
 
 static void EON_PF_TexF(EON_Cam *cam, EON_Face *TriFace, EON_Frame *Frame)
 {
