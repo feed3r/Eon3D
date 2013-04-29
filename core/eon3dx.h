@@ -46,7 +46,7 @@
   Parameters:
     w: width of the EON_ane (along the x axis)
     d: depth of the EON_ane (along the z axis)
-    res: resolution of EON_ane, i.e. subdivisions
+    res: resolution of EON_plane, i.e. subdivisions
     m: material to use
   Returns:
     pointer to object created.
