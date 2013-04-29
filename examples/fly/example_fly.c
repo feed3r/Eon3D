@@ -20,7 +20,7 @@ enum {
                           Higher number == more polygons */
 };
 
-void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
+void setup_materials(EONx_Console *con, EON_Mat **mat,
                      CX_LogContext *Logger)
 {
     // create our 3 materials, make the fourth null so that EON_MatMakeOptPal2()
@@ -30,20 +30,18 @@ void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
     mat[2] = EON_MatCreate();
     mat[3] = 0;
 
-    pal[0] = pal[1] = pal[2] = 0; // make color 0 black.
-
     // set up material 0 (the ground)
     mat[0]->ShadeType = EON_SHADE_GOURAUD_DISTANCE;
     mat[0]->Shininess = 1;
-    mat[0]->Ambient.R = pal[0]*2 - 255; // these calculations are to get the
-    mat[0]->Ambient.G = pal[1]*2 - 255; // distance shading to work right
-    mat[0]->Ambient.B = pal[2]*2 - 255;
-    mat[0]->Diffuse.R = 127-pal[0];
-    mat[0]->Diffuse.G = 127-pal[1];
-    mat[0]->Diffuse.B = 127-pal[2];
-    mat[0]->Specular.R = 127-pal[0];
-    mat[0]->Specular.G = 127-pal[1];
-    mat[0]->Specular.B = 127-pal[2];
+    mat[0]->Ambient.R = 255;
+    mat[0]->Ambient.G = 255;
+    mat[0]->Ambient.B = 255;
+    mat[0]->Diffuse.R = 127;
+    mat[0]->Diffuse.G = 127;
+    mat[0]->Diffuse.B = 127;
+    mat[0]->Specular.R = 127;
+    mat[0]->Specular.G = 127;
+    mat[0]->Specular.B = 127;
     mat[0]->FadeDist = 10000.0;
     mat[0]->Texture = EONx_ReadPCXTex("ground.pcx");
     mat[0]->TexScaling = 40.0*LAND_SIZE/50000;
@@ -53,15 +51,15 @@ void setup_materials(EONx_Console *con, EON_Mat **mat, uint8_t *pal,
     // set up material 1 (the sky)
     mat[1]->ShadeType = EON_SHADE_GOURAUD_DISTANCE;
     mat[1]->Shininess = 1;
-    mat[1]->Ambient.R = pal[0]*2 - 255;
-    mat[1]->Ambient.G = pal[1]*2 - 255;
-    mat[1]->Ambient.B = pal[2]*2 - 255;
-    mat[1]->Diffuse.R = 127-pal[0];
-    mat[1]->Diffuse.G = 127-pal[1];
-    mat[1]->Diffuse.B = 127-pal[2];
-    mat[1]->Specular.R = 127-pal[0];
-    mat[1]->Specular.G = 127-pal[1];
-    mat[1]->Specular.B = 127-pal[2];
+    mat[1]->Ambient.R = 255;
+    mat[1]->Ambient.G = 255;
+    mat[1]->Ambient.B = 255;
+    mat[1]->Diffuse.R = 127;
+    mat[1]->Diffuse.G = 127;
+    mat[1]->Diffuse.B = 127;
+    mat[1]->Specular.R = 127;
+    mat[1]->Specular.G = 127;
+    mat[1]->Specular.B = 127;
     mat[1]->FadeDist = 10000.0;
     mat[1]->Texture = EONx_ReadPCXTex("sky.pcx");
     mat[1]->TexScaling = 45.0*LAND_SIZE/50000;
@@ -123,8 +121,7 @@ uint64_t eon_gettime_ms(void)
 int main(int argc, char *argv[])
 {
     int frames = 0;
-    EON_Mat *mat[3+1]; // our materials, we have 1 extra for null
-                       // termination for EON_MatMakeOptPal()
+    EON_Mat *mat[3];
     EON_Cam *cam;
     EON_Obj *land;
     EON_Obj *sky, *sky2;
@@ -134,7 +131,6 @@ int main(int argc, char *argv[])
     EON_Font *font;
     uint64_t ts = 0;
 
-    uint8_t pal[3 * 256]; // our palette
     CX_LogContext *Logger = CX_log_open_console(CX_LOG_MARK, stderr);
 
     srand(0); // initialize prng
@@ -152,7 +148,7 @@ int main(int argc, char *argv[])
 
     font = EON_TextDefaultFont();
 
-    setup_materials(con, mat, pal, Logger); // intialize materials and palette
+    setup_materials(con, mat, Logger); // intialize materials and palette
 
     land = setup_landscape(mat[0],mat[1],mat[2]); // create landscape
     sky = land->Children[0]; // unhierarchicalize the sky from the land
