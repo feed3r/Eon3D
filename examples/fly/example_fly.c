@@ -192,12 +192,7 @@ int main(int argc, char *argv[])
                        cam->ClipLeft+5, cam->ClipTop, 0.0,
                       "%.3f FPS",
                       (frames/ (double) elapsed));
-        CX_log_trace(Logger, CX_LOG_INFO, "fly",
-                      "Camera={%f,%f,%f) %i frames %li elapsed %.3f FPS\r",
-                      cam->Pos.X, cam->Pos.Y, cam->Pos.Z,
-                      frames, (long)elapsed,
-                      (frames/ (double) elapsed));
-        
+
         EONx_ConsoleShowFrame(con);
 
         // wraparound
