@@ -162,8 +162,8 @@ typedef struct _EON_Cam EON_Cam;
 ** EON_Mat.Environment or EON_Mat.Texture.
 */
 typedef struct _EON_Texture {
-    EON_Byte *Data;            /* Texture data */
-    EON_Byte *PaletteData;     /* Palette data (NumColors bytes) */
+    EON_Byte *Data;             /* Texture data */
+    EON_Byte *PaletteData;      /* Palette data (NumColors bytes) */
     EON_uChar Width, Height;    /* Log2 of dimensions */
     EON_uInt iWidth, iHeight;   /* Integer dimensions */
     EON_Float uScale, vScale;   /* Scaling (usually 2**Width, 2**Height) */
@@ -214,9 +214,9 @@ struct _EON_Face {
     EON_Vertex *Vertices[3];      /* Vertices of triangle */
     EON_Float nx, ny, nz;         /* Normal of triangle (object space) */
     EON_Mat *Material;            /* Material of triangle */
-    EON_sInt32 Scrx[3], Scry[3];  /* Projected screen coordinates
-                                  (12.20 fixed point) */
-    EON_Float Scrz[3];            /* Projected 1/Z coordinates */
+    EON_ScrPoint Scr[3];          /* Projected screen coordinates
+                                    (12.20 fixed point)
+                                    1/Z coordinates */
     EON_sInt32 MappingU[3], MappingV[3];
                                /* 16.16 Texture mapping coordinates */
     EON_sInt32 eMappingU[3], eMappingV[3];
