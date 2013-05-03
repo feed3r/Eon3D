@@ -100,11 +100,6 @@ int EONx_ConsoleShutdown(void)
     return 0;
 }
 
-int EONx_ConsoleSetPalette(EONx_Console *ctx, const uint8_t *palette, int numcolors)
-{
-    EON_CamSetPalette(ctx->cam, palette, numcolors);
-    return 0;
-}
 
 static int EONx_ConsoleInitSurfaces(EONx_Console *ctx)
 {

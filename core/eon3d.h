@@ -288,7 +288,6 @@ struct _EON_Cam {
     EON_sInt CenterX, CenterY;      /* Center of screen */
     EON_3DPoint Pos;                /* Camera position in worldspace */
     EON_Float Pitch, Pan, Roll;     /* Camera angle in degrees in worldspace */
-    const EON_Byte *Palette;
 };
 
 enum {
@@ -648,8 +647,6 @@ void EON_CamSetTarget(EON_Cam *c, EON_Float x, EON_Float y, EON_Float z);
      nothing
 */
 void EON_CamDelete(EON_Cam *c);
-
-void EON_CamSetPalette(EON_Cam *c, const uint8_t *palette, int numcolors);
 
 /******************************************************************************
 ** Easy Rendering Interface (render.c)

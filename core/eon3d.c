@@ -707,12 +707,6 @@ void EON_CamSetTarget(EON_Cam *c, EON_Float x, EON_Float y, EON_Float z)
 }
 
 
-void EON_CamSetPalette(EON_Cam *c, const uint8_t *palette, int numcolors)
-{
-    c->Palette = palette;
-    return;
-}
-
 EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov)
 {
     EON_Cam *c = CX_zalloc(sizeof(EON_Cam));
@@ -1088,15 +1082,6 @@ void EON_TexInfo(EON_Texture *t, void *logger)
               Face->Material->TexScaling;\
     MappingV3=Face->MappingV[i2]*Texture->vScale*\
               Face->Material->TexScaling;
-
-inline static EON_uInt32 eon_PickColorP(EON_Cam *cam, EON_Byte value)
-{
-    EON_uInt32 R = cam->Palette[3 * value + 0];
-    EON_uInt32 G = cam->Palette[3 * value + 1];
-    EON_uInt32 B = cam->Palette[3 * value + 2];
-    EON_uInt32 A = 0xFF000000;
-    return (A | R << 16 | G << 8| B);
-}
 
 inline static EON_uInt32 eon_PickColorPS(const EON_Byte *pal, EON_Byte v, EON_Float shade)
 {
