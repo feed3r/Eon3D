@@ -116,16 +116,6 @@ enum {
     EON_LIGHT_POINT_ANGLE    =  0x4
 };
 
-enum {
-    EON_TEXENV_ADD         = 0,
-    EON_TEXENV_MUL         = 1,
-    EON_TEXENV_AVG         = 2,
-    EON_TEXENV_TEXMINUSENV = 3,
-    EON_TEXENV_ENVMINUSTEX = 4,
-    EON_TEXENV_MIN         = 5,
-    EON_TEXENV_MAX         = 6
-};
-
 typedef struct _EON_ScrPoint {
     /* Projected screen coordinates (12.20 fixed point) */
     EON_sInt32 X;
