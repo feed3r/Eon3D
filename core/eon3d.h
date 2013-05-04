@@ -164,7 +164,7 @@ typedef struct _EON_Cam EON_Cam;
 typedef struct _EON_Texture {
     EON_Byte *Data;             /* Texture data */
     EON_Byte *PaletteData;      /* Palette data (NumColors bytes) */
-    EON_uChar Width, Height;    /* Log2 of dimensions */
+    EON_uInt16 Width, Height;   /* Log2 of dimensions */
     EON_uInt iWidth, iHeight;   /* Integer dimensions */
     EON_Float uScale, vScale;   /* Scaling (usually 2**Width, 2**Height) */
     EON_uInt NumColors;         /* Number of colors used in texture */
@@ -180,15 +180,15 @@ typedef struct _EON_Mat {
     EON_uInt Shininess;           /* Shininess of material. 1 is dullest */
     EON_Float FadeDist;           /* For distance fading, distance at
                                      which intensity is 0 */
-    EON_uChar ShadeType;          /* Shade type: EON_SHADE_* */
-    EON_uChar PerspectiveCorrect; /* Correct textures every n pixels */
+    EON_uInt16 ShadeType;         /* Shade type: EON_SHADE_* */
+    EON_uInt16 PerspectiveCorrect;/* Correct textures every n pixels */
     EON_Texture *Texture;         /* Texture map (see EON_Texture) above */
     EON_Texture *Environment;     /* Environment map (ditto) */
     EON_Float TexScaling;         /* Texture map scaling */
     EON_Float EnvScaling;         /* Environment map scaling */
     EON_Bool zBufferable;         /* Can this material be zbuffered? */
     /* The following are used mostly internally */
-    EON_uChar _st, _ft;           /* The shadetype and filltype */
+    EON_uInt16 _st, _ft;          /* The shadetype and filltype */
     void (*_PutFace)(EON_Cam *, EON_Face *, EON_Frame *);
     /* Renders the triangle with this material */
 } EON_Mat;
@@ -265,7 +265,7 @@ typedef struct _EON_Spline {
 ** Light type. See EON_Light*().
 */
 typedef struct _EON_Light {
-    EON_uChar Type;               /* Type of light: EON_LIGHT_* */
+    EON_uInt Type;                /* Type of light: EON_LIGHT_* */
     EON_3DPoint Pos;              /* If Type=EON_LIGHT_POINT*,
                                   this is Position (EON_LIGHT_POINT_*),
                                   otherwise if EON_LIGHT_VECTOR,
@@ -327,8 +327,8 @@ typedef struct _EON_Clip {
 } EON_Clip;
 
 typedef struct _EON_FaceInfo {
-    EON_Float zd;
     EON_Face *face;
+    EON_Float zd;
 } EON_FaceInfo;
 
 typedef struct _EON_LightInfo {
