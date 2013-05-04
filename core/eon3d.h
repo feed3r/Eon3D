@@ -210,14 +210,15 @@ typedef struct _EON_Vertex {
 ** Face
 */
 struct _EON_Face {
-    EON_Vertex *Vertices[3];      /* Vertices of triangle */
+    EON_Vertex *Vertices[3];    /* Vertices of triangle */
     EON_ScrPoint Scr[3];
-    EON_Float nx, ny, nz;         /* Normal of triangle (object space) */
-    EON_Mat *Material;            /* Material of triangle */
-    EON_Float Shades[3];          /* Vertex intensity */
-    EON_Float vsLighting[3];      /* Vertex static lighting. Should be 0.0 */
-    EON_sInt32 MappingU[3], MappingV[3];
-                               /* 16.16 Texture mapping coordinates */
+    EON_Float nx, ny, nz;       /* Normal of triangle (object space) */
+    EON_Mat *Material;          /* Material of triangle */
+    EON_Float Shades[3];        /* Vertex intensity */
+    EON_Float vsLighting[3];    /* Vertex static lighting. Should be 0.0 */
+    /* 16.16 Texture mapping coordinates */
+    EON_sInt32 MappingU[3];
+    EON_sInt32 MappingV[3];
 };
 
 /*
