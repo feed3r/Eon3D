@@ -278,7 +278,7 @@ struct _EON_Cam {
     EON_Float ClipBack;             /* Far clipping ( < 0.0 is none) */
     EON_sInt ClipTop, ClipLeft;     /* Screen Clipping */
     EON_sInt ClipBottom, ClipRight;
-    EON_uInt ScreenWidth, ScreenHeight; /* Screen dimensions */
+    EON_uInt16 ScreenWidth, ScreenHeight; /* Screen dimensions */
     EON_sInt CenterX, CenterY;      /* Center of screen */
     EON_3DPoint Pos;                /* Camera position in worldspace */
     EON_Float Pitch, Pan, Roll;     /* Camera angle in degrees in worldspace */
