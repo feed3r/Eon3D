@@ -221,8 +221,6 @@ struct _EON_Face {
                                /* 16.16 Texture mapping coordinates */
     EON_sInt32 eMappingU[3], eMappingV[3];
                                /* 16.16 Environment map coordinates */
-    EON_Float fShade;             /* Flat intensity */
-    EON_Float sLighting;          /* Face static lighting. Should usually be 0.0 */
     EON_Float Shades[3];          /* Vertex intensity */
     EON_Float vsLighting[3];      /* Vertex static lighting. Should be 0.0 */
 };

@@ -847,7 +847,6 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame)
         EON_Face newface;
         memcpy(&newface, face, sizeof(EON_Face));
         for (k = 2; k < numVerts; k ++) {
-            newface.fShade = EON_Clamp(face->fShade,0,1);
             for (a = 0; a < 3; a++) {
                 if (a == 0)
                     w = 0;
@@ -1191,7 +1190,7 @@ static void EON_PF_SolidF(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
     EON_sInt32 Y1, Y2, Y0, dY;
     EON_uChar stat;
     EON_Bool zb = Face->Material->zBufferable;
-    EON_uInt32 color = eon_PickColorS(Face, Face->fShade);
+    EON_uInt32 color = eon_PickColorS(Face, Face->Shades[0]);
 
     PUTFACE_SORT();
 
@@ -1583,7 +1582,7 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
           if (*zbuf < ZL) {
             int tv = ((UL>>16)&MappingU_AND) + ((VL>>vshift)&MappingV_AND);
             *zbuf = ZL;
-            *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], Face->fShade);
+            *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], Face->Shades[0]);
           }
           zbuf++;
           gmem++;
@@ -1593,7 +1592,7 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
         } while (--XL2);
       else do {
           int tv = ((UL>>16)&MappingU_AND) + ((VL>>vshift)&MappingV_AND);
-          *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], Face->fShade);
+          *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], Face->Shades[0]);
           gmem++;
           UL += dUL;
           VL += dVL;
@@ -1965,7 +1964,7 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
             if (*zbuf < ZL) {
               int tv = ((iUL>>16)&MappingU_AND) + ((iVL>>vshift)&MappingV_AND);
               *zbuf = ZL;
-              *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], Face->fShade);
+              *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], Face->Shades[0]);
             }
             zbuf++;
             gmem++;
@@ -1975,7 +1974,7 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
           } while (--n);
         else do {
             int tv = ((iUL>>16)&MappingU_AND) + ((iVL>>vshift)&MappingV_AND);
-            *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], Face->fShade);
+            *gmem = eon_PickColorPS(Texture->PaletteData, texture[tv], Face->Shades[0]);
             gmem++;
             iUL += idUL;
             iVL += idVL;
@@ -2346,11 +2345,11 @@ inline static void eon_RenderShadeObjFlat(EON_Rend *rend, EON_Face *face,
                                           EON_Bool BackfaceIllumination,
                                           EON_Float nx, EON_Float ny, EON_Float nz)
 {
-    EON_Double shade = face->sLighting;
+    EON_Double shade = face->vsLighting[0];
     if (face->Material->_st & EON_SHADE_FLAT) {
         shade = eon_RenderVertexLights(rend,
                                        face->Vertices[0],
-                                       face->sLighting,
+                                       face->vsLighting[0],
                                        BackfaceIllumination,
                                        nx,
                                        ny,
@@ -2362,7 +2361,7 @@ inline static void eon_RenderShadeObjFlat(EON_Rend *rend, EON_Face *face,
                           face->Vertices[2]->xformedz) / 3.0;
         shade += 1.0 - (avg / face->Material->FadeDist);
     }
-    face->fShade = (EON_Float)shade;
+    face->Shades[0] = (EON_Float)shade;
     return;
 }
 
@@ -2400,7 +2399,6 @@ inline static void eon_RenderShadeObjEnviron(EON_Rend *rend, EON_Face *face)
 
 inline static void eon_RenderShadeObjWireframe(EON_Rend *rend, EON_Face *face)
 {
-    face->fShade = 1.0;
     face->Shades[0] = 1.0;
     face->Shades[1] = 1.0;
     face->Shades[2] = 1.0;
