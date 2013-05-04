@@ -211,17 +211,13 @@ typedef struct _EON_Vertex {
 */
 struct _EON_Face {
     EON_Vertex *Vertices[3];      /* Vertices of triangle */
+    EON_ScrPoint Scr[3];
     EON_Float nx, ny, nz;         /* Normal of triangle (object space) */
     EON_Mat *Material;            /* Material of triangle */
-    EON_ScrPoint Scr[3];          /* Projected screen coordinates
-                                    (12.20 fixed point)
-                                    1/Z coordinates */
-    EON_sInt32 MappingU[3], MappingV[3];
-                               /* 16.16 Texture mapping coordinates */
-    EON_sInt32 eMappingU[3], eMappingV[3];
-                               /* 16.16 Environment map coordinates */
     EON_Float Shades[3];          /* Vertex intensity */
     EON_Float vsLighting[3];      /* Vertex static lighting. Should be 0.0 */
+    EON_sInt32 MappingU[3], MappingV[3];
+                               /* 16.16 Texture mapping coordinates */
 };
 
 /*
