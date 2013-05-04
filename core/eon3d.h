@@ -127,9 +127,10 @@ enum {
 };
 
 typedef struct _EON_ScrPoint {
+    /* Projected screen coordinates (12.20 fixed point) */
     EON_sInt32 X;
     EON_sInt32 Y;
-    EON_Float Z;
+    EON_Float Z; /* 1/Z coordinates */
 } EON_ScrPoint;
 
 typedef struct _EON_3DPoint {
@@ -159,7 +160,7 @@ typedef struct _EON_Cam EON_Cam;
 
 /*
 ** Texture type. Read textures with EON_ReadPCXTex(), and assign them to
-** EON_Mat.Environment or EON_Mat.Texture.
+** EON_Mat.Texture.
 */
 typedef struct _EON_Texture {
     EON_Byte *Data;             /* Texture data */
@@ -183,9 +184,7 @@ typedef struct _EON_Mat {
     EON_uInt16 ShadeType;         /* Shade type: EON_SHADE_* */
     EON_uInt16 PerspectiveCorrect;/* Correct textures every n pixels */
     EON_Texture *Texture;         /* Texture map (see EON_Texture) above */
-    EON_Texture *Environment;     /* Environment map (ditto) */
     EON_Float TexScaling;         /* Texture map scaling */
-    EON_Float EnvScaling;         /* Environment map scaling */
     EON_Bool zBufferable;         /* Can this material be zbuffered? */
     /* The following are used mostly internally */
     EON_uInt16 _st, _ft;          /* The shadetype and filltype */

@@ -501,7 +501,6 @@ EON_Mat *EON_MatCreate()
 {
     EON_Mat *m = CX_zalloc(sizeof(EON_Mat));
     if (m) {
-        m->EnvScaling = 1.0f;
         m->TexScaling = 1.0f;
         m->Ambient.R = m->Ambient.G = m->Ambient.B = 0;
         m->Diffuse.R = m->Diffuse.G = m->Diffuse.B = 128;
@@ -525,8 +524,8 @@ void EON_MatInit(EON_Mat *m)
 {
     if (m->Shininess < 1)
         m->Shininess = 1;
-    m->_ft = ((m->Environment ? EON_FILL_ENVIRONMENT : EON_FILL_SOLID) |
-               (m->Texture ? EON_FILL_TEXTURE : EON_FILL_SOLID));
+
+    m->_ft = ((m->Texture) ?EON_FILL_TEXTURE :EON_FILL_SOLID);
     m->_st = m->ShadeType;
 
     eon_SetMaterialPutFace(m);
@@ -832,8 +831,6 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame)
         clip->CL[0].Shades[a] = face->Shades[a];
         clip->CL[0].MappingU[a] = face->MappingU[a];
         clip->CL[0].MappingV[a] = face->MappingV[a];
-        clip->CL[0].eMappingU[a] = face->eMappingU[a];
-        clip->CL[0].eMappingV[a] = face->eMappingV[a];
     }
 
     a = (clip->ClipPlanes[0][3] < 0.0 ? 0 : 1);
@@ -856,8 +853,6 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame)
                 newface.Shades[a] = (EON_Float) clip->CL[0].Shades[w];
                 newface.MappingU[a] = (EON_sInt32)clip->CL[0].MappingU[w];
                 newface.MappingV[a] = (EON_sInt32)clip->CL[0].MappingV[w];
-                newface.eMappingU[a] = (EON_sInt32)clip->CL[0].eMappingU[w];
-                newface.eMappingV[a] = (EON_sInt32)clip->CL[0].eMappingV[w];
                 eon_ClipVertexToScreen(&newface, a, clip);
             }
             newface.Material->_PutFace(clip->Cam, &newface, frame);
@@ -923,8 +918,6 @@ static EON_uInt eon_ClipToPlane(EON_Clip *clip,
             clip->CL[1].Shades[outvert] = clip->CL[0].Shades[invert];
             clip->CL[1].MappingU[outvert] = clip->CL[0].MappingU[invert];
             clip->CL[1].MappingV[outvert] = clip->CL[0].MappingV[invert];
-            clip->CL[1].eMappingU[outvert] = clip->CL[0].eMappingU[invert];
-            clip->CL[1].eMappingV[outvert] = clip->CL[0].eMappingV[invert];
             clip->CL[1].newVertices[outvert++] = clip->CL[0].newVertices[invert];
         }
         nextdot = clip->CL[0].newVertices[nextvert].xformedx*plane[0] +
@@ -948,10 +941,6 @@ static EON_uInt eon_ClipToPlane(EON_Clip *clip,
                 (clip->CL[0].MappingU[nextvert] - clip->CL[0].MappingU[invert]) * scale;
            clip->CL[1].MappingV[outvert] = clip->CL[0].MappingV[invert] +
                 (clip->CL[0].MappingV[nextvert] - clip->CL[0].MappingV[invert]) * scale;
-           clip->CL[1].eMappingU[outvert] = clip->CL[0].eMappingU[invert] +
-                (clip->CL[0].eMappingU[nextvert] - clip->CL[0].eMappingU[invert]) * scale;
-           clip->CL[1].eMappingV[outvert] = clip->CL[0].eMappingV[invert] +
-                (clip->CL[0].eMappingV[nextvert] - clip->CL[0].eMappingV[invert]) * scale;
             outvert++;
         }
         curdot = nextdot;
@@ -1051,21 +1040,6 @@ void EON_TexInfo(EON_Texture *t, void *logger)
         i2 ^= i1; i1 ^= i2; i2 ^= i1; \
     }
 
-
-#define PUTFACE_SORT_ENV() \
-    PUTFACE_SORT(); \
-    MappingU1=Face->eMappingU[i0]*Texture->uScale*\
-              Face->Material->EnvScaling;\
-    MappingV1=Face->eMappingV[i0]*Texture->vScale*\
-              Face->Material->EnvScaling;\
-    MappingU2=Face->eMappingU[i1]*Texture->uScale*\
-              Face->Material->EnvScaling;\
-    MappingV2=Face->eMappingV[i1]*Texture->vScale*\
-              Face->Material->EnvScaling;\
-    MappingU3=Face->eMappingU[i2]*Texture->uScale*\
-              Face->Material->EnvScaling;\
-    MappingV3=Face->eMappingV[i2]*Texture->vScale*\
-              Face->Material->EnvScaling;
 
 #define PUTFACE_SORT_TEX() \
     PUTFACE_SORT(); \
@@ -1467,8 +1441,7 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
   EON_sInt32 Y1, Y2, Y0, dY;
   EON_Bool zb = Face->Material->zBufferable;
 
-  if (Face->Material->Environment) Texture = Face->Material->Environment;
-  else Texture = Face->Material->Texture;
+  Texture = Face->Material->Texture;
 
   if (!Texture) return;
   texture = Texture->Data;
@@ -1476,11 +1449,7 @@ static void EON_PF_TexF(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
   MappingV_AND = ((1<<Texture->Height)-1)<<Texture->Width;
   MappingU_AND = (1<<Texture->Width)-1;
 
-  if (Face->Material->Environment) {
-    PUTFACE_SORT_ENV();
-  } else {
-    PUTFACE_SORT_TEX();
-  }
+  PUTFACE_SORT_TEX();
 
   U1 = U2 = MappingU1;
   V1 = V2 = MappingV1;
@@ -1632,8 +1601,7 @@ static void EON_PF_TexG(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
 
   EON_Bool zb = Face->Material->zBufferable;
 
-  if (Face->Material->Environment) Texture = Face->Material->Environment;
-  else Texture = Face->Material->Texture;
+  Texture = Face->Material->Texture;
 
   if (!Texture) return;
   texture = Texture->Data;
@@ -1641,11 +1609,7 @@ static void EON_PF_TexG(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
   MappingV_AND = ((1<<Texture->Height)-1)<<Texture->Width;
   MappingU_AND = (1<<Texture->Width)-1;
 
-  if (Face->Material->Environment) {
-    PUTFACE_SORT_ENV();
-  } else {
-    PUTFACE_SORT_TEX();
-  }
+  PUTFACE_SORT_TEX();
 
   C1 = C2 = Face->Shades[i0]*65535.0f;
   U1 = U2 = MappingU1;
@@ -1816,8 +1780,7 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
 
   EON_Bool zb = Face->Material->zBufferable;
 
-  if (Face->Material->Environment) Texture = Face->Material->Environment;
-  else Texture = Face->Material->Texture;
+  Texture = Face->Material->Texture;
 
   if (!Texture) return;
   texture = Texture->Data;
@@ -1830,11 +1793,7 @@ static void EON_PF_PTexF(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
   MappingU_AND = (1<<Texture->Width)-1;
   vshift = 16 - Texture->Width;
 
-  if (Face->Material->Environment) {
-    PUTFACE_SORT_ENV();
-  } else {
-    PUTFACE_SORT_TEX();
-  }
+  PUTFACE_SORT_TEX();
 
   MappingU1 *= Face->Scr[i0].Z/65536.0f;
   MappingV1 *= Face->Scr[i0].Z/65536.0f;
@@ -2027,8 +1986,7 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
   EON_uInt32 *gmem = (EON_uInt32 *)Frame->Data;
   EON_ZBuffer *zbuf = Frame->ZBuffer;
 
-  if (Face->Material->Environment) Texture = Face->Material->Environment;
-  else Texture = Face->Material->Texture;
+  Texture = Face->Material->Texture;
 
   if (!Texture) return;
   texture = Texture->Data;
@@ -2041,11 +1999,7 @@ static void EON_PF_PTexG(EON_Cam *cam, EON_Face *Face, EON_Frame *Frame)
   MappingU_AND = (1<<Texture->Width)-1;
   vshift = 16 - Texture->Width;
 
-  if (Face->Material->Environment) {
-    PUTFACE_SORT_ENV();
-  } else {
-    PUTFACE_SORT_TEX();
-  }
+  PUTFACE_SORT_TEX();
 
   MappingU1 *= Face->Scr[i0].Z/65536.0f;
   MappingV1 *= Face->Scr[i0].Z/65536.0f;
@@ -2386,17 +2340,6 @@ inline static void eon_RenderShadeObjGourad(EON_Rend *rend, EON_Face *face,
     return;
 }
 
-inline static void eon_RenderShadeObjEnviron(EON_Rend *rend, EON_Face *face)
-{
-    face->eMappingU[0] = 32768 + (EON_sInt32) (face->Vertices[0]->xformednx*32768.0);
-    face->eMappingV[0] = 32768 - (EON_sInt32) (face->Vertices[0]->xformedny*32768.0);
-    face->eMappingU[1] = 32768 + (EON_sInt32) (face->Vertices[1]->xformednx*32768.0);
-    face->eMappingV[1] = 32768 - (EON_sInt32) (face->Vertices[1]->xformedny*32768.0);
-    face->eMappingU[2] = 32768 + (EON_sInt32) (face->Vertices[2]->xformednx*32768.0);
-    face->eMappingV[2] = 32768 - (EON_sInt32) (face->Vertices[2]->xformedny*32768.0);
-    return;
-}
-
 inline static void eon_RenderShadeObjWireframe(EON_Rend *rend, EON_Face *face)
 {
     face->Shades[0] = 1.0;
@@ -2488,9 +2431,6 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                 }
                 if (face->Material->_st & (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE)) {
                     eon_RenderShadeObjFlat(rend, face, obj->BackfaceIllumination, nx, ny, nz);
-                }
-                if (face->Material->_ft & EON_FILL_ENVIRONMENT) {
-                    eon_RenderShadeObjEnviron(rend, face);
                 }
                 if (face->Material->_st &(EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE)) {
                     eon_RenderShadeObjGourad(rend, face, obj->BackfaceIllumination, 0);
