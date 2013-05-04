@@ -229,8 +229,6 @@ typedef struct _EON_Obj {
     EON_uInt32 NumFaces;            /* Number of faces */
     EON_Vertex *Vertices;           /* Array of vertices */
     EON_Face *Faces;                /* Array of faces */
-    struct _EON_Obj *Children[EON_MAX_CHILDREN];
-                                    /* Children */
     EON_Bool BackfaceCull;          /* Are backfacing polys drawn? */
     EON_Bool BackfaceIllumination;  /* Illuminated by lights behind them? */
     EON_Bool GenMatrix;             /* Generate Matrix from the following
@@ -239,8 +237,10 @@ typedef struct _EON_Obj {
     EON_Float Xa, Ya, Za;           /* Rotation of object:
                                        Note: rotations are around
                                        X then Y then Z. Measured in degrees */
+    EON_Float Pad;                  /* Padding */
     EON_Float Matrix[16];           /* Transformation matrix */
     EON_Float RotMatrix[16];        /* Rotation only matrix (for normals) */
+    struct _EON_Obj *Children[EON_MAX_CHILDREN];
 } EON_Obj;
 
 /*
