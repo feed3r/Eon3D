@@ -31,6 +31,8 @@
  *                                                                        *
  **************************************************************************/
 
+#include <omp.h>
+
 #include "memorykit.h"
 #include "logkit.h"
 #include "eon3d.h"
@@ -2529,6 +2531,7 @@ void EON_RenderEnd(EON_Rend *rend, EON_Frame *frame)
 {
     EON_FaceInfo *f = rend->Faces;
     EON_uInt32 i = 0;
+    #pragma omp parallel for
     for (i = 0; i < rend->NumFaces; i++) {
         EON_ClipRenderFace(&rend->Clip, f->face, frame);
         f++;

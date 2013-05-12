@@ -1,5 +1,5 @@
 
-set(EON3D_LIBS eon3d eon3dx eon3dx_console eon3dx_reader m)
+set(EON3D_LIBS eon3d eon3dx eon3dx_console eon3dx_reader m gomp)
 
 add_executable(example_fly example_fly.c)
 

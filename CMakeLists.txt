@@ -17,7 +17,7 @@ set(CMAKE_REQUIRED_INCLUDES 	inttypes.h)
 option(ENABLE_PROFILE "enable the gprof instrumentation" OFF)
 
 if(CMAKE_COMPILER_IS_GNUCC)
-    add_definitions(-g -O2 -Wall)
+    add_definitions(-g -O2 -Wall -fopenmp)
     if(ENABLE_PROFILE)
          message(STATUS "Enabling the profiling instrumentation")
          add_definitions(-pg)
