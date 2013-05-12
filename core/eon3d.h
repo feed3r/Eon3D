@@ -250,18 +250,6 @@ typedef struct _EON_Obj {
 } EON_Obj;
 
 /*
-** Spline type. See EON_Spline*().
-*/
-typedef struct _EON_Spline {
-    EON_Float *keys;              /* Key data, keyWidth*numKeys */
-    EON_sInt keyWidth;            /* Number of floats per key */
-    EON_sInt numKeys;             /* Number of keys */
-    EON_Float cont;               /* Continuity. Should be -1.0 -> 1.0 */
-    EON_Float bias;               /* Bias. -1.0 -> 1.0 */
-    EON_Float tens;               /* Tension. -1.0 -> 1.0 */
-} EON_Spline;
-
-/*
 ** Light type. See EON_Light*().
 */
 typedef struct _EON_Light {
@@ -781,32 +769,6 @@ void EON_NormalizeVector(EON_Float *x, EON_Float *y, EON_Float *z);
 */
 EON_Float EON_DotProduct(EON_Float x1, EON_Float y1, EON_Float z1,
                          EON_Float x2, EON_Float y2, EON_Float z2);
-
-/******************************************************************************
-** Spline Interpolation (spline.c)
-******************************************************************************/
-
-/*
-  EON_SplineInit() initializes a spline
-  Parameters:
-    s: the spline
-  Returns:
-    nothing
-  Notes:
-    Intializes the spline. Do this once, or when you change any of the settings
-*/
-void EON_SplineInit(EON_Spline *s);
-
-/*
-  EON_SplineGetPoint() gets a point on the spline
-  Parameters:
-    s: spline
-    frame: time into spline. 0.0 is start, 1.0 is second key point, etc.
-    out: a pointer to an array of s->keyWidth floats that will be filled in.
-  Returns:
-    nothing
-*/
-void EON_SplineGetPoint(EON_Spline *s, EON_Float frame, EON_Float *out);
 
 /*************************************************************************/
 
