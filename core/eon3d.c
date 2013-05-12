@@ -68,7 +68,7 @@ void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam);
     nothing
   Notes: this is used internally by EON_Render*(), so be careful. Kinda slow too.
 */
-void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame);
+void EON_ClipRenderFace(EON_Clip *clip, const EON_Face *face, EON_Frame *frame);
 
 /*
   EON_ClipNeeded() decides whether the face is in the frustum, intersecting
@@ -81,7 +81,7 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame);
     1: the face is intersecting the frustum, splitting and drawing necessary
   Notes: this is used internally by EON_Render*(), so be careful. Kinda slow too.
 */
-EON_sInt EON_ClipNeeded(EON_Clip *clip, EON_Face *face);
+EON_sInt EON_ClipNeeded(const EON_Clip *clip, const EON_Face *face);
 
 
 /******************************************************************************
@@ -810,7 +810,7 @@ void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam)
     return;
 }
 
-inline static void eon_ClipVertexToScreen(EON_Face *face, EON_uInt a, EON_Clip *clip)
+inline static void eon_ClipVertexToScreen(EON_Face *face, EON_uInt a, const EON_Clip *clip)
 {
     EON_Double xf, yf, zf;
     face->Scr[a].Z = 1.0f/face->Vertices[a]->xformedz;
@@ -822,19 +822,25 @@ inline static void eon_ClipVertexToScreen(EON_Face *face, EON_uInt a, EON_Clip *
     return;
 }
 
+inline static void eon_ClipSetupFace(EON_ClipInfo *ci, const EON_Face *face, int a)
+{
+    ci->newVertices[a] = *(face->Vertices[a]);
+    ci->Shades[a] = face->Shades[a];
+    ci->MappingU[a] = face->MappingU[a];
+    ci->MappingV[a] = face->MappingV[a];
+    ci->eMappingU[a] = face->eMappingU[a];
+    ci->eMappingV[a] = face->eMappingV[a];
+    return;
+}
 
-void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame)
+
+void EON_ClipRenderFace(EON_Clip *clip, const EON_Face *face, EON_Frame *frame)
 {
     EON_uInt a, numVerts = 3;
 
-    for (a = 0; a < 3; a ++) {
-        clip->CL[0].newVertices[a] = *(face->Vertices[a]);
-        clip->CL[0].Shades[a] = face->Shades[a];
-        clip->CL[0].MappingU[a] = face->MappingU[a];
-        clip->CL[0].MappingV[a] = face->MappingV[a];
-        clip->CL[0].eMappingU[a] = face->eMappingU[a];
-        clip->CL[0].eMappingV[a] = face->eMappingV[a];
-    }
+    eon_ClipSetupFace(&(clip->CL[0]), face, 0);
+    eon_ClipSetupFace(&(clip->CL[0]), face, 1);
+    eon_ClipSetupFace(&(clip->CL[0]), face, 2);
 
     a = (clip->ClipPlanes[0][3] < 0.0 ? 0 : 1);
     while (a < NUM_CLIP_PLANES && numVerts > 2) {
@@ -868,7 +874,7 @@ void EON_ClipRenderFace(EON_Clip *clip, EON_Face *face, EON_Frame *frame)
     }
 }
 
-EON_sInt EON_ClipNeeded(EON_Clip *clip, EON_Face *face)
+EON_sInt EON_ClipNeeded(const EON_Clip *clip, const EON_Face *face)
 {
     EON_Double dr = (clip->Cam->ClipRight - clip->Cam->CenterX);
     EON_Double dl = (clip->Cam->ClipLeft - clip->Cam->CenterX);
@@ -898,7 +904,7 @@ EON_sInt EON_ClipNeeded(EON_Clip *clip, EON_Face *face)
 
 
 
-static void eon_FindNormal(EON_Double x2, EON_Double x3,EON_Double y2, EON_Double y3,
+static void eon_FindNormal(EON_Double x2, EON_Double x3, EON_Double y2, EON_Double y3,
                            EON_Double zv, EON_Double *res)
 {
     res[0] = zv*(y2-y3);
