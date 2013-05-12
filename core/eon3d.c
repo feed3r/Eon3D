@@ -731,7 +731,8 @@ static void eon_FindNormal(EON_Double x2, EON_Double x3,
                            EON_Double *res);
 
  /* Returns: 0 if nothing gets in,  1 or 2 if pout1 & pout2 get in */
-static EON_uInt eon_ClipToPlane(EON_Clip *clip, EON_uInt numVerts, EON_Double *plane);
+static EON_uInt eon_ClipToPlane(EON_ClipInfo *cdst, const EON_ClipInfo *csrc,
+                                EON_uInt numVerts, const EON_Double *plane);
 
 void EON_ClipSetFrustum(EON_Clip *clip, EON_Cam *cam)
 {
@@ -836,16 +837,17 @@ inline static void eon_ClipSetupFace(EON_ClipInfo *ci, const EON_Face *face, int
 
 void EON_ClipRenderFace(EON_Clip *clip, const EON_Face *face, EON_Frame *frame)
 {
+    EON_ClipInfo CL[2];
     EON_uInt a, numVerts = 3;
 
-    eon_ClipSetupFace(&(clip->CL[0]), face, 0);
-    eon_ClipSetupFace(&(clip->CL[0]), face, 1);
-    eon_ClipSetupFace(&(clip->CL[0]), face, 2);
+    eon_ClipSetupFace(&CL[0], face, 0);
+    eon_ClipSetupFace(&CL[0], face, 1);
+    eon_ClipSetupFace(&CL[0], face, 2);
 
     a = (clip->ClipPlanes[0][3] < 0.0 ? 0 : 1);
     while (a < NUM_CLIP_PLANES && numVerts > 2) {
-        numVerts = eon_ClipToPlane(clip, numVerts, clip->ClipPlanes[a]);
-        memcpy(&clip->CL[0],&clip->CL[1],sizeof(clip->CL)/2);
+        numVerts = eon_ClipToPlane(&CL[1], &CL[0], numVerts, clip->ClipPlanes[a]);
+        memcpy(&CL[0], &CL[1], sizeof(EON_ClipInfo));
         a++;
     }
     if (numVerts > 2) {
@@ -859,12 +861,12 @@ void EON_ClipRenderFace(EON_Clip *clip, const EON_Face *face, EON_Frame *frame)
                     w = 0;
                 else
                     w = a+(k-2);
-                newface.Vertices[a] = clip->CL[0].newVertices+w;
-                newface.Shades[a] = (EON_Float) clip->CL[0].Shades[w];
-                newface.MappingU[a] = (EON_sInt32)clip->CL[0].MappingU[w];
-                newface.MappingV[a] = (EON_sInt32)clip->CL[0].MappingV[w];
-                newface.eMappingU[a] = (EON_sInt32)clip->CL[0].eMappingU[w];
-                newface.eMappingV[a] = (EON_sInt32)clip->CL[0].eMappingV[w];
+                newface.Vertices[a] = CL[0].newVertices+w;
+                newface.Shades[a] = (EON_Float) CL[0].Shades[w];
+                newface.MappingU[a] = (EON_sInt32)CL[0].MappingU[w];
+                newface.MappingV[a] = (EON_sInt32)CL[0].MappingV[w];
+                newface.eMappingU[a] = (EON_sInt32)CL[0].eMappingU[w];
+                newface.eMappingV[a] = (EON_sInt32)CL[0].eMappingV[w];
                 eon_ClipVertexToScreen(&newface, a, clip);
             }
             newface.Material->_PutFace(clip->Cam, &newface, frame);
@@ -913,52 +915,52 @@ static void eon_FindNormal(EON_Double x2, EON_Double x3, EON_Double y2, EON_Doub
 }
 
  /* Returns: 0 if nothing gets in,  1 or 2 if pout1 & pout2 get in */
-static EON_uInt eon_ClipToPlane(EON_Clip *clip,
-                                EON_uInt numVerts, EON_Double *plane)
+static EON_uInt eon_ClipToPlane(EON_ClipInfo *cdst, const EON_ClipInfo *csrc,
+                                EON_uInt numVerts, const EON_Double *plane)
 {
     EON_uInt i, nextvert, curin, nextin;
     EON_Double curdot, nextdot, scale;
     EON_uInt invert = 0, outvert = 0;
-    curdot = clip->CL[0].newVertices[0].xformedx*plane[0] +
-             clip->CL[0].newVertices[0].xformedy*plane[1] +
-             clip->CL[0].newVertices[0].xformedz*plane[2];
+    curdot = csrc->newVertices[0].xformedx*plane[0] +
+             csrc->newVertices[0].xformedy*plane[1] +
+             csrc->newVertices[0].xformedz*plane[2];
     curin = (curdot >= plane[3]);
 
     for (i = 0 ; i < numVerts; i++) {
         nextvert = (i + 1) % numVerts;
         if (curin) {
-            clip->CL[1].Shades[outvert] = clip->CL[0].Shades[invert];
-            clip->CL[1].MappingU[outvert] = clip->CL[0].MappingU[invert];
-            clip->CL[1].MappingV[outvert] = clip->CL[0].MappingV[invert];
-            clip->CL[1].eMappingU[outvert] = clip->CL[0].eMappingU[invert];
-            clip->CL[1].eMappingV[outvert] = clip->CL[0].eMappingV[invert];
-            clip->CL[1].newVertices[outvert++] = clip->CL[0].newVertices[invert];
+            cdst->Shades[outvert] = csrc->Shades[invert];
+            cdst->MappingU[outvert] = csrc->MappingU[invert];
+            cdst->MappingV[outvert] = csrc->MappingV[invert];
+            cdst->eMappingU[outvert] = csrc->eMappingU[invert];
+            cdst->eMappingV[outvert] = csrc->eMappingV[invert];
+            cdst->newVertices[outvert++] = csrc->newVertices[invert];
         }
-        nextdot = clip->CL[0].newVertices[nextvert].xformedx*plane[0] +
-                  clip->CL[0].newVertices[nextvert].xformedy*plane[1] +
-                  clip->CL[0].newVertices[nextvert].xformedz*plane[2];
+        nextdot = csrc->newVertices[nextvert].xformedx*plane[0] +
+                  csrc->newVertices[nextvert].xformedy*plane[1] +
+                  csrc->newVertices[nextvert].xformedz*plane[2];
         nextin = (nextdot >= plane[3]);
         if (curin != nextin) {
             scale = (plane[3] - curdot) / (nextdot - curdot);
-            clip->CL[1].newVertices[outvert].xformedx = (EON_Float) (clip->CL[0].newVertices[invert].xformedx +
-                (clip->CL[0].newVertices[nextvert].xformedx - clip->CL[0].newVertices[invert].xformedx)
+            cdst->newVertices[outvert].xformedx = (EON_Float) (csrc->newVertices[invert].xformedx +
+                (csrc->newVertices[nextvert].xformedx - csrc->newVertices[invert].xformedx)
                  * scale);
-            clip->CL[1].newVertices[outvert].xformedy = (EON_Float) (clip->CL[0].newVertices[invert].xformedy +
-                (clip->CL[0].newVertices[nextvert].xformedy - clip->CL[0].newVertices[invert].xformedy)
+            cdst->newVertices[outvert].xformedy = (EON_Float) (csrc->newVertices[invert].xformedy +
+                (csrc->newVertices[nextvert].xformedy - csrc->newVertices[invert].xformedy)
                  * scale);
-            clip->CL[1].newVertices[outvert].xformedz = (EON_Float) (clip->CL[0].newVertices[invert].xformedz +
-                (clip->CL[0].newVertices[nextvert].xformedz - clip->CL[0].newVertices[invert].xformedz)
+            cdst->newVertices[outvert].xformedz = (EON_Float) (csrc->newVertices[invert].xformedz +
+                (csrc->newVertices[nextvert].xformedz - csrc->newVertices[invert].xformedz)
                  * scale);
-            clip->CL[1].Shades[outvert] = clip->CL[0].Shades[invert] +
-                        (clip->CL[0].Shades[nextvert] - clip->CL[0].Shades[invert]) * scale;
-            clip->CL[1].MappingU[outvert] = clip->CL[0].MappingU[invert] +
-                (clip->CL[0].MappingU[nextvert] - clip->CL[0].MappingU[invert]) * scale;
-           clip->CL[1].MappingV[outvert] = clip->CL[0].MappingV[invert] +
-                (clip->CL[0].MappingV[nextvert] - clip->CL[0].MappingV[invert]) * scale;
-           clip->CL[1].eMappingU[outvert] = clip->CL[0].eMappingU[invert] +
-                (clip->CL[0].eMappingU[nextvert] - clip->CL[0].eMappingU[invert]) * scale;
-           clip->CL[1].eMappingV[outvert] = clip->CL[0].eMappingV[invert] +
-                (clip->CL[0].eMappingV[nextvert] - clip->CL[0].eMappingV[invert]) * scale;
+            cdst->Shades[outvert] = csrc->Shades[invert] +
+                        (csrc->Shades[nextvert] - csrc->Shades[invert]) * scale;
+            cdst->MappingU[outvert] = csrc->MappingU[invert] +
+                (csrc->MappingU[nextvert] - csrc->MappingU[invert]) * scale;
+            cdst->MappingV[outvert] = csrc->MappingV[invert] +
+                (csrc->MappingV[nextvert] - csrc->MappingV[invert]) * scale;
+            cdst->eMappingU[outvert] = csrc->eMappingU[invert] +
+                (csrc->eMappingU[nextvert] - csrc->eMappingU[invert]) * scale;
+            cdst->eMappingV[outvert] = csrc->eMappingV[invert] +
+                (csrc->eMappingV[nextvert] - csrc->eMappingV[invert]) * scale;
             outvert++;
         }
         curdot = nextdot;
@@ -2526,7 +2528,8 @@ void EON_RenderObj(EON_Rend *rend, EON_Obj *obj)
 void EON_RenderEnd(EON_Rend *rend, EON_Frame *frame)
 {
     EON_FaceInfo *f = rend->Faces;
-    while (rend->NumFaces--) {
+    EON_uInt32 i = 0;
+    for (i = 0; i < rend->NumFaces; i++) {
         EON_ClipRenderFace(&rend->Clip, f->face, frame);
         f++;
     }
