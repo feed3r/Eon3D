@@ -872,8 +872,10 @@ void EON_ClipRenderFace(EON_Clip *clip, const EON_Face *face, EON_Frame *frame)
                 eon_ClipVertexToScreen(&newface, a, clip);
             }
             newface.Material->_PutFace(clip->Cam, &newface, frame);
+            #pragma omp atomic
             clip->Info->TriStats[TRI_STAT_TESSELLATION]++;
         }
+        #pragma omp atomic
         clip->Info->TriStats[TRI_STAT_CLIPPING]++;
     }
 }
