@@ -90,14 +90,14 @@ EON_sInt EON_ClipNeeded(const EON_Clip *clip, const EON_Face *face);
 ** Built-in Rasterizers
 ******************************************************************************/
 
-static void EON_PF_Null(EON_Cam *, EON_Face *, EON_Frame *);
-static void EON_PF_WireF(EON_Cam *, EON_Face *, EON_Frame *);
-static void EON_PF_SolidF(EON_Cam *, EON_Face *, EON_Frame *);
-static void EON_PF_SolidG(EON_Cam *, EON_Face *, EON_Frame *);
-static void EON_PF_TexF(EON_Cam *, EON_Face *, EON_Frame *);
-static void EON_PF_TexG(EON_Cam *, EON_Face *, EON_Frame *);
-static void EON_PF_PTexF(EON_Cam *, EON_Face *, EON_Frame *);
-static void EON_PF_PTexG(EON_Cam *, EON_Face *, EON_Frame *);
+static void EON_PF_Null(EON_Cam *cam, EON_Face *face, EON_Frame *frame);
+static void EON_PF_WireF(EON_Cam *cam, EON_Face *face, EON_Frame *frame);
+static void EON_PF_SolidF(EON_Cam *cam, EON_Face *face, EON_Frame *frame);
+static void EON_PF_SolidG(EON_Cam *cam, EON_Face *face, EON_Frame *frame);
+static void EON_PF_TexF(EON_Cam *cam, EON_Face *face, EON_Frame *frame);
+static void EON_PF_TexG(EON_Cam *cam, EON_Face *face, EON_Frame *frame);
+static void EON_PF_PTexF(EON_Cam *cam, EON_Face *face, EON_Frame *frame);
+static void EON_PF_PTexG(EON_Cam *cam, EON_Face *face, EON_Frame *frame);
 
 
 /* Used internally; EON_FILL_* are stored in EON_Mat._st. */
@@ -110,11 +110,11 @@ enum {
 
 // math.c
 //
-void EON_MatrixRotate(EON_Float matrix[], EON_uChar m, EON_Float Deg)
+void EON_MatrixRotate(EON_Float matrix[], EON_uChar m, EON_Float deg)
 {
     EON_uChar m1, m2;
     EON_Double c,s;
-    EON_Double d = Deg * EON_PI / 180.0;
+    EON_Double d = deg * EON_PI / 180.0;
     memset(matrix, 0, sizeof(EON_Float) * 16);
     matrix[((m-1)<<2)+m-1] = matrix[15] = 1.0;
     m1 = (m % 3);
@@ -131,10 +131,13 @@ void EON_MatrixRotate(EON_Float matrix[], EON_uChar m, EON_Float Deg)
 void EON_MatrixTranslate(EON_Float m[], EON_Float x, EON_Float y, EON_Float z)
 {
     memset(m, 0, sizeof(EON_Float)*16);
-    m[0] = m[4+1] = m[8+2] = m[12+3] = 1.0;
-    m[0+3] = x;
-    m[4+3] = y;
-    m[8+3] = z;
+    m[   0] = 1.0;
+    m[ 4+1] = 1.0;
+    m[ 8+2] = 1.0;
+    m[12+3] = 1.0;
+    m[ 0+3] = x;
+    m[ 4+3] = y;
+    m[ 8+3] = z;
     return;
 }
 
@@ -142,16 +145,16 @@ void EON_MatrixMultiply(EON_Float *dest, EON_Float src[])
 {
     EON_Float temp[16];
     EON_uInt i;
-    memcpy(temp,dest,sizeof(EON_Float)*16);
+    memcpy(temp, dest, sizeof(EON_Float)*16);
     for (i = 0; i < 16; i += 4) {
-        *dest++ = src[i+0]*temp[(0<<2)+0]+src[i+1]*temp[(1<<2)+0]+
-                  src[i+2]*temp[(2<<2)+0]+src[i+3]*temp[(3<<2)+0];
-        *dest++ = src[i+0]*temp[(0<<2)+1]+src[i+1]*temp[(1<<2)+1]+
-                  src[i+2]*temp[(2<<2)+1]+src[i+3]*temp[(3<<2)+1];
-        *dest++ = src[i+0]*temp[(0<<2)+2]+src[i+1]*temp[(1<<2)+2]+
-                  src[i+2]*temp[(2<<2)+2]+src[i+3]*temp[(3<<2)+2];
-        *dest++ = src[i+0]*temp[(0<<2)+3]+src[i+1]*temp[(1<<2)+3]+
-                  src[i+2]*temp[(2<<2)+3]+src[i+3]*temp[(3<<2)+3];
+        *dest++ = src[i+0]*temp[(0<<2)+0]+src[i+1]*temp[(1<<2)+0]
+                + src[i+2]*temp[(2<<2)+0]+src[i+3]*temp[(3<<2)+0];
+        *dest++ = src[i+0]*temp[(0<<2)+1]+src[i+1]*temp[(1<<2)+1]
+                + src[i+2]*temp[(2<<2)+1]+src[i+3]*temp[(3<<2)+1];
+        *dest++ = src[i+0]*temp[(0<<2)+2]+src[i+1]*temp[(1<<2)+2]
+                + src[i+2]*temp[(2<<2)+2]+src[i+3]*temp[(3<<2)+2];
+        *dest++ = src[i+0]*temp[(0<<2)+3]+src[i+1]*temp[(1<<2)+3]
+                + src[i+2]*temp[(2<<2)+3]+src[i+3]*temp[(3<<2)+3];
     }
     return;
 }
@@ -159,28 +162,30 @@ void EON_MatrixMultiply(EON_Float *dest, EON_Float src[])
 void EON_MatrixApply(EON_Float *m, EON_Float x, EON_Float y, EON_Float z,
                      EON_Float *outx, EON_Float *outy, EON_Float *outz)
 {
-    *outx = x*m[0] + y*m[1] + z*m[2] + m[3];
-    *outy = x*m[4] + y*m[5] + z*m[6] + m[7];
-    *outz = x*m[8] + y*m[9] + z*m[10] + m[11];
+    *outx = x*m[ 0] + y*m[ 1] + z*m[ 2] + m[ 3];
+    *outy = x*m[ 4] + y*m[ 5] + z*m[ 6] + m[ 7];
+    *outz = x*m[ 8] + y*m[ 9] + z*m[10] + m[11];
     return;
 }
 
 EON_Float EON_DotProduct(EON_Float x1, EON_Float y1, EON_Float z1,
                          EON_Float x2, EON_Float y2, EON_Float z2)
 {
-    return ((x1*x2)+(y1*y2)+(z1*z2));
+    return ((x1 * x2) + (y1 * y2) + (z1 * z2));
 }
 
 void EON_NormalizeVector(EON_Float *x, EON_Float *y, EON_Float *z)
 {
     EON_Double length = (*x)*(*x)+(*y)*(*y)+(*z)*(*z);
-    if (length > 0.0000000001) {
+    if (length > EON_ZERO) {
         EON_Float t = (EON_Float)sqrt(length);
         *x /= t;
         *y /= t;
         *z /= t;
     } else {
-        *x = *y = *z = 0.0;
+        *x = 0.0;
+        *y = 0.0;
+        *z = 0.0;
     }
     return;
 }
@@ -256,9 +261,11 @@ EON_Obj *EON_ObjScale(EON_Obj *o, EON_Float s)
         v->z *= s;
         v++;
     }
-    for (i = 0; i < EON_MAX_CHILDREN; i ++)
-        if (o->Children[i])
+    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
+        if (o->Children[i]) {
             EON_ObjScale(o->Children[i],s);
+        }
+    }
     return o;
 }
 
@@ -272,9 +279,11 @@ EON_Obj *EON_ObjStretch(EON_Obj *o, EON_Float x, EON_Float y, EON_Float z)
         v->z *= z;
         v++;
     }
-    for (i = 0; i < EON_MAX_CHILDREN; i ++)
-        if (o->Children[i])
+    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
+        if (o->Children[i]) {
             EON_ObjStretch(o->Children[i],x,y,z);
+        }
+    }
     return o;
 }
 
@@ -325,9 +334,11 @@ EON_Obj *EON_ObjFlipNormals(EON_Obj *o)
         f->nz = - f->nz;
         f++;
     }
-    for (i = 0; i < EON_MAX_CHILDREN; i ++)
-        if (o->Children[i])
+    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
+        if (o->Children[i]) {
             EON_ObjFlipNormals(o->Children[i]);
+        }
+    }
     return o;
 }
 
@@ -335,13 +346,17 @@ void EON_ObjDelete(EON_Obj *o)
 {
     EON_uInt i;
     if (o) {
-        for (i = 0; i < EON_MAX_CHILDREN; i ++)
-            if (o->Children[i])
+        for (i = 0; i < EON_MAX_CHILDREN; i ++) {
+            if (o->Children[i]) {
                 EON_ObjDelete(o->Children[i]);
-            if (o->Vertices)
-                CX_free(o->Vertices);
-            if (o->Faces)
-                CX_free(o->Faces);
+            }
+        }
+        if (o->Vertices) {
+            CX_free(o->Vertices);
+        }
+        if (o->Faces) {
+            CX_free(o->Faces);
+        }
         CX_free(o);
     }
     return;
@@ -350,20 +365,20 @@ void EON_ObjDelete(EON_Obj *o)
 EON_Obj *EON_ObjCreate(EON_uInt32 nv, EON_uInt32 nf)
 {
     EON_Obj *o = CX_zalloc(sizeof(EON_Obj));
-    if (!o)
-        return 0;
-    o->GenMatrix = 1;
-    o->BackfaceCull = 1;
-    o->NumVertices = nv;
-    o->NumFaces = nf;
-    if (nv && !(o->Vertices = CX_zalloc(sizeof(EON_Vertex)*nv))) {
-        CX_free(o);
-        return 0;
-    }
-    if (nf && !(o->Faces = CX_zalloc(sizeof(EON_Face)*nf))) {
-        CX_free(o->Vertices);
-        CX_free(o);
-        return 0;
+    if (o) {
+        o->GenMatrix = 1;
+        o->BackfaceCull = 1;
+        o->NumVertices = nv;
+        o->NumFaces = nf;
+        if (nv && !(o->Vertices = CX_zalloc(sizeof(EON_Vertex)*nv))) {
+            CX_free(o);
+            return 0;
+        }
+        if (nf && !(o->Faces = CX_zalloc(sizeof(EON_Face)*nf))) {
+            CX_free(o->Vertices);
+            CX_free(o);
+            return 0;
+        }
     }
     return o;
 }
@@ -384,7 +399,7 @@ void EON_ObjInfo(EON_Obj *o, void *logger)
 
 EON_Obj *EON_ObjClone(EON_Obj *o)
 {
-    EON_Face *iff, *of;
+    EON_Face *iff = NULL, *of = NULL;
     EON_uInt32 i;
     EON_Obj *out = EON_ObjCreate(o->NumVertices,o->NumFaces);
     if (out) {
