@@ -830,8 +830,6 @@ inline static void eon_ClipSetupFace(EON_ClipInfo *ci, const EON_Face *face, int
     ci->Shades[a] = face->Shades[a];
     ci->MappingU[a] = face->MappingU[a];
     ci->MappingV[a] = face->MappingV[a];
-    ci->eMappingU[a] = face->eMappingU[a];
-    ci->eMappingV[a] = face->eMappingV[a];
     return;
 }
 
@@ -865,8 +863,6 @@ void EON_ClipRenderFace(EON_Clip *clip, const EON_Face *face, EON_Frame *frame)
                 newface.Shades[a] = (EON_Float) CL[0].Shades[w];
                 newface.MappingU[a] = (EON_sInt32)CL[0].MappingU[w];
                 newface.MappingV[a] = (EON_sInt32)CL[0].MappingV[w];
-                newface.eMappingU[a] = (EON_sInt32)CL[0].eMappingU[w];
-                newface.eMappingV[a] = (EON_sInt32)CL[0].eMappingV[w];
                 eon_ClipVertexToScreen(&newface, a, clip);
             }
             newface.Material->_PutFace(clip->Cam, &newface, frame);
