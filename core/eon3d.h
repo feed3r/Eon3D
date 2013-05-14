@@ -283,8 +283,6 @@ typedef struct _EON_ClipInfo {
     EON_Double Shades[8];
     EON_Double MappingU[8];
     EON_Double MappingV[8];
-    EON_Double eMappingU[8];
-    EON_Double eMappingV[8];
 } EON_ClipInfo;
 
 typedef struct _EON_Clip {
