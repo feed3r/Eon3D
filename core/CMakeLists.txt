@@ -21,9 +21,13 @@ add_library(eon3d SHARED ${LIBEON3D_SOURCES} ${LIBEON3D_KIT_SOURCES})
 add_library(eon3dx_s STATIC ${LIBEON3DX_SOURCES})
 add_library(eon3dx SHARED ${LIBEON3DX_SOURCES})
 
-target_link_libraries(eon3d_s m)
-target_link_libraries(eon3d m)
+set(LIBEON3D_LIBS m)
+if(ENABLE_OPENMP)
+	set(LIBEON3D_LIBS ${LIBEON3D_LIBS} gomp)
+endif(ENABLE_OPENMP)
+target_link_libraries(eon3d_s ${LIBEON3D_LIBS})
+target_link_libraries(eon3d ${LIBEON3D_LIBS})
 
-target_link_libraries(eon3dx_s eon3d m)
-target_link_libraries(eon3dx eon3d m)
+target_link_libraries(eon3dx_s eon3d ${LIBEON3D_LIBS})
+target_link_libraries(eon3dx eon3d ${LIBEON3D_LIBS})
 
