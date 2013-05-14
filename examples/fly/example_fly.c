@@ -85,8 +85,13 @@ void setup_materials(EONx_Console *con, EON_Mat **mat,
     return;
 }
 
+typedef struct Landscape_ {
+    EON_Obj *land;
+    EON_Obj *sky;
+    EON_Obj *sky2;
+} Landscape;
 
-EON_Obj *setup_landscape(EON_Mat *m, EON_Mat *sm, EON_Mat *sm2)
+void setup_landscape(Landscape *ls, EON_Mat *m, EON_Mat *sm, EON_Mat *sm2)
 {
     int i;
     // make our root object the land
@@ -96,18 +101,19 @@ EON_Obj *setup_landscape(EON_Mat *m, EON_Mat *sm, EON_Mat *sm2)
         o->Vertices[i].y += (float) (rand()%1400)-700;
     // gotta recalculate normals for backface culling to work right
     EON_ObjCalcNormals(o);
+    ls->land = 0;
 
     // Make our first child the first sky
-    o->Children[0] = EON_MakePlane(LAND_SIZE,LAND_SIZE,1,sm);
-    o->Children[0]->Yp = 2000;
-    o->Children[0]->BackfaceCull = 0;
+    ls->sky = EON_MakePlane(LAND_SIZE,LAND_SIZE,1,sm);
+    ls->sky->Yp = 2000;
+    ls->sky->BackfaceCull = 0;
 
     // and the second the second sky
-    o->Children[1] = EON_MakeSphere(LAND_SIZE,10,10,sm2);
-    o->Children[1]->Yp = 2000;
-    EON_ObjFlipNormals(o->Children[1]);
+    ls->sky2 = EON_MakeSphere(LAND_SIZE,10,10,sm2);
+    ls->sky2->Yp = 2000;
+    EON_ObjFlipNormals(ls->sky2);
 
-    return o;
+    return;
 }
 
 // FIXME: move to/from SDL
@@ -125,6 +131,7 @@ int main(int argc, char *argv[])
     EON_Cam *cam;
     EON_Obj *land;
     EON_Obj *sky, *sky2;
+    Landscape ls;
     EONx_Console *con;
     EON_Rend *rend;
     EON_Frame *frame;
@@ -150,11 +157,11 @@ int main(int argc, char *argv[])
 
     setup_materials(con, mat, Logger); // intialize materials and palette
 
-    land = setup_landscape(mat[0],mat[1],mat[2]); // create landscape
-    sky = land->Children[0]; // unhierarchicalize the sky from the land
-    land->Children[0] = 0;
-    sky2 = land->Children[1];
-    land->Children[1] = 0;
+    memset(&ls, 0, sizeof(ls));
+    setup_landscape(&ls, mat[0],mat[1],mat[2]); // create landscape
+    land = ls.land;
+    sky = ls.sky;
+    sky2 = ls.sky2;
 
     EON_ObjInfo(land, Logger);
     EON_ObjInfo(sky,  Logger);

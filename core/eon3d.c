@@ -261,11 +261,7 @@ EON_Obj *EON_ObjScale(EON_Obj *o, EON_Float s)
         v->z *= s;
         v++;
     }
-    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
-        if (o->Children[i]) {
-            EON_ObjScale(o->Children[i],s);
-        }
-    }
+    // scenegraph
     return o;
 }
 
@@ -279,11 +275,7 @@ EON_Obj *EON_ObjStretch(EON_Obj *o, EON_Float x, EON_Float y, EON_Float z)
         v->z *= z;
         v++;
     }
-    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
-        if (o->Children[i]) {
-            EON_ObjStretch(o->Children[i],x,y,z);
-        }
-    }
+    // scenegraph
     return o;
 }
 
@@ -334,23 +326,14 @@ EON_Obj *EON_ObjFlipNormals(EON_Obj *o)
         f->nz = - f->nz;
         f++;
     }
-    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
-        if (o->Children[i]) {
-            EON_ObjFlipNormals(o->Children[i]);
-        }
-    }
+    // scenegraph
     return o;
 }
 
 void EON_ObjDelete(EON_Obj *o)
 {
-    EON_uInt i;
     if (o) {
-        for (i = 0; i < EON_MAX_CHILDREN; i ++) {
-            if (o->Children[i]) {
-                EON_ObjDelete(o->Children[i]);
-            }
-        }
+        // scenegraph
         if (o->Vertices) {
             CX_free(o->Vertices);
         }
@@ -405,11 +388,7 @@ EON_Obj *EON_ObjClone(EON_Obj *o)
     if (out) {
         return 0;
     }
-    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
-        if (o->Children[i]) {
-            out->Children[i] = EON_ObjClone(o->Children[i]);
-        }
-    }
+    // scenegraph
     out->Xa = o->Xa; out->Ya = o->Ya; out->Za = o->Za;
     out->Xp = o->Xp; out->Yp = o->Yp; out->Zp = o->Zp;
     out->BackfaceCull = o->BackfaceCull;
@@ -449,13 +428,7 @@ void EON_ObjSetMat(EON_Obj *o, EON_Mat *m, EON_Bool th)
     while (i--) {
         (f++)->Material = m;
     }
-    if (th) {
-        for (i = 0; i < EON_MAX_CHILDREN; i++) {
-            if (o->Children[i]) {
-                EON_ObjSetMat(o->Children[i],m,th);
-            }
-        }
-    }
+    // scenegraph
     return;
 }
 
@@ -501,11 +474,7 @@ EON_Obj *EON_ObjCalcNormals(EON_Obj *obj)
         EON_NormalizeVector(&v->nx, &v->ny, &v->nz);
         v++;
     } while (--i);
-    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
-        if (obj->Children[i]) {
-            EON_ObjCalcNormals(obj->Children[i]);
-        }
-    }
+    // scenegraph
     return obj;
 }
 
@@ -2330,7 +2299,7 @@ inline static void eon_RenderShadeObjWireframe(EON_Rend *rend, EON_Face *face)
 static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
                           EON_Float *bmatrix, EON_Float *bnmatrix)
 {
-    EON_uInt32 i, x, facepos;
+    EON_uInt32 x, facepos;
     EON_Float nx = 0.0, ny = 0.0, nz = 0.0;
     EON_Float oMatrix[16], nMatrix[16], tempMatrix[16];
 
@@ -2359,12 +2328,7 @@ static void eon_RenderObj(EON_Rend *rend, EON_Obj *obj,
     if (bmatrix) {
         EON_MatrixMultiply(oMatrix,bmatrix);
     }
-    for (i = 0; i < EON_MAX_CHILDREN; i ++) {
-        if (obj->Children[i]) {
-            eon_RenderObj(rend, obj->Children[i],
-                          oMatrix, nMatrix);
-        }
-    }
+    // scenegraph
     if (!obj->NumFaces || !obj->NumVertices) {
         return;
     }
