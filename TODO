@@ -17,10 +17,9 @@ X truecolor (AKA RGBA) support for each rasterizer; drop the palette
 * landgen application
 * noise tool
 * MUD/labyrinth application
-* LUA translation (manual)
-* JS translation (emscripten)
+* LUA bindings
 * parallelism (slice rendering? figure out) -> branch(es) openmp et al.
-* performance (either single and multi core)
+* performance (either single and multi core) -> branches perf/parallel
 
 Outstanding bugs:
 =================
