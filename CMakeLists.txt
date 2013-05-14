@@ -14,7 +14,7 @@ set(CMAKE_REQUIRED_INCLUDES 	stdlib.h)
 set(CMAKE_REQUIRED_INCLUDES 	stdint.h)
 set(CMAKE_REQUIRED_INCLUDES 	inttypes.h)
 
-option(ENABLE_OPENMP "enable the OpenMP acceleration" ON)
+option(ENABLE_OPENMP "enable the OpenMP acceleration" OFF)
 option(ENABLE_PROFILE "enable the gprof instrumentation" OFF)
 
 if(CMAKE_COMPILER_IS_GNUCC)
