@@ -289,7 +289,6 @@ typedef struct _EON_ClipInfo {
 
 typedef struct _EON_Clip {
     EON_RenderInfo *Info;
-    EON_ClipInfo CL[2];
     EON_Double ClipPlanes[NUM_CLIP_PLANES][4];
     EON_Cam *Cam;
     EON_sInt32 Cx;

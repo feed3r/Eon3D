@@ -14,6 +14,7 @@ set(CMAKE_REQUIRED_INCLUDES 	stdlib.h)
 set(CMAKE_REQUIRED_INCLUDES 	stdint.h)
 set(CMAKE_REQUIRED_INCLUDES 	inttypes.h)
 
+option(ENABLE_OPENMP "enable the OpenMP acceleration" ON)
 option(ENABLE_PROFILE "enable the gprof instrumentation" OFF)
 
 if(CMAKE_COMPILER_IS_GNUCC)
@@ -23,6 +24,10 @@ if(CMAKE_COMPILER_IS_GNUCC)
          add_definitions(-pg)
          set(CMAKE_EXE_LINKER_FLAGS -pg)
     endif(ENABLE_PROFILE)
+    if(ENABLE_OPENMP)
+        message(STATUS "Enabling the OpenMP acceleration")
+        add_definitions(-fopenmp)
+    endif(ENABLE_OPENMP)
 endif(CMAKE_COMPILER_IS_GNUCC)
 
 configure_file(${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_BINARY_DIR}/config.h)
