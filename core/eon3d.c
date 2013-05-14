@@ -930,8 +930,6 @@ static EON_uInt eon_ClipToPlane(EON_ClipInfo *cdst, const EON_ClipInfo *csrc,
             cdst->Shades[outvert] = csrc->Shades[invert];
             cdst->MappingU[outvert] = csrc->MappingU[invert];
             cdst->MappingV[outvert] = csrc->MappingV[invert];
-            cdst->eMappingU[outvert] = csrc->eMappingU[invert];
-            cdst->eMappingV[outvert] = csrc->eMappingV[invert];
             cdst->newVertices[outvert++] = csrc->newVertices[invert];
         }
         nextdot = csrc->newVertices[nextvert].xformedx*plane[0] +
@@ -955,10 +953,6 @@ static EON_uInt eon_ClipToPlane(EON_ClipInfo *cdst, const EON_ClipInfo *csrc,
                 (csrc->MappingU[nextvert] - csrc->MappingU[invert]) * scale;
             cdst->MappingV[outvert] = csrc->MappingV[invert] +
                 (csrc->MappingV[nextvert] - csrc->MappingV[invert]) * scale;
-            cdst->eMappingU[outvert] = csrc->eMappingU[invert] +
-                (csrc->eMappingU[nextvert] - csrc->eMappingU[invert]) * scale;
-            cdst->eMappingV[outvert] = csrc->eMappingV[invert] +
-                (csrc->eMappingV[nextvert] - csrc->eMappingV[invert]) * scale;
             outvert++;
         }
         curdot = nextdot;
