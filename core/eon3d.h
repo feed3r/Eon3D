@@ -78,7 +78,7 @@ typedef uint8_t EON_uChar;        /* unsigned 8 bit integer */
 typedef int8_t EON_sChar;         /* signed 8 bit integer */
 typedef uint8_t EON_Byte;         /* generic binary data */
 
-#define EON_ZERO 0.0000001
+#define EON_ZERO 0.00000000001
 #define EON_PI   3.14159265359
 
 /* Utility min() and max() functions */
