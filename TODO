@@ -24,6 +24,6 @@ X truecolor (AKA RGBA) support for each rasterizer; drop the palette
 Outstanding bugs:
 =================
 
-* triangle disappareance
+X triangle disappareance
 * image corruption when screenshotting
 
