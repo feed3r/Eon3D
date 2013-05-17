@@ -7,7 +7,7 @@
 #endif
 
 #ifndef VERSION
-#define VERSION "0.1.0"
+#define VERSION "0.1.4"
 #endif
 
 /* the following are detected by cmake */
@@ -16,6 +16,8 @@
 #cmakedefine SDL_FOUND
 
 #cmakedefine PNG_FOUND
+
+#cmakedefine HAVE_OPENMP
 
 /* just to be uniform;
    always true because we always ship RPLY

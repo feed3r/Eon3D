@@ -23,7 +23,7 @@ add_library(eon3dx SHARED ${LIBEON3DX_SOURCES})
 
 set(LIBEON3D_LIBS m)
 if(ENABLE_OPENMP)
-	set(LIBEON3D_LIBS ${LIBEON3D_LIBS} gomp)
+    set(LIBEON3D_LIBS ${LIBEON3D_LIBS} gomp)
 endif(ENABLE_OPENMP)
 target_link_libraries(eon3d_s ${LIBEON3D_LIBS})
 target_link_libraries(eon3d ${LIBEON3D_LIBS})

@@ -31,7 +31,13 @@
  *                                                                        *
  **************************************************************************/
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef HAVE_OPENMP
 #include <omp.h>
+#endif
 
 #include "memorykit.h"
 #include "logkit.h"
@@ -850,10 +856,14 @@ void EON_ClipRenderFace(EON_Clip *clip, const EON_Face *face, EON_Frame *frame)
                 eon_ClipVertexToScreen(&newface, a, clip);
             }
             newface.Material->_PutFace(clip->Cam, &newface, frame);
+#ifdef HAVE_OPENMP            
             #pragma omp atomic
+#endif
             clip->Info->TriStats[TRI_STAT_TESSELLATION]++;
         }
+#ifdef HAVE_OPENMP            
         #pragma omp atomic
+#endif
         clip->Info->TriStats[TRI_STAT_CLIPPING]++;
     }
 }
@@ -2402,7 +2412,9 @@ void EON_RenderEnd(EON_Rend *rend, EON_Frame *frame)
 {
     EON_FaceInfo *f = rend->Faces;
     EON_uInt32 i = 0;
+#ifdef HAVE_OPENMP            
     #pragma omp parallel for
+#endif
     for (i = 0; i < rend->NumFaces; i++) {
         EON_ClipRenderFace(&rend->Clip, f->face, frame);
         f++;
