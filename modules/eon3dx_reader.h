@@ -48,27 +48,22 @@
 
 #include <eon3d.h>
 
-/*
-  EON_ReadPLYObj() reads an object in the PLY format
-  Parameters:
-    filename: filename of the file containg the object desctiotion
-    mat: material to apply to the loaded object
-  Returns:
-    pointer to object
-*/
+/**
+ * reads an object in the PLY format.
+ * @param filename filename of the file containg the object desctiotion.
+ * @param mat material to apply to the loaded object.
+ * @return a pointer to the loaded object. NULL on error.
+ */
 EON_Obj *EONx_ReadPLYObj(const char *filename, EON_Mat *mat);
 
-/*
-  EONx_ReadPCXTex() reads a 8bpp PCX texture
-  Parameters:
-    filename: filename of texture to read
-  Returns:
-    pointer to texture
-  Notes:
-    The PCX must be a 8bpp zSoft version 5 PCX. The texture's palette will
-    be optimized, and the texture might be scaled up so that it's dimensions
-    will be a nice power of two.
-*/
+/**
+ * reads a 8bpp PCX texture.
+ * The PCX must be a 8bpp zSoft version 5 PCX. The texture's palette will
+ * be optimized, and the texture might be scaled up so that it's dimensions
+ * will be a nice power of two.
+ * @param filename filename of texture to read
+ * @return pointer to the read texture. NULL on error.
+ */
 EON_Texture *EONx_ReadPCXTex(const char *filename);
 
 #endif /* EON3DX_READER_H */
