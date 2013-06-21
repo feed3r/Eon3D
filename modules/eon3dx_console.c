@@ -339,11 +339,6 @@ int EONx_ConsoleNextEvent(EONx_Console *ctx)
     return 0;
 }
 
-int EONx_ConsoleSetPalette(EONx_Console *ctx, const uint8_t *palette, int numcolors)
-{
-    return 0;
-}
-
 const EON_Frame* EONx_ConsoleGetFrame(EONx_Console *ctx)
 {
     return NULL;

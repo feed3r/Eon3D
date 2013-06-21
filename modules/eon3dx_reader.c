@@ -308,10 +308,10 @@ static void eon_RescaleImage(EON_uChar *in, EON_uChar *out, EON_uInt inx,
                              EON_uInt iny, EON_uInt outx, EON_uInt outy)
 {
     EON_uInt x;
-    EON_uInt32 X, dX, dY, Y;
-    dX = (inx<<16) / outx;
-    dY = (iny<<16) / outy;
-    Y = 0;
+    EON_uInt32 X = 0;
+    EON_uInt32 dX = (inx<<16) / outx;
+    EON_uInt32 dY = (iny<<16) / outy;
+    EON_uInt32 Y = 0;
     do {
         EON_uChar *ptr = in + inx*(Y>>16);
         X = 0;
