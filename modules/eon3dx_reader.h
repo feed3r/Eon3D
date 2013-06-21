@@ -50,7 +50,7 @@
 
 /**
  * reads an object in the PLY format.
- * @param filename filename of the file containg the object desctiotion.
+ * @param filename filename of the file containg the object description.
  * @param mat material to apply to the loaded object.
  * @return a pointer to the loaded object. NULL on error.
  */

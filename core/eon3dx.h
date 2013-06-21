@@ -40,38 +40,33 @@
 /******************************************************************************
 ** Spline Interpolation (spline.c)
 ******************************************************************************/
-/*
-** Spline type. See EON_Spline*().
-*/
+
+/**
+ * Spline type.
+ * @see EON_Spline*().
+ */
 typedef struct _EON_Spline {
-    EON_Float *keys;              /* Key data, keyWidth*numKeys */
-    EON_sInt keyWidth;            /* Number of floats per key */
-    EON_sInt numKeys;             /* Number of keys */
-    EON_Float cont;               /* Continuity. Should be -1.0 -> 1.0 */
-    EON_Float bias;               /* Bias. -1.0 -> 1.0 */
-    EON_Float tens;               /* Tension. -1.0 -> 1.0 */
+    EON_Float *keys;              /**< Key data, keyWidth*numKeys */
+    EON_sInt keyWidth;            /**< Number of floats per key */
+    EON_sInt numKeys;             /**< Number of keys */
+    EON_Float cont;               /**< Continuity. Should be -1.0 -> 1.0 */
+    EON_Float bias;               /**< Bias. -1.0 -> 1.0 */
+    EON_Float tens;               /**< Tension. -1.0 -> 1.0 */
 } EON_Spline;
 
 
-/*
-  EON_SplineInit() initializes a spline
-  Parameters:
-    s: the spline
-  Returns:
-    nothing
-  Notes:
-    Intializes the spline. Do this once, or when you change any of the settings
-*/
+/**
+ * initializes a spline.
+ * Call this once, or when you change any of the settings
+ * @param s the spline to be initialized.
+ */
 void EON_SplineInit(EON_Spline *s);
 
-/*
-  EON_SplineGetPoint() gets a point on the spline
-  Parameters:
-    s: spline
-    frame: time into spline. 0.0 is start, 1.0 is second key point, etc.
-    out: a pointer to an array of s->keyWidth floats that will be filled in.
-  Returns:
-    nothing
+/**
+ * gets a point on the spline.
+ * @param[in] s a spline.
+ * @param[in] frame time into spline. 0.0 is start, 1.0 is second key point, etc.
+ * @param[out] out a pointer to an array of s->keyWidth floats that will be filled in.
 */
 void EON_SplineGetPoint(EON_Spline *s, EON_Float frame, EON_Float *out);
 
@@ -80,80 +75,68 @@ void EON_SplineGetPoint(EON_Spline *s, EON_Float frame, EON_Float *out);
 ** Object Primitives Code (make.c)
 ******************************************************************************/
 
-/*
-  EON_MakePlane() makes a EON_ane centered at the origin facing up the y axis.
-  Parameters:
-    w: width of the EON_ane (along the x axis)
-    d: depth of the EON_ane (along the z axis)
-    res: resolution of EON_plane, i.e. subdivisions
-    m: material to use
-  Returns:
-    pointer to object created.
-*/
+/**
+ * makes a plane centered at the origin facing up the y axis.
+ * @param w width of the plane (along the x axis).
+ * @param d depth of the plane (along the z axis)
+ * @param res resolution of plplane, i.e. subdivisions.
+ * @param m material to use.
+ * @return a pointer to object created or NULL on error.
+ */
 EON_Obj *EON_MakePlane(EON_Float w, EON_Float d, EON_uInt res, EON_Mat *m);
 
-/*
-  EON_MakeBox() makes a box centered at the origin
-  Parameters:
-    w: width of the box (x axis)
-    d: depth of the box (z axis)
-    h: height of the box (y axis)
-  Returns:
-    pointer to object created.
-*/
+/**
+ * makes a box centered at the origin.
+ * @param w width of the box (x axis).
+ * @param d depth of the box (z axis).
+ * @param h height of the box (y axis).
+ * @return a pointer to object created or NULL on error.
+ */
 EON_Obj *EON_MakeBox(EON_Float w, EON_Float d, EON_Float h, EON_Mat *m);
 
-/*
-  EON_MakeCone() makes a cone centered at the origin
-  Parameters:
-    r: radius of the cone (x-z axis)
-    h: height of the cone (y axis)
-    div: division of cone (>=3)
-    cap: close the big end?
-    m: material to use
-  Returns:
-    pointer to object created.
-*/
+/**
+ * makes a cone centered at the origin.
+ * @param r radius of the cone (x-z axis).
+ * @param h height of the cone (y axis).
+ * @param div division of cone (>=3).
+ * @param cap close the big end? (boolean value)
+ * @param m material to use.
+ * @return a pointer to object created or NULL on error.
+ */
 EON_Obj *EON_MakeCone(EON_Float r, EON_Float h, EON_uInt div, EON_Bool cap, EON_Mat *m);
 
-/*
-  EON_MakeCylinder() makes a cylinder centered at the origin
-  Parameters:
-    r: radius of the cylinder (x-z axis)
-    h: height of the cylinder (y axis)
-    divr: division of of cylinder (around the circle) (>=3)
-    captop: close the top
-    capbottom: close the bottom
-    m: material to use
-  Returns:
-    pointer to object created.
-*/
+/**
+ * makes a cylinder centered at the origin.
+ * @param r radius of the cylinder (x-z axis).
+ * @param h height of the cylinder (y axis).
+ * @param divr division of of cylinder (around the circle) (>=3).
+ * @param captop: close the top? (boolean value)
+ * @param capbottom close the bottom? (boolean value)
+ * @param m material to use.
+ * @return a pointer to object created or NULL on error.
+ */
 EON_Obj *EON_MakeCylinder(EON_Float r, EON_Float h, EON_uInt divr, EON_Bool captop,
                           EON_Bool capbottom, EON_Mat *m);
 
-/*
-  EON_MakeSphere() makes a sphere centered at the origin.
-  Parameters:
-    r: radius of the sphere
-    divr: division of the sphere (around the y axis) (>=3)
-    divh: division of the sphere (around the x,z axis) (>=3)
-    m: material to use
-  Returns:
-    pointer to object created.
-*/
+/**
+ * makes a sphere centered at the origin.
+ * @param r radius of the sphere.
+ * @param divr division of the sphere (around the y axis) (>=3).
+ * @param divh division of the sphere (around the x,z axis) (>=3).
+ * @param m material to use.
+ * @return a pointer to object created or NULL on error.
+ */
 EON_Obj *EON_MakeSphere(EON_Float r, EON_uInt divr, EON_uInt divh, EON_Mat *m);
 
-/*
-  EON_MakeTorus() makes a torus centered at the origin
-  Parameters:
-    r1: inner radius of the torus
-    r2: outer radius of the torus
-    divrot: division of the torus (around the y axis) (>=3)
-    divrad: division of the radius of the torus (x>=3)
-    m: material to use
-  Returns:
-    pointer to object created.
-*/
+/**
+ * makes a torus centered at the origin.
+ * @param r1 inner radius of the torus.
+ * @param r2 outer radius of the torus.
+ * @param divrot division of the torus (around the y axis) (>=3).
+ * @param divrad division of the radius of the torus (x>=3).
+ * @param m material to use.
+ * @return a pointer to object created or NULL on error.
+ */
 EON_Obj *EON_MakeTorus(EON_Float r1, EON_Float r2, EON_uInt divrot,
                        EON_uInt divrad, EON_Mat *m);
 
@@ -163,76 +146,66 @@ EON_Obj *EON_MakeTorus(EON_Float r1, EON_Float r2, EON_uInt divrot,
 ******************************************************************************/
 
 typedef struct _EON_Font {
-    const EON_Byte *Face;
-    EON_Color Color;
-    EON_uInt Height;
+    const EON_Byte *Face; /**< the actual font value */
+    EON_Color Color;      /**< color of the font */
+    EON_uInt Height;      /**< height of the font (px) */
 } EON_Font;
 
-/*
-  EON_TextDefaultFont() gets the default builtin EON font.
-    Parameters:
-      nothing.
-    Returns:
-      a pointer to a Font object to be initialized.
-*/
+/**
+ * gets the default builtin EON font.
+ * There is no need to free() or destroy in any way the returned
+ * pointer.
+ * @return a pointer to a Font object.
+ */
 EON_Font *EON_TextDefaultFont();
 
-/*
-  EON_FontDelete() frees all memory associated with "font"
-*/
+/**
+ * frees all memory associated with a given font.
+ * @param font the font to be released.
+ */
 void EON_FontDelete(EON_Font *font);
 
-/*
-  EON_TextPutChar() puts a character to a camera
-  Parameters:
-    font: the Font object to be used.
-    cam: the camera. If the camera has a zBuffer, it will be used.
-    frame: the frame on which to render.
-    x: the x screen position of the left of the text
-    y: the y screen position of the top of the text
-    z: the depth of the text (used when cam->zBuffer is set)
-    c: the character to put. Special characters such as '\n' aren't handled.
-  Returns:
-    nothing
-*/
+/**
+ * puts a character to a given frame through a camera.
+ * @param font the Font object to be used.
+ * @param cam the camera. If the camera has a zBuffer, it will be used.
+ * @param frame the frame on which to render.
+ * @param x the x screen position of the left of the text.
+ * @param y the y screen position of the top of the text.
+ * @param z the depth of the text (used when cam->zBuffer is set).
+ * @param c the character to put. Special characters such as '\n' aren't handled.
+ */
 void EON_TextPutChar(EON_Font *font, EON_Cam *cam, EON_Frame *frame,
                      EON_sInt x, EON_sInt y, EON_Float z,
                      char c);
 
-/*
-  EON_TextPutString() puts an array of characters to a camera
-  Parameters:
-    font: the Font object to be used.
-    cam: The camera. If the camera has a zBuffer, it will be used.
-    frame: the frame on which to render.
-    x: the x screen position of the left of the text
-    y: the y screen position of the top of the text
-    z: the depth of the text (used when cam->zBuffer is set)
-    string:
-      the characters to put. '\n' and '\t' are handled as one would expect
-  Returns:
-    nothing
-*/
+/**
+ * puts an array of characters to a frame through a camera.
+ * @param font the Font object to be used.
+ * @param cam The camera. If the camera has a zBuffer, it will be used.
+ * @param frame the frame on which to render.
+ * @param x the x screen position of the left of the text.
+ * @param y the y screen position of the top of the text.
+ * @param z the depth of the text (used when cam->zBuffer is set).
+ * @param string the characters to put. '\n' and '\t' are handled as one would expect.
+ */
 void EON_TextPutStr(EON_Font *font, EON_Cam *cam, EON_Frame *frame,
                     EON_sInt x, EON_sInt y, EON_Float z,
                     const char *string);
 
-/*
-  EON_TextPrintf() is printf() for graphics
-  Parameters:
-    font: the Font object to be used.
-    cam: The camera. If the camera has a zBuffer, it will be used.
-    frame: the frame on which to render.
-    x: the x screen position of the left of the text
-    y: the y screen position of the top of the text
-    z: the depth of the text
-    format:
-      the characters to put, with printf() formatting codes.
-      '\n' and '\t' are handled as one would expect
-    ...: any additional parameters specified by format
-  Returns:
-    nothing
-*/
+/**
+ * printf() for graphics.
+ * @see EON_TextPutStr
+ * @param font the Font object to be used.
+ * @param cam The camera. If the camera has a zBuffer, it will be used.
+ * @param frame the frame on which to render.
+ * @param x the x screen position of the left of the text.
+ * @param y the y screen position of the top of the text.
+ * @param z the depth of the text.
+ * @param format the characters to put, with printf() formatting codes.
+ *        '\n' and '\t' are handled as one would expect
+ * @param ... any additional parameters specified by format.
+ */
 void EON_TextPrintf(EON_Font *font, EON_Cam *cam, EON_Frame *frame,
                     EON_sInt x, EON_sInt y, EON_Float z,
                     const char *format, ...);
