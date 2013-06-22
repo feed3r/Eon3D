@@ -15,6 +15,8 @@ X doxygenize docs
 * recording module
 * lplants application
 * landgen application
+* eonview: camera moving
+* texture autogeneration routines (new module)
 * noise tool
 * MUD/labyrinth application
 * LUA bindings
