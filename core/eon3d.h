@@ -41,56 +41,56 @@
 #include <stdarg.h>
 #include <math.h>
 
-/* 
-  Worldspace is in a unusual coordinate system.
-  For example, if the camera is at the origin and not rotated,
-  X is positive to the right,
-  Y is positive upward, and
-  Z is positive going into the screen.
-  I.e. behind the camera is negative Z. 
-*/
+/** 
+ * Worldspace is in a unusual coordinate system.
+ * For example, if the camera is at the origin and not rotated,
+ * X is positive to the right,
+ * Y is positive upward, and
+ * Z is positive going into the screen.
+ * I.e. behind the camera is negative Z. 
+ */
 
 /******************************************************************************/
 
 enum {
-    /* Maximum lights per scene -- if you exceed this, they will be ignored */
+    /** Maximum lights per scene -- if you exceed this, they will be ignored */
     EON_MAX_LIGHTS = 32,
-    /* Maximum number of triangles per scene -- if you exceed this, entire
-       objects will be ignored. You can increase this if you need it. It takes
-       approximately 8*EON_MAX_TRIANGLES bytes of memory. i.e. the default of
-       16384 consumes 128kbytes of memory. not really a big deal,
-    */
+    /** Maximum number of triangles per scene -- if you exceed this, entire
+     *  objects will be ignored. You can increase this if you need it. It takes
+     *  approximately 8*EON_MAX_TRIANGLES bytes of memory. i.e. the default of
+     *  16384 consumes 128kbytes of memory. not really a big deal,
+     */
     EON_MAX_TRIANGLES = 1048576
 };
 
-typedef float EON_ZBuffer;        /* z-buffer type (must be float) */
-typedef float EON_Float;          /* General floating point */
-typedef double EON_Double;        /* Double-precision floating point */
-typedef float EON_IEEEFloat32;    /* IEEE 32 bit floating point */
-typedef int32_t EON_sInt32;       /* signed 32 bit integer */
-typedef uint32_t EON_uInt32;      /* unsigned 32 bit integer */
-typedef int16_t EON_sInt16;       /* signed 16 bit integer */
-typedef uint16_t EON_uInt16;      /* unsigned 16 bit integer */
-typedef signed int EON_sInt;      /* signed optimal integer */
-typedef unsigned int EON_uInt;    /* unsigned optimal integer */
-typedef int EON_Bool;             /* boolean */
-typedef uint8_t EON_uChar;        /* unsigned 8 bit integer */
-typedef int8_t EON_sChar;         /* signed 8 bit integer */
-typedef uint8_t EON_Byte;         /* generic binary data */
+typedef float EON_ZBuffer;        /**< z-buffer type (must be float) */
+typedef float EON_Float;          /**< General floating point */
+typedef double EON_Double;        /**< Double-precision floating point */
+typedef float EON_IEEEFloat32;    /**< IEEE 32 bit floating point */
+typedef int32_t EON_sInt32;       /**< signed 32 bit integer */
+typedef uint32_t EON_uInt32;      /**< unsigned 32 bit integer */
+typedef int16_t EON_sInt16;       /**< signed 16 bit integer */
+typedef uint16_t EON_uInt16;      /**< unsigned 16 bit integer */
+typedef signed int EON_sInt;      /**< signed optimal integer */
+typedef unsigned int EON_uInt;    /**< unsigned optimal integer */
+typedef int EON_Bool;             /**< boolean */
+typedef uint8_t EON_uChar;        /**< unsigned 8 bit integer */
+typedef int8_t EON_sChar;         /**< signed 8 bit integer */
+typedef uint8_t EON_Byte;         /**< generic binary data */
 
 #define EON_ZERO 0.00000000001
 #define EON_PI   3.14159265359
 
-/* Utility min() and max() functions */
 #define EON_Min(x,y) (( ( x ) > ( y ) ? ( y ) : ( x )))
 #define EON_Max(x,y) (( ( x ) < ( y ) ? ( y ) : ( x )))
 #define EON_Clamp(x,m,M) ( EON_Min(EON_Max(( x ), ( m )), ( M )) )
 
-/*
-** Shade modes. Used with EON_Mat.ShadeType
-** Note that (EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE) and
-** (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE) are valid shading modes.
-*/
+/**
+ * shade modes.
+ * @see EON_Mat
+ * @note (EON_SHADE_GOURAUD|EON_SHADE_GOURAUD_DISTANCE) and
+ * (EON_SHADE_FLAT|EON_SHADE_FLAT_DISTANCE) are valid shading modes.
+ */
 enum {
     EON_SHADE_NONE             = 1,
     EON_SHADE_FLAT             = 2,
@@ -100,12 +100,14 @@ enum {
     EON_SHADE_WIREFRAME        = 32
 };
 
-/*
-** Light modes. Used with EON_Light.Type or EON_LightSet().
-** Note that EON_LIGHT_POINT_ANGLE assumes no falloff and uses the angle between
-** the light and the point, EON_LIGHT_POINT_DISTANCE has falloff with proportion
-** to distance**2 (see EON_LightSet() for setting it), EON_LIGHT_POINT does both.
-*/
+/**
+ * light modes.
+ * @see EON_Light
+ * @see EON_LightSet
+ * @note EON_LIGHT_POINT_ANGLE assumes no falloff and uses the angle between
+ * the light and the point, EON_LIGHT_POINT_DISTANCE has falloff with proportion
+ * to distance**2 (see EON_LightSet() for setting it), EON_LIGHT_POINT does both.
+ */
 enum {
     EON_LIGHT_NONE           =  0x0,
     EON_LIGHT_VECTOR         =  0x1,
@@ -114,19 +116,21 @@ enum {
     EON_LIGHT_POINT_ANGLE    =  0x4
 };
 
+/** represent a point on the 2D screen. */
 typedef struct _EON_ScrPoint {
-    /* Projected screen coordinates (12.20 fixed point) */
-    EON_sInt32 X;
-    EON_sInt32 Y;
-    EON_Float Z; /* 1/Z coordinates */
+    EON_sInt32 X; /**< Projected screen coordinates (12.20 fixed point) */
+    EON_sInt32 Y; /**< Projected screen coordinates (12.20 fixed point) */
+    EON_Float Z;  /**< 1/Z coordinates */
 } EON_ScrPoint;
 
+/** represent a point into the 3D space. */
 typedef struct _EON_3DPoint {
     EON_Float X;
     EON_Float Y;
     EON_Float Z;
 } EON_3DPoint;
 
+/** RGBA32 color. 8 bits per channel. */
 typedef struct _EON_Color {
     EON_Byte R;
     EON_Byte G;
@@ -139,17 +143,18 @@ typedef struct _EON_Frame {
     EON_ZBuffer *ZBuffer;
     EON_uInt32 Width;
     EON_uInt32 Height;
-    EON_uInt32 Bpp; /* Bytes Per Pixel */
+    EON_uInt32 Bpp; /**< Bytes Per Pixel */
 } EON_Frame;
 
 /* Forward declarations needed for _PutFace */
 typedef struct _EON_Face EON_Face;
 typedef struct _EON_Cam EON_Cam;
 
-/*
-** Texture type. Read textures with EON_ReadPCXTex(), and assign them to
-** EON_Mat.Texture.
-*/
+/**
+ * texture type.
+ * Read textures and assign them to EON_Mat.Texture.
+ * @see EON_ReadPCXTex
+ */
 typedef struct _EON_Texture {
     EON_Byte *Data;             /* Texture data */
     EON_Byte *PaletteData;      /* Palette data (NumColors bytes) */
@@ -159,112 +164,112 @@ typedef struct _EON_Texture {
     EON_uInt NumColors;         /* Number of colors used in texture */
 } EON_Texture;
 
-/*
-** Material type. Create materials with EON_MatCreate().
-*/
+/**
+ * material type.
+ * @see EON_MatCreate.
+ */
 typedef struct _EON_Mat {
     EON_Color Ambient;
     EON_Color Diffuse;
     EON_Color Specular;
-    EON_uInt Shininess;           /* Shininess of material. 1 is dullest */
-    EON_Float FadeDist;           /* For distance fading, distance at
+    EON_uInt Shininess;           /**< Shininess of material. 1 is dullest */
+    EON_Float FadeDist;           /**< For distance fading, distance at
                                      which intensity is 0 */
-    EON_uInt16 ShadeType;         /* Shade type: EON_SHADE_* */
-    EON_uInt16 PerspectiveCorrect;/* Correct textures every n pixels */
-    EON_Texture *Texture;         /* Texture map (see EON_Texture) above */
-    EON_Float TexScaling;         /* Texture map scaling */
-    EON_Bool zBufferable;         /* Can this material be zbuffered? */
+    EON_uInt16 ShadeType;         /**< Shade type: see EON_SHADE_* */
+    EON_uInt16 PerspectiveCorrect;/**< Correct textures every n pixels */
+    EON_Texture *Texture;         /**< Texture map (see EON_Texture) above */
+    EON_Float TexScaling;         /**< Texture map scaling */
+    EON_Bool zBufferable;         /**< Can this material be zbuffered? */
     /* The following are used mostly internally */
-    EON_uInt16 _st, _ft;          /* The shadetype and filltype */
+    EON_uInt16 _st, _ft;          /**< The shadetype and filltype */
+    /** Renders the triangle with this material */
     void (*_PutFace)(EON_Cam *, EON_Face *, EON_Frame *);
-    /* Renders the triangle with this material */
 } EON_Mat;
 
-/*
-** Vertex, used within EON_Obj
-*/
+/**
+ * Vertex, used within objects.
+ * @see EON_Obj.
+ */
 typedef struct _EON_Vertex {
-    EON_Float x, y, z;              /* Vertex coordinate (objectspace) */
+    EON_Float x, y, z;      /**< Vertex coordinate (objectspace) */
+    EON_Float nx, ny, nz;   /**< Unit vertex normal (objectspace) */
+    /** Transformed vertex coordinate (cameraspace) */
     EON_Float xformedx, xformedy, xformedz;
-                                    /* Transformed vertex
-                                    coordinate (cameraspace) */
-    EON_Float nx, ny, nz;           /* Unit vertex normal (objectspace) */
+    /** Transformed unit vertex normal (cameraspace) */
     EON_Float xformednx, xformedny, xformednz;
-                                 /* Transformed unit vertex normal
-                                    (cameraspace) */
 } EON_Vertex;
 
-/*
-** Face
-*/
+/**
+ * face
+ */
 struct _EON_Face {
-    EON_Vertex *Vertices[3];    /* Vertices of triangle */
-    EON_ScrPoint Scr[3];
-    EON_Float nx, ny, nz;       /* Normal of triangle (object space) */
-    EON_Mat *Material;          /* Material of triangle */
-    EON_Float Shades[3];        /* Vertex intensity */
-    EON_Float vsLighting[3];    /* Vertex static lighting. Should be 0.0 */
-    /* 16.16 Texture mapping coordinates */
+    EON_Vertex *Vertices[3];    /**< vertices of triangle. */
+    EON_ScrPoint Scr[3];        /**< screen coordinates of the vertices. */
+    EON_Float nx, ny, nz;       /**< Normal of triangle (object space) */
+    EON_Mat *Material;          /**< Material of triangle */
+    EON_Float Shades[3];        /**< Vertex intensity */
+    EON_Float vsLighting[3];    /**< Vertex static lighting. Should be 0.0 */
+    /** 16.16 Texture mapping coordinates */
     EON_sInt32 MappingU[3];
     EON_sInt32 MappingV[3];
 };
 
 /*
-** Object
-*/
+ * object
+ */
 typedef struct _EON_Obj {
-    EON_uInt32 NumVertices;         /* Number of vertices */
-    EON_uInt32 NumFaces;            /* Number of faces */
-    EON_Vertex *Vertices;           /* Array of vertices */
-    EON_Face *Faces;                /* Array of faces */
-    EON_Bool BackfaceCull;          /* Are backfacing polys drawn? */
-    EON_Bool BackfaceIllumination;  /* Illuminated by lights behind them? */
-    EON_Bool GenMatrix;             /* Generate Matrix from the following
+    EON_uInt32 NumVertices;         /**< Number of vertices */
+    EON_uInt32 NumFaces;            /**< Number of faces */
+    EON_Vertex *Vertices;           /**< Array of vertices */
+    EON_Face *Faces;                /**< Array of faces */
+    EON_Bool BackfaceCull;          /**< Are backfacing polys drawn? */
+    EON_Bool BackfaceIllumination;  /**< Illuminated by lights behind them? */
+    EON_Bool GenMatrix;             /**< Generate Matrix from the following
                                        if set */
-    EON_Float Xp, Yp, Zp;           /* Position of the object */
-    EON_Float Xa, Ya, Za;           /* Rotation of object:
+    EON_Float Xp, Yp, Zp;           /**< Position of the object */
+    EON_Float Xa, Ya, Za;           /**< Rotation of object:
                                        Note: rotations are around
                                        X then Y then Z. Measured in degrees */
-    EON_Float Pad;                  /* Padding */
-    EON_Float Matrix[16];           /* Transformation matrix */
-    EON_Float RotMatrix[16];        /* Rotation only matrix (for normals) */
+    EON_Float Pad;                  /**< Padding */
+    EON_Float Matrix[16];           /**< Transformation matrix */
+    EON_Float RotMatrix[16];        /**< Rotation only matrix (for normals) */
 } EON_Obj;
 
-/*
-** Light type. See EON_Light*().
-*/
+/**
+ * light type.
+ */
 typedef struct _EON_Light {
-    EON_uInt Type;                /* Type of light: EON_LIGHT_* */
-    EON_3DPoint Pos;              /* If Type=EON_LIGHT_POINT*,
-                                  this is Position (EON_LIGHT_POINT_*),
-                                  otherwise if EON_LIGHT_VECTOR,
-                                  Unit vector */
-    EON_Float Intensity;           /* Intensity. 0.0 is off, 1.0 is full */
-    EON_Float HalfDistSquared;     /* Distance squared at which
-                                   EON_LIGHT_POINT_DISTANCE is 50% */
+    EON_uInt Type;                /**< Type of light: EON_LIGHT_* */
+    EON_3DPoint Pos;              /**< If Type=EON_LIGHT_POINT*,
+                                      this is Position (EON_LIGHT_POINT_*),
+                                      otherwise if EON_LIGHT_VECTOR,
+                                      Unit vector */
+    EON_Float Intensity;          /**< Intensity. 0.0 is off, 1.0 is full */
+    EON_Float HalfDistSquared;    /**< Distance squared at which
+                                     EON_LIGHT_POINT_DISTANCE is 50% */
 } EON_Light;
 
-/*
-** Camera Type.
-*/
+/**
+ * camera type.
+ */
 struct _EON_Cam {
-    EON_Float Fov;                  /* FOV in degrees valid range is 1-179 */
-    EON_Float AspectRatio;          /* Aspect ratio (usually 1.0) */
-    EON_Float ClipBack;             /* Far clipping ( < 0.0 is none) */
-    EON_sInt ClipTop, ClipLeft;     /* Screen Clipping */
-    EON_sInt ClipBottom, ClipRight;
-    EON_uInt16 ScreenWidth, ScreenHeight; /* Screen dimensions */
-    EON_sInt CenterX, CenterY;      /* Center of screen */
-    EON_3DPoint Pos;                /* Camera position in worldspace */
-    EON_Float Pitch, Pan, Roll;     /* Camera angle in degrees in worldspace */
+    EON_Float Fov;                  /**< FOV in degrees valid range is 1-179 */
+    EON_Float AspectRatio;          /**< Aspect ratio (usually 1.0) */
+    EON_Float ClipBack;             /**< Far clipping ( < 0.0 is none) */
+    EON_sInt ClipTop, ClipLeft;     /**< Screen Clipping */
+    EON_sInt ClipBottom, ClipRight; /**< Screen Clipping */
+    EON_uInt16 ScreenWidth, ScreenHeight; /**< Screen dimensions */
+    EON_sInt CenterX, CenterY;      /**< Center of screen */
+    EON_3DPoint Pos;                /**< Camera position in worldspace */
+    EON_Float Pitch, Pan, Roll;     /**< Camera angle in degrees in worldspace */
 };
 
 enum {
     TRI_STAT_INITIAL = 0,
-    TRI_STAT_CULLING,       /* after the culling */
-    TRI_STAT_CLIPPING,      /* after the real clipping */
-    TRI_STAT_TESSELLATION,  /* after the tessellation */
-    TRI_STAT_NUM            /* MUST be the last one! */
+    TRI_STAT_CULLING,       /**< after the culling */
+    TRI_STAT_CLIPPING,      /**< after the real clipping */
+    TRI_STAT_TESSELLATION,  /**< after the tessellation */
+    TRI_STAT_NUM            /**< MUST be the last one! */
 };
 
 typedef struct _EON_RenderInfo {
@@ -317,363 +322,329 @@ typedef struct _EON_Rend {
 /******************************************************************************
 ** Frame Functions
 ******************************************************************************/
-/*
-  EON_FrameCreate() creates a frame with the specified dimensions
-  Parameters:
-    Width: the frame width (pixels).
-    Height: the frame height (pixels).
-    Bpp: Bytes per pixel. How many bytes takes a pixel?
-  Returns:
-    a pointer to the frame on success, 0 on failure
-*/
+
+/**
+ * creates a frame with the specified dimensions.
+ * @param Width the frame width (pixels).
+ * @param Height the frame height (pixels).
+ * @param Bpp Bytes per pixel. How many bytes takes a pixel?
+ * @return a pointer to the frame on success, NULL on failure.
+ */
 EON_Frame *EON_FrameCreate(EON_uInt32 Width, EON_uInt32 Height,
                            EON_uInt32 Bpp);
 
-/*
-  EON_FrameDelete() deletes a frame that was created with EON_FrameCreate().
-  Parameters:
-    f: a pointer to the frame to be deleted
-  Returns:
-    nothing
-*/
+/**
+ * deletes a frame.
+ * @see EON_FrameCreate.
+ * @param f a pointer to the frame to be deleted.
+ */
 void EON_FrameDelete(EON_Frame *f);
 
-/*
-  EON_FrameSize() tells how much storage space in bytes takes a given frame.
-  Parameters:
-    f: the frame to be inspected
-  Returns:
-    nothing
-*/
+/**
+ * tells how much storage space in bytes takes a given frame.
+ * @param f the frame to be inspected.
+ * @return the size in bytes of the argument frame.
+ */
 EON_uInt32 EON_FrameSize(EON_Frame *f);
 
-/*
-  EON_FrameClear() `blanks' a given frame.
-  Parameters:
-    f: the frame to be blanked (cleared)
-  Returns:
-    nothing
-*/
+/**
+ * blanks a given frame.
+ * @param f the frame to be blanked (cleared).
+ */
 void EON_FrameClear(EON_Frame *f);
 
 /******************************************************************************
 ** Material Functions (mat.c)
 ******************************************************************************/
 
-/*
-  EON_MatCreate() creates a material.
-  Parameters:
-    none
-  Returns:
-    a pointer to the material on success, 0 on failure
-*/
+/**
+ * creates a material.
+ * @return a pointer to the material on success, NULL on failure.
+ */
 EON_Mat *EON_MatCreate();
 
-/*
-  EON_MatDelete() deletes a material that was created with EON_MatCreate().
-  Parameters:
-    m: a pointer to the material to be deleted
-  Returns:
-    nothing
-*/
+/**
+ * deletes a material.
+ * @see EON_MatCreate.
+ * @param m a pointer to the material to be deleted.
+ */
 void EON_MatDelete(EON_Mat *m);
 
-/*
-  EON_MatInit() initializes a material that was created with EON_MatCreate().
-  Parameters:
-    m: a pointer to the material to be intialized
-  Returns:
-    nothing
-  Notes:
-    you *must* call this before calling any rendering function.
-*/
+/**
+ * initializes a material after the parameters are been (re)set.
+ * @note you *must* call this before calling any rendering function.
+ * @see EON_MatCreate.
+ * @param m a pointer to the material to be intialized.
+ */
 void EON_MatInit(EON_Mat *m);
 
-/*
-  EON_MatInfo() dumps the internal informations about a Material to a
-    logger. See cxkit/logkit.h for details.
-    The logger datatype is void* to remove a header dependency.
-  Parameters:
-    m: material to be inspected
-    logger: logger instance to be used
-  Returns:
-    nothing
-*/
+/**
+ * dumps the internal informations about a Material to a logger.
+ * @see cxkit/logkit.h for details.
+ * @note the logger datatype is void* to remove a header dependency.
+ * @param m material to be inspected.
+ * @param logger logger instance to be used.
+ */
 void EON_MatInfo(EON_Mat *m, void *logger);
 
 /******************************************************************************
 ** Object Functions (obj.c)
 ******************************************************************************/
 
-/*
-  EON_ObjCreate() allocates an object
-  Parameters:
-    np: Number of vertices in object
-    nf: Number of faces in object
-  Returns:
-    a pointer to the object on success, 0 on failure
-*/
+/**
+ * allocates an object.
+ * @param np Number of vertices in object.
+ * @param nf Number of faces in object.
+ * @return a pointer to the object on success, NULL on failure.
+ */
 EON_Obj *EON_ObjCreate(EON_uInt32 np, EON_uInt32 nf);
 
-/*
-  EON_ObjDelete() frees an object and all of it's subobjects
-    that was allocated with EON_ObjCreate();
-  Parameters:
-    o: object to delete
-  Returns:
-    nothing
-*/
+/**
+ * frees an object and all of it's subobjects.
+ * @see EON_ObjCreate.
+ * @param o object to delete.
+ */
 void EON_ObjDelete(EON_Obj *o);
 
-/*
-  EON_ObjClone() creates an exact but independent duEON_icate of an object and
-    all of it's subobjects
-  Parameters:
-    o: the object to clone
-  Returns:
-    a pointer to the new object on success, 0 on failure
-*/
+/**
+ * creates an exact but independent duplicate of an object and
+ * all of it's subobjects.
+ * @param o the object to clone.
+ * @return a pointer to the new object on success, NULL on failure
+ */
 EON_Obj *EON_ObjClone(EON_Obj *o);
 
-/*
-  EON_ObjScale() scales an object, and all of it's subobjects.
-  Parameters:
-    o: a pointer to the object to scale
-    s: the scaling factor
-  Returns:
-    a pointer to o.
-  Notes: This scales it slowly, by going through each vertex and scaling it's
-    position. Avoid doing this in realtime.
-*/
+/**
+ * scales an object, and all of it's subobjects.
+ * @note This scales it slowly, by going through each vertex
+ *       and scaling it's position. Avoid doing this in realtime.
+ * @param o a pointer to the object to scale.
+ * @param s the scaling factor.
+ * @return a pointer to o.
+ */
 EON_Obj *EON_ObjScale(EON_Obj *o, EON_Float s);
 
-/*
-  EON_ObjStretch() stretches an object, and all of it's subobjects
-  Parameters:
-    o: a pointer to the object to stretch
-    x,y,z: the x y and z stretch factors
-  Returns:
-    a pointer to o.
-  Notes: same as EON_ObjScale(). Note that the normals are preserved.
-*/
+/**
+ * stretches an object, and all of it's subobjects.
+ * @note: same as EON_ObjScale. Note that the normals are preserved.
+ * @see EON_ObjScale.
+ * @param o a pointer to the object to stretch.
+ * @param x stretch factor.
+ * @param y stretch factor.
+ * @param z stretch factor.
+ * @return a pointer to o.
+ */
 EON_Obj *EON_ObjStretch(EON_Obj *o, EON_Float x, EON_Float y, EON_Float z);
 
-/*
-  EON_ObjCentroid() calculates the centroid of a given object
-  Parameters:
-    o: a pointer to the object to calculate the centroid for
-    x,y,z: pointer to the output coordinates.
-  Returns:
-    nothing
-*/
+/**
+ * calculates the centroid of a given object.
+ * @param[in] o a pointer to the object to calculate the centroid for.
+ * @param[out] x pointer to the output coordinate.
+ * @param[out] y pointer to the output coordinate.
+ * @param[out] z pointer to the output coordinate.
+ */
 void EON_ObjCentroid(EON_Obj *o, EON_Float *x, EON_Float *y, EON_Float *z);
 
-/*
-   EON_ObjTranslate() translates an object
-   Parameters:
-     o: a pointer to the object to translate
-     x,y,z: translation in object space
-   Returns:
-     a pointer to o
-   Notes: same has EON_ObjScale().
+/**
+ * translates an object.
+ * @note same has EON_ObjScale.
+ * @see EON_ObjScale.
+ * @param o a pointer to the object to translate.
+ * @param x translation in object space.
+ * @param y translation in object space.
+ * @param z translation in object space.
+ * @return a pointer to o.
 */
 EON_Obj *EON_ObjTranslate(EON_Obj *o, EON_Float x, EON_Float y, EON_Float z);
 
-/*
-  EON_ObjFlipNormals() flips all vertex and face normals of and object
-    and allo of it's subobjects.
-  Parameters:
-    o: a pointer to the object to flip normals of
-  Returns:
-    a pointer to o
-  Notes:
-    Not especially fast.
-    A call to EON_ObjFlipNormals() or EON_ObjCalcNormals() will restore the normals
+/**
+ * flips all vertex and face normals of and object
+ * and all of it's subobjects.
+ * @note Not especially fast.
+ *       A call to EON_ObjFlipNormals or EON_ObjCalcNormals
+ *       will restore the normals
+ * @see EON_ObjCalcNormals
+ * @param o a pointer to the object to flip normals of.
+ * @return a pointer to o.
 */
 EON_Obj *EON_ObjFlipNormals(EON_Obj *o);
 
-/*
-  EON_ObjSetMat() sets the material of all faces in an object.
-  Parameters:
-    o: the object to set the material of
-    m: the material to set it to
-    th: "transcend hierarchy". If set, it will set the
-        material of all subobjects too.
-  Returns:
-    nothing
-*/
+/**
+ * sets the material of all faces in an object.
+ * @param o the object to set the material of.
+ * @param m the material to set it to.
+ * @param th "transcend hierarchy". If set, it will set the
+ *        material of all subobjects too.
+ */
 void EON_ObjSetMat(EON_Obj *o, EON_Mat *m, EON_Bool th);
 
-/*
-   EON_ObjCalcNormals() calculates all face and vertex normals for an object
-     and all subobjects.
-   Parameters:
-     obj: the object
-   Returns:
-     nothing
-*/
+/**
+ * calculates all face and vertex normals for an object and all subobjects.
+ * @param obj the object.
+ */
 EON_Obj *EON_ObjCalcNormals(EON_Obj *obj);
 
-/*
-  EON_ObjInfo() dumps the internal informations about an Object to a
-    logger. See cxkit/logkit.h for details.
-    The logger datatype is void* to remove a header dependency.
-  Parameters:
-    o: object to be inspected
-    logger: logger instance to be used
-  Returns:
-    nothing
-*/
+/**
+ * dumps the internal informations about an Object to a logger.
+ * @see cxkit/logkit.h for details.
+ * @note the logger datatype is void* to remove a header dependency.
+ * @param o object to be inspected.
+ * @param logger logger instance to be used.
+ */
 void EON_ObjInfo(EON_Obj *o, void *logger);
 
 /******************************************************************************
 ** Light Handling Routines (light.c)
 ******************************************************************************/
 
-/*
-  EON_LightCreate() creates a new light
-  Parameters:
-    none
-  Returns:
-    a pointer to the light
+/**
+ * creates a new light.
+ * @return a pointer to the light or NULL on error.
 */
 EON_Light *EON_LightCreate();
 
-/*
-  EON_LightSet() sets up a light allocated with EON_LightCreate()
-  Parameters:
-    light: the light to set up
-    mode: the mode of the light (EON_LIGHT_*)
-    x,y,z: either the position of the light (EON_LIGHT_POINT*) or the angle
-           in degrees of the light (EON_LIGHT_VECTOR)
-    intensity: the intensity of the light (0.0-1.0)
-    halfDist: the distance at which EON_LIGHT_POINT_DISTANCE is 1/2 intensity
-  Returns:
-    a pointer to light.
-*/
+/**
+ * sets up a light.
+ * @see EON_LightCreate.
+ * @param light the light to set up.
+ * @param mode: the mode of the light (EON_LIGHT_*).
+ * @param x either the position of the light (EON_LIGHT_POINT*) or the angle
+ *        in degrees of the light (EON_LIGHT_VECTOR).
+ * @param y either the position of the light (EON_LIGHT_POINT*) or the angle
+ *        in degrees of the light (EON_LIGHT_VECTOR).
+ * @param z either the position of the light (EON_LIGHT_POINT*) or the angle
+ *        in degrees of the light (EON_LIGHT_VECTOR).
+ * @param intensity the intensity of the light (0.0-1.0).
+ * @param halfDist the distance at which EON_LIGHT_POINT_DISTANCE is 1/2 intensity
+ * @return a pointer to light.
+ */
 EON_Light *EON_LightSet(EON_Light *light, EON_uChar mode, EON_Float x, EON_Float y,
                         EON_Float z, EON_Float intensity, EON_Float halfDist);
 
-/*
-  WRITEME
-*/
+/**
+ * allocate and set a new light in a single operation.
+ * @see EON_LightCreate
+ * @see EON_LightSet
+ * @param light the light to set up.
+ * @param mode: the mode of the light (EON_LIGHT_*).
+ * @param x either the position of the light (EON_LIGHT_POINT*) or the angle
+ *        in degrees of the light (EON_LIGHT_VECTOR).
+ * @param y either the position of the light (EON_LIGHT_POINT*) or the angle
+ *        in degrees of the light (EON_LIGHT_VECTOR).
+ * @param z either the position of the light (EON_LIGHT_POINT*) or the angle
+ *        in degrees of the light (EON_LIGHT_VECTOR).
+ * @param intensity the intensity of the light (0.0-1.0).
+ * @param halfDist the distance at which EON_LIGHT_POINT_DISTANCE is 1/2 intensity
+ * @return a pointer to light or NULL on error.
+ */
 EON_Light *EON_LightNew(EON_uChar mode, EON_Float x, EON_Float y, EON_Float z,
                         EON_Float intensity, EON_Float halfDist);
 
-/*
-  EON_LightDelete() frees a light allocated with EON_LightCreate().
-  Parameters:
-    l: light to delete
-  Returns:
-    nothing
-*/
+/**
+ * frees a light.
+ * @see EON_LightCreate
+ * @see EON_LightNew
+ * @param l light to delete.
+ */
 void EON_LightDelete(EON_Light *l);
 
-/*
-  EON_TexDelete() frees all memory associated with "t"
-*/
+/******************************************************************************
+** Texture utilities
+******************************************************************************/
+
+/**
+ * frees all memory associated with the given texture.
+ * @param t the texture to be freed.
+ */
 void EON_TexDelete(EON_Texture *t);
 
+/**
+ * dumps the internal informations about a Texture to a logger.
+ * @see cxkit/logkit.h for details.
+ * @note the logger datatype is void* to remove a header dependency.
+ * @param t texture to be inspected.
+ * @param logger logger instance to be used.
+ */
 void EON_TexInfo(EON_Texture *t, void *logger);
 
 /******************************************************************************
 ** Camera Handling Routines (cam.c)
 ******************************************************************************/
 
-/*
-  EON_CamCreate() allocates a new camera
-  Parameters:
-    sw: screen width
-    sh: screen height
-    ar: aspect ratio (usually 1.0)
-    fov: field of view (usually 45-120)
-  Returns:
-    a pointer to the newly allocated camera
-*/
+/**
+ * allocates a new camera.
+ * @param sw screen width
+ * @param sh screen height
+ * @param ar aspect ratio (usually 1.0)
+ * @param fov field of view (usually 45-120)
+ * @return a pointer to the newly allocated camera or NULL on error.
+ */
 EON_Cam *EON_CamCreate(EON_uInt sw, EON_uInt sh, EON_Float ar, EON_Float fov);
 
-/*
-  EON_CamSetTarget() sets the target of a camera allocated with EON_CamCreate().
-  Parameters:
-    c: the camera to set the target of
-    x,y,z: the worldspace coordinate of the target
-  Returns:
-    nothing
-  Notes:
-    Sets the pitch and pan of the camera. Does not touch the roll.
-*/
+/**
+ * sets the target of a camera.
+ * sets the pitch and pan of the camera. Does not touch the roll.
+ * @see EON_CamCreate
+ * @param c the camera to set the target of.
+ * @param x the worldspace coordinate of the target.
+ * @param y the worldspace coordinate of the target.
+ * @param z the worldspace coordinate of the target.
+ */
 void EON_CamSetTarget(EON_Cam *c, EON_Float x, EON_Float y, EON_Float z);
 
-/*
-   EON_CamDelete() frees all memory associated with a camera excluding
-     framebuffers and Z buffers
-   Parameters:
-     c: camera to free
-   Returns:
-     nothing
-*/
+/**
+ * frees all memory associated with a camera excluding framebuffers
+ * and Z buffers
+ * @param c camera to free
+ */
 void EON_CamDelete(EON_Cam *c);
 
 /******************************************************************************
 ** Easy Rendering Interface (render.c)
 ******************************************************************************/
 
-/*
-  EON_RendCreate() allocates a new renderer context.
-  Parameters:
-    Camera: an already initialized and ready EON_Cam.
-  Returns:
-    a pointer to the newly allocated context.
-*/
+/**
+ * allocates a new renderer context.
+ * @see EON_Cam
+ * @param Camera an already initialized and ready EON_Cam.
+ * @return a pointer to the newly allocated context or NULL on error.
+ */
 EON_Rend *EON_RendCreate(EON_Cam *Camera);
 
-/*
-   EON_RendDelete() frees all memory associated with a rendering context.
-   Parameters:
-     rend: context to free
-   Returns:
-     nothing
-*/
+/**
+ * frees all memory associated with a rendering context.
+ * @param rend context to free.
+ */
 void EON_RendDelete(EON_Rend *rend);
 
-/*
- EON_RenderBegin() begins the rendering process.
-   Parameters:
-     Camera: camera to use for rendering
-   Returns:
-     nothing
-   Notes:
-     Only one rendering process can occur at a time.
-     Uses EON_Clip*(), so don't use them within or around a EON_Render() block.
-*/
+/**
+ * begins the rendering process.
+ * Only one rendering process per thread can occur at any given time.
+ * Uses EON_Clip*(), so don't use them within or around a EON_Render() block.
+ * @param rend an initialized renderer instance.
+ */
 void EON_RenderBegin(EON_Rend *rend);
 
-/*
-   EON_RenderLight() adds a light to the scene.
-   Parameters:
-     light: light to add to scene
-   Returns:
-     nothing
-   Notes: Any objects rendered before will be unaffected by this.
-*/
+/**
+ * adds a light to the scene.
+ * Any objects rendered before will be unaffected by this.
+ * @param rend an initialized renderer instance.
+ * @param light light to add to scene
+ */
 void EON_RenderLight(EON_Rend *rend, EON_Light *light);
 
-/*
-   EON_RenderObj() adds an object and all of it's subobjects to the scene.
-   Parameters:
-     obj: object to render
-   Returns:
-     nothing
-*/
+/**
+ * adds an object and all of it's subobjects to the scene.
+ * @param rend an initialized renderer instance.
+ * @param obj object to render
+ */
 void EON_RenderObj(EON_Rend *rend, EON_Obj *obj);
 
-/*
-   EON_RenderEnd() actually does the rendering, and closes the rendering process
-   Parameters:
-     none
-   Returns:
-     nothing
-*/
+/**
+ * actually does the rendering, and closes the rendering process
+ * @param[in] rend an initialized renderer instance.
+ * @param[out] frame frame instance to hold the rendered scene.
+ */
 void EON_RenderEnd(EON_Rend *rend, EON_Frame *frame);
 
 
@@ -681,70 +652,64 @@ void EON_RenderEnd(EON_Rend *rend, EON_Frame *frame);
 ** Math Code (math.c)
 ******************************************************************************/
 
-/*
-  EON_MatrixRotate() generates a rotation matrix
-  Parameters:
-    matrix: an array of 16 EON_Floats that is a 4x4 matrix
-    m: the axis to rotate around, 1=X, 2=Y, 3=Z.
-    Deg: the angle in degrees to rotate
-  Returns:
-    nothing
-*/
+/**
+ * generates a rotation matrix.
+ * @param[out] matrix an array of 16 EON_Floats that is a 4x4 matrix.
+ * @param[in] m the axis to rotate around, 1=X, 2=Y, 3=Z.
+ * @param[in] Deg the angle in degrees to rotate.
+ */
 void EON_MatrixRotate(EON_Float matrix[], EON_uChar m, EON_Float Deg);
 
-/*
-  EON_MatrixTranslate() generates a translation matrix
-  Parameters:
-    m: the matrix (see EON_MatrixRotate for more info)
-    x,y,z: the translation coordinates
-  Returns:
-    nothing
-*/
+/**
+ * generates a translation matrix.
+ * @see EON_MatrixRotate.
+ * @param[out] m the matrix.
+ * @param[in] x the translation coordinate
+ * @param[in] y the translation coordinate
+ * @param[in] z the translation coordinate
+ */
 void EON_MatrixTranslate(EON_Float m[], EON_Float x, EON_Float y, EON_Float z);
 
-/*
-  EON_MatrixMultiply() multiEON_ies two matrices
-  Parameters:
-    dest: destination matrix will be multiEON_ed by src
-    src: source matrix
-  Returns:
-    nothing
-  Notes:
-    this is the same as dest = dest*src (since the order *does* matter);
-*/
+/**
+ * multiplies two matrices.
+ * this is the same as dest = dest*src (since the order *does* matter);
+ * @param[in,out] dest destination matrix will be multiplied by src
+ * @param[in] src source matrix
+ */
 void EON_MatrixMultiply(EON_Float *dest, EON_Float src[]);
 
-/*
-   EON_MatrixApply() apEON_ies a matrix.
-  Parameters:
-    m: matrix to apply
-    x,y,z: input coordinate
-    outx,outy,outz: pointers to output coords.
-  Returns:
-    nothing
-  Notes:
-    apEON_ies the matrix to the 3d point to produce the transformed 3d point
-*/
+/**
+ * applies a matrix.
+ * applies the matrix to the 3d point to produce the transformed 3d point.
+ * @param[in] m matrix to apply
+ * @param[in] x input coordinate
+ * @param[in] y input coordinate
+ * @param[in] z input coordinate
+ * @param[out] outx pointers to output coords.
+ * @param[out] outy pointers to output coords.
+ * @param[out] outz pointers to output coords.
+ */
 void EON_MatrixApply(EON_Float *m, EON_Float x, EON_Float y, EON_Float z,
                      EON_Float *outx, EON_Float *outy, EON_Float *outz);
 
-/*
-  EON_NormalizeVector() makes a vector a unit vector
-  Parameters:
-    x,y,z: pointers to the vector
-  Returns:
-    nothing
-*/
+/**
+ * makes a vector a unit vector
+ * @param[in,out] x pointers to the vector coordinate.
+ * @param[in,out] y pointers to the vector coordinate.
+ * @param[in,out] z pointers to the vector coordinate.
+ */
 void EON_NormalizeVector(EON_Float *x, EON_Float *y, EON_Float *z);
 
-/*
-  EON_DotProduct() returns the dot product of two vectors
-  Parameters:
-    x1,y1,z1: the first vector
-    x2,y2,z2: the second vector
-  Returns:
-    the dot product of the two vectors
-*/
+/**
+ * returns the dot product of two vectors.
+ * @param x1 the first vector coordinate.
+ * @param y1 the first vector coordinate.
+ * @param z1 the first vector coordinate.
+ * @param x2 the second vector coordinate.
+ * @param y2 the second vector coordinate.
+ * @param z2 the second vector coordinate.
+ * @return the dot product of the two vectors.
+ */
 EON_Float EON_DotProduct(EON_Float x1, EON_Float y1, EON_Float z1,
                          EON_Float x2, EON_Float y2, EON_Float z2);
 

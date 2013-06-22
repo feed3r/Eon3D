@@ -46,12 +46,12 @@
  * @see EON_Spline*().
  */
 typedef struct _EON_Spline {
-    EON_Float *keys;              /**< Key data, keyWidth*numKeys */
-    EON_sInt keyWidth;            /**< Number of floats per key */
-    EON_sInt numKeys;             /**< Number of keys */
-    EON_Float cont;               /**< Continuity. Should be -1.0 -> 1.0 */
-    EON_Float bias;               /**< Bias. -1.0 -> 1.0 */
-    EON_Float tens;               /**< Tension. -1.0 -> 1.0 */
+    EON_Float *keys;    /**< Key data, keyWidth*numKeys */
+    EON_sInt keyWidth;  /**< Number of floats per key */
+    EON_sInt numKeys;   /**< Number of keys */
+    EON_Float cont;     /**< Continuity. Should be -1.0 -> 1.0 */
+    EON_Float bias;     /**< Bias. -1.0 -> 1.0 */
+    EON_Float tens;     /**< Tension. -1.0 -> 1.0 */
 } EON_Spline;
 
 
