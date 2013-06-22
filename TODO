@@ -3,7 +3,7 @@ In not a particular order
 
 X truecolor (AKA RGBA) support for each rasterizer; drop the palette
 * walkthrough docs
-* doxygenize docs
+X doxygenize docs
 * write and enforce coding style
 * phong shading
 * autoformat script
