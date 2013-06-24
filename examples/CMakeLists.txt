@@ -13,6 +13,7 @@ include_directories(${eon3d_SOURCE_DIR}/deps/cxkit)
 include_directories(${eon3d_SOURCE_DIR}/deps/cxkit/kits)
 
 link_directories(${eon3d_BINARY_DIR}/core)
+link_directories(${eon3d_BINARY_DIR}/modules)
 
 target_link_libraries(example00_load ${EON3D_LIBS} eon3dx_reader)
 target_link_libraries(example01_cube ${EON3D_LIBS})
