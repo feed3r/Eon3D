@@ -4,6 +4,7 @@ In not a particular order
 X truecolor (AKA RGBA) support for each rasterizer; drop the palette
 * walkthrough docs
 X doxygenize docs
+* revamp the testsuite (and check coverage too)
 * write and enforce coding style
 * phong shading
 * autoformat script
